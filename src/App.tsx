@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
+import { YouTubeDashboard } from './components/YouTubeDashboard';
+import { Navbar } from './components/Navbar';
 import { getCurrentUser, type User } from './services/api';
 import './App.css';
 
@@ -8,6 +10,7 @@ function App() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('cms_token'));
   const [user, setUser] = useState<User | null>(null);
   const [loadingSession, setLoadingSession] = useState<boolean>(true);
+  const [activePlatform, setActivePlatform] = useState<'instagram' | 'youtube'>('instagram');
 
   useEffect(() => {
     async function verifySession() {
@@ -56,7 +59,19 @@ function App() {
   return (
     <div className="app-root">
       {token && user ? (
-        <Dashboard token={token} user={user} onLogout={handleLogout} />
+        <>
+          <Navbar
+            user={user}
+            onLogout={handleLogout}
+            activePlatform={activePlatform}
+            onSwitchPlatform={setActivePlatform}
+          />
+          {activePlatform === 'youtube' ? (
+            <YouTubeDashboard token={token} user={user} />
+          ) : (
+            <Dashboard token={token} user={user} />
+          )}
+        </>
       ) : (
         <Login onLoginSuccess={handleLoginSuccess} />
       )}

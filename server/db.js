@@ -22,17 +22,17 @@ const sslOption = useSsl ? { rejectUnauthorized: false } : false;
 // PostgreSQL Pool configuration
 const poolConfig = process.env.DATABASE_URL
   ? {
-      connectionString: process.env.DATABASE_URL,
-      ssl: sslOption,
-    }
+    connectionString: process.env.DATABASE_URL,
+    ssl: sslOption,
+  }
   : {
-      user: process.env.PGUSER || 'postgres',
-      password: process.env.PGPASSWORD || '',
-      host: process.env.PGHOST || 'localhost',
-      port: parseInt(process.env.PGPORT || '5432', 10),
-      database: process.env.PGDATABASE || 'cms_db',
-      ssl: sslOption,
-    };
+    user: process.env.PGUSER || 'postgres',
+    password: process.env.PGPASSWORD || '',
+    host: process.env.PGHOST || 'localhost',
+    port: parseInt(process.env.PGPORT || '5432', 10),
+    database: process.env.PGDATABASE || 'cms_db',
+    ssl: sslOption,
+  };
 
 export const pool = new Pool(poolConfig);
 
@@ -42,6 +42,16 @@ let isDbConnected = false;
 const memoryDb = {
   users: [],
   instagram_accounts: [],
+  youtube_accounts: [
+    {
+      id: 1,
+      user_id: 1,
+      channel_name: 'Chang Research Base',
+      access_token: 'sample_yt_access_token_123',
+      playlist_id: 'UUl5CQIfViBJFYs9QRkoDMbg',
+      created_at: new Date().toISOString(),
+    },
+  ],
 };
 
 export async function initDb() {
@@ -56,6 +66,16 @@ export async function initDb() {
       const sql = fs.readFileSync(schemaPath, 'utf8');
       await client.query(sql);
       console.log('✅ PostgreSQL Schema verified/initialized.');
+
+      // Seed Youtube_accounts if empty
+      const ytCheck = await client.query('SELECT COUNT(*) FROM Youtube_accounts');
+      if (parseInt(ytCheck.rows[0].count, 10) === 0) {
+        await client.query(`
+          INSERT INTO Youtube_accounts (user_id, channel_name, access_token, playlist_id)
+          VALUES (1, 'Chang Research Base', 'sample_yt_access_token_123', 'UUl5CQIfViBJFYs9QRkoDMbg')
+        `);
+        console.log('✅ Seeded default YouTube account into Youtube_accounts table.');
+      }
     }
     client.release();
   } catch (err) {
@@ -140,5 +160,34 @@ export async function getInstagramAccountsByUserId(userId) {
     return memoryDb.instagram_accounts.filter(
       (acc) => acc.user_id === parseInt(userId, 10)
     );
+  }
+}
+
+export async function getYoutubeAccountsByUserId(userId) {
+  if (isDbConnected) {
+    const query = `
+      SELECT id, user_id, channel_name, access_token, playlist_id, created_at 
+      FROM Youtube_accounts 
+      WHERE user_id = $1 
+      ORDER BY created_at DESC
+    `;
+    const res = await pool.query(query, [parseInt(userId, 10)]);
+    return res.rows;
+  } else {
+    return memoryDb.youtube_accounts.filter(
+      (acc) => acc.user_id === parseInt(userId, 10)
+    );
+  }
+}
+
+export async function getDataFromTable(tableName, userId) {
+  const safeTable = tableName === 'Youtube_accounts' ? 'Youtube_accounts' : 'instagram_accounts';
+  if (isDbConnected) {
+    const query = `SELECT * FROM ${safeTable} WHERE user_id = $1 ORDER BY created_at DESC`;
+    const res = await pool.query(query, [parseInt(userId, 10)]);
+    return res.rows;
+  } else {
+    const key = safeTable.toLowerCase();
+    return (memoryDb[key] || []).filter((acc) => acc.user_id === parseInt(userId, 10));
   }
 }

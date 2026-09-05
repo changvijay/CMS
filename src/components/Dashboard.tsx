@@ -12,22 +12,46 @@ import '../assets/css/Dashboard.css';
 interface DashboardProps {
   token: string;
   user: User;
-  onLogout: () => void;
+  onLogout?: () => void;
+  onSwitchPlatform?: (platform: 'instagram' | 'youtube') => void;
+  currentPlatform?: 'instagram' | 'youtube';
 }
 
 type PanelView = 'overview' | 'media' | 'raw';
-type MediaFilter = 'ALL' | 'REELS' | 'FEED';
+type MediaFilter = 'ALL' | 'REELS' | 'FEED' | 'TOP_PERFORMERS';
 
-const LIMIT_OPTIONS = [7, 14, 21, 28, 35];
+const LIMIT_OPTIONS = [7, 10, 14, 21, 28, 35];
+
+const getMetricsArray = (rawMetrics: any): any[] => {
+  if (Array.isArray(rawMetrics)) return rawMetrics;
+  if (Array.isArray(rawMetrics?.data)) return rawMetrics.data;
+  return [];
+};
+
+const getMetricValue = (metricItem: any): number | undefined => {
+  if (!metricItem) return undefined;
+  if (typeof metricItem.total_value?.value === 'number') return metricItem.total_value.value;
+  if (typeof metricItem.value === 'number') return metricItem.value;
+  if (Array.isArray(metricItem.values) && metricItem.values.length > 0) {
+    const lastVal = metricItem.values[metricItem.values.length - 1];
+    if (typeof lastVal?.value === 'number') return lastVal.value;
+    if (typeof lastVal === 'number') return lastVal;
+  }
+  return undefined;
+};
 
 const WEEKLY_METRICS: { name: string; label: string; icon: React.ReactNode; subLabel: string }[] = [
-  { name: 'reach', label: 'Weekly Reach', icon: <IconEye />, subLabel: 'Unique accounts reached (7D)' },
-  { name: 'views', label: 'Weekly Views', icon: <IconPlay />, subLabel: 'Video impressions (7D)' },
-  { name: 'total_interactions', label: 'Weekly Interactions', icon: <IconBolt />, subLabel: 'Account actions (7D)' },
-  { name: 'accounts_engaged', label: 'Weekly Engaged', icon: <IconUsers />, subLabel: 'Engaged accounts (7D)' },
+  { name: 'reach', label: 'Reach', icon: <IconEye />, subLabel: 'Unique accounts reached' },
+  { name: 'views', label: 'Views', icon: <IconPlay />, subLabel: 'Video impressions' },
+  { name: 'total_interactions', label: 'Interactions', icon: <IconBolt />, subLabel: 'Account actions' },
+  { name: 'accounts_engaged', label: 'Engaged', icon: <IconUsers />, subLabel: 'Engaged accounts' },
 ];
 
 const DAILY_METRICS: { name: string; label: string; icon: React.ReactNode; subLabel: string }[] = [
+  { name: 'reach', label: 'Reach', icon: <IconEye />, subLabel: 'Daily accounts reached' },
+  { name: 'views', label: 'Views', icon: <IconPlay />, subLabel: 'Daily content views' },
+  { name: 'total_interactions', label: 'Interactions', icon: <IconBolt />, subLabel: 'Daily content interactions' },
+  { name: 'accounts_engaged', label: 'Engaged', icon: <IconUsers />, subLabel: 'Daily engaged accounts' },
   { name: 'likes', label: 'Likes', icon: <IconHeart />, subLabel: 'Likes received in the last 24 hours' },
   { name: 'comments', label: 'Comments', icon: <IconComment />, subLabel: 'Comments in the last 24 hours' },
   { name: 'saves', label: 'Saves', icon: <IconBookmark />, subLabel: 'Saves in the last 24 hours' },
@@ -36,7 +60,9 @@ const DAILY_METRICS: { name: string; label: string; icon: React.ReactNode; subLa
   { name: 'follower_count', label: 'New followers', icon: <IconUsers />, subLabel: 'Net follower change in the last 24 hours' },
 ];
 
-export const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
+export const Dashboard: React.FC<DashboardProps> = ({
+  token,
+}) => {
   const [accounts, setAccounts] = useState<InstagramAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string | number>('');
   const [loading, setLoading] = useState(true);
@@ -48,8 +74,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) =
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>('ALL');
   const [mediaLimit, setMediaLimit] = useState<number>(7);
   const [copiedJson, setCopiedJson] = useState(false);
+  const getInitialDateRange = () => {
+    const untilObj = new Date();
+    const sinceObj = new Date();
+    sinceObj.setDate(untilObj.getDate() - 30);
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+    return {
+      since: formatDate(sinceObj),
+      until: formatDate(untilObj),
+    };
+  };
 
-  const loadDashboardData = async (limitOverride?: number) => {
+  const initialDates = useMemo(() => getInitialDateRange(), []);
+  const [sinceDate, setSinceDate] = useState<string>(initialDates.since);
+  const [untilDate, setUntilDate] = useState<string>(initialDates.until);
+
+  const loadDashboardData = async (limitOverride?: number, customSince?: string, customUntil?: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -62,8 +102,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) =
         const summary = await fetchConsolidatedInstagramDashboard(
           token,
           initialAccountId,
-          '2026-08-01',
-          '2026-08-31',
+          customSince ?? sinceDate,
+          customUntil ?? untilDate,
           limitOverride || mediaLimit
         );
         setConsolidatedData(summary);
@@ -86,7 +126,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) =
     setConsolidatedLoading(true);
     setError(null);
     try {
-      const summary = await fetchConsolidatedInstagramDashboard(token, accountId, '2026-08-01', '2026-08-31', mediaLimit);
+      const summary = await fetchConsolidatedInstagramDashboard(
+        token,
+        accountId,
+        sinceDate,
+        untilDate,
+        mediaLimit,
+        mediaFilter === 'TOP_PERFORMERS'
+      );
       setConsolidatedData(summary);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch metrics for selected account');
@@ -101,7 +148,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) =
     setConsolidatedLoading(true);
     setError(null);
     try {
-      const summary = await fetchConsolidatedInstagramDashboard(token, selectedAccountId, '2026-08-01', '2026-08-31', limit);
+      const summary = await fetchConsolidatedInstagramDashboard(
+        token,
+        selectedAccountId,
+        sinceDate,
+        untilDate,
+        limit,
+        mediaFilter === 'TOP_PERFORMERS'
+      );
       setConsolidatedData(summary);
     } catch (err: any) {
       setError(err.message || 'Failed to reload metrics with selected limit');
@@ -110,23 +164,163 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) =
     }
   };
 
+  const handleFilterChange = async (filter: MediaFilter) => {
+    setMediaFilter(filter);
+    if (!selectedAccountId) return;
+    setConsolidatedLoading(true);
+    setError(null);
+    try {
+      const summary = await fetchConsolidatedInstagramDashboard(
+        token,
+        selectedAccountId,
+        sinceDate,
+        untilDate,
+        filter === 'TOP_PERFORMERS' ? 10 : mediaLimit,
+        filter === 'TOP_PERFORMERS'
+      );
+      setConsolidatedData(summary);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch metrics for selected filter');
+    } finally {
+      setConsolidatedLoading(false);
+    }
+  };
+
+  const handleDateChange = async (newSince: string, newUntil: string) => {
+    setSinceDate(newSince);
+    setUntilDate(newUntil);
+    if (!selectedAccountId) return;
+    setConsolidatedLoading(true);
+    setError(null);
+    try {
+      const summary = await fetchConsolidatedInstagramDashboard(
+        token,
+        selectedAccountId,
+        newSince,
+        newUntil,
+        mediaFilter === 'TOP_PERFORMERS' ? 10 : mediaLimit,
+        mediaFilter === 'TOP_PERFORMERS'
+      );
+      setConsolidatedData(summary);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch metrics for selected date range');
+    } finally {
+      setConsolidatedLoading(false);
+    }
+  };
+
   const weeklyByName = useMemo(() => {
     const map = new Map<string, any>();
-    (consolidatedData?.summary?.weekly_metrics || []).forEach((m: any) => map.set(m.name, m));
+    getMetricsArray(consolidatedData?.summary?.weekly_metrics).forEach((m: any) => {
+      if (m?.name) map.set(m.name, m);
+    });
+
+    const mediaItems = consolidatedData?.summary?.media || [];
+    if (mediaItems.length > 0) {
+      const mediaTotals: Record<string, number> = {
+        reach: 0,
+        views: 0,
+        total_interactions: 0,
+      };
+
+      mediaItems.forEach((item: any) => {
+        const insightsList = getMetricsArray(item?.insights);
+        const getVal = (metricKey: string) => {
+          const found = insightsList.find((m: any) => m.name === metricKey || (metricKey === 'saves' && m.name === 'saved'));
+          return getMetricValue(found);
+        };
+        const r = getVal('reach') ?? 0;
+        const v = getVal('views') ?? 0;
+        const l = item.like_count ?? getVal('likes') ?? 0;
+        const c = item.comments_count ?? getVal('comments') ?? 0;
+        const s = getVal('saves') ?? 0;
+        const sh = getVal('shares') ?? 0;
+
+        mediaTotals.reach += r;
+        mediaTotals.views += v;
+        mediaTotals.total_interactions += (l + c + s + sh);
+      });
+
+      Object.entries(mediaTotals).forEach(([key, totalVal]) => {
+        const existingVal = getMetricValue(map.get(key));
+        if (existingVal === undefined || existingVal === 0) {
+          if (totalVal > 0) {
+            map.set(key, { name: key, total_value: { value: totalVal } });
+          }
+        }
+      });
+    }
+
     return map;
   }, [consolidatedData]);
 
   const dailyByName = useMemo(() => {
     const map = new Map<string, any>();
-    (consolidatedData?.summary?.daily_metrics || []).forEach((m: any) => map.set(m.name, m));
+    getMetricsArray(consolidatedData?.summary?.daily_metrics).forEach((m: any) => {
+      if (m?.name) map.set(m.name, m);
+    });
+
+    const mediaItems = consolidatedData?.summary?.media || [];
+    if (mediaItems.length > 0) {
+      const mediaTotals: Record<string, number> = {
+        likes: 0,
+        comments: 0,
+        saves: 0,
+        shares: 0,
+        reach: 0,
+        views: 0,
+      };
+
+      mediaItems.forEach((item: any) => {
+        const insightsList = getMetricsArray(item?.insights);
+        const getVal = (metricKey: string) => {
+          const found = insightsList.find((m: any) => m.name === metricKey || (metricKey === 'saves' && m.name === 'saved'));
+          return getMetricValue(found);
+        };
+        mediaTotals.likes += item.like_count ?? getVal('likes') ?? 0;
+        mediaTotals.comments += item.comments_count ?? getVal('comments') ?? 0;
+        mediaTotals.saves += getVal('saves') ?? 0;
+        mediaTotals.shares += getVal('shares') ?? 0;
+        mediaTotals.reach += getVal('reach') ?? 0;
+        mediaTotals.views += getVal('views') ?? 0;
+      });
+
+      Object.entries(mediaTotals).forEach(([key, totalVal]) => {
+        const existingVal = getMetricValue(map.get(key));
+        if (existingVal === undefined || existingVal === 0) {
+          if (totalVal > 0) {
+            map.set(key, { name: key, total_value: { value: totalVal } });
+          }
+        }
+      });
+    }
+
     return map;
   }, [consolidatedData]);
 
-  const followerTrend = consolidatedData?.summary?.follower_trend?.[0]?.values || [];
+  const followerTrend = useMemo(() => {
+    const trend = consolidatedData?.summary?.follower_trend;
+    if (!trend) return [];
+    if (Array.isArray(trend)) {
+      if (trend[0]?.values && Array.isArray(trend[0].values)) return trend[0].values;
+      return trend;
+    }
+    if (Array.isArray((trend as any)?.data)) {
+      const list = (trend as any).data;
+      if (list[0]?.values && Array.isArray(list[0].values)) return list[0].values;
+      return list;
+    }
+    return [];
+  }, [consolidatedData]);
+
   const netFollowers = followerTrend.reduce((sum: number, v: any) => sum + (v.value || 0), 0);
 
   const filteredMedia = useMemo(() => {
-    const items = consolidatedData?.summary?.media || [];
+    const items = [...(consolidatedData?.summary?.media || [])];
+    if (mediaFilter === 'TOP_PERFORMERS') {
+      items.sort((a: any, b: any) => getPerformanceScore(b) - getPerformanceScore(a));
+      return items.slice(0, 10);
+    }
     if (mediaFilter === 'ALL') return items;
     return items.filter((item: any) => item.media_product_type === mediaFilter || item.media_type === mediaFilter);
   }, [consolidatedData, mediaFilter]);
@@ -142,30 +336,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) =
 
   return (
     <div className="dashboard-container">
-      {/* Top Navbar */}
-      <header className="navbar">
-        <div className="nav-brand">
-          <div className="brand-icon-wrapper">
-            <IconSparkles />
-          </div>
-          <span className="brand-title">CMS Analytics Studio</span>
-        </div>
-
-        <div className="nav-user">
-          <div className="user-badge">
-            <div className="avatar-circle">{user.username.charAt(0).toUpperCase()}</div>
-            <div className="user-meta">
-              <span className="user-name">@{user.username}</span>
-              <span className="user-email">{user.email_address}</span>
-            </div>
-          </div>
-          <button onClick={onLogout} className="logout-btn" title="Sign Out">
-            <IconLogOut />
-            Logout
-          </button>
-        </div>
-      </header>
-
       {/* Main Content Area */}
       <main className="dashboard-main">
         {/* Error Banner */}
@@ -176,37 +346,60 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) =
           </div>
         )}
 
-        {/* Account Selector Ribbon */}
+        {/* Account Selector & Date Range Ribbon */}
         <section className="account-selector-ribbon">
           <div className="ribbon-info">
-            <h2>Active Instagram Account</h2>
-            <p>Select connected account to stream live Graph API analytics</p>
+            <h2>Active Instagram Account & Date Window</h2>
+            <p>Select connected account and custom date range for live Graph API analytics</p>
           </div>
 
-          {loading ? (
-            <div className="spinner" />
-          ) : accounts.length === 0 ? (
-            <p className="empty-subtext">No accounts connected.</p>
-          ) : (
-            <div className="account-select-wrapper">
-              <select
-                id="account-dropdown"
-                className="account-dropdown-select"
-                value={selectedAccountId}
-                onChange={(e) => handleAccountChange(e.target.value)}
-                disabled={consolidatedLoading}
-              >
-                {accounts.map((acc) => (
-                  <option key={acc.id} value={acc.id}>
-                    📸 {acc.page_name} (ID: {acc.page_id})
-                  </option>
-                ))}
-              </select>
-              <div className="select-icon-arrow">
-                <IconChevron />
+          <div className="ribbon-controls">
+            {loading ? (
+              <div className="spinner" />
+            ) : accounts.length === 0 ? (
+              <p className="empty-subtext">No accounts connected.</p>
+            ) : (
+              <div className="account-select-wrapper">
+                <select
+                  id="account-dropdown"
+                  className="account-dropdown-select"
+                  value={selectedAccountId}
+                  onChange={(e) => handleAccountChange(e.target.value)}
+                  disabled={consolidatedLoading}
+                >
+                  {accounts.map((acc) => (
+                    <option key={acc.id} value={acc.id}>
+                      📸 {acc.page_name} (ID: {acc.page_id})
+                    </option>
+                  ))}
+                </select>
+                <div className="select-icon-arrow">
+                  <IconChevron />
+                </div>
               </div>
+            )}
+
+            <div className="date-picker-wrapper">
+              <span className="date-picker-label">From:</span>
+              <input
+                type="date"
+                className="date-input"
+                value={sinceDate}
+                onChange={(e) => handleDateChange(e.target.value, untilDate)}
+                disabled={consolidatedLoading}
+                title="Start Date (since)"
+              />
+              <span className="date-picker-label">To:</span>
+              <input
+                type="date"
+                className="date-input"
+                value={untilDate}
+                onChange={(e) => handleDateChange(sinceDate, e.target.value)}
+                disabled={consolidatedLoading}
+                title="End Date (until)"
+              />
             </div>
-          )}
+          </div>
         </section>
 
         {/* Executive KPI Metric Tiles: BOTH Weekly & Daily Metrics */}
@@ -214,19 +407,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) =
           {/* Weekly Metrics Group */}
           <div className="kpi-group">
             <div className="kpi-group-header">
-              <span className="kpi-group-title">📅 Weekly Executive Metrics (7D)</span>
-              <span className="metric-tile__badge indigo">Weekly 7D</span>
+              <span className="kpi-group-title">📅 Last 28 Days Executive Metrics (7D)</span>
+              <span className="metric-tile__badge indigo">Last 28 Days</span>
             </div>
             <div className="metric-row">
               {WEEKLY_METRICS.map(({ name, label, icon, subLabel }) => {
                 const metric = weeklyByName.get(name);
-                const val = metric?.total_value?.value;
-                const dailyVal = dailyByName.get(name)?.total_value?.value;
+                const val = getMetricValue(metric);
                 return (
                   <div className="metric-tile metric-tile--weekly" key={`weekly-${name}`}>
                     <div className="metric-tile__head">
                       <div className="metric-tile__icon">{icon}</div>
-                      <span className="metric-tile__badge indigo">7D</span>
                     </div>
                     <div className="metric-tile__value">{formatNumber(val)}</div>
                     <div className="metric-tile__footer">
@@ -252,7 +443,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) =
             <div className="daily-kpi-grid">
               {DAILY_METRICS.map(({ name, label, icon, subLabel }) => {
                 const val =
-                  name === 'follower_count' ? todayFollowerDelta : dailyByName.get(name)?.total_value?.value;
+                  name === 'follower_count' ? todayFollowerDelta : getMetricValue(dailyByName.get(name));
                 return (
                   <div className="daily-tile" key={`daily-${name}`} title={subLabel}>
                     <div className="daily-tile__icon">{icon}</div>
@@ -338,7 +529,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) =
                     </div>
                     <ul className="engagement-list">
                       {DAILY_METRICS.slice(0, 4).map(({ name, label, icon }) => {
-                        const val = dailyByName.get(name)?.total_value?.value;
+                        const val = getMetricValue(dailyByName.get(name));
                         return (
                           <li key={name} className="engagement-item">
                             <div className="engagement-item__icon">{icon}</div>
@@ -358,14 +549,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) =
                 {/* Media Control Toolbar */}
                 <div className="media-toolbar">
                   <div className="media-filter-bar">
-                    <span className="empty-subtext">Type:</span>
-                    {(['ALL', 'REELS', 'FEED'] as MediaFilter[]).map((f) => (
+                    <span className="empty-subtext">Filter:</span>
+                    {(['ALL', 'REELS', 'FEED', 'TOP_PERFORMERS'] as MediaFilter[]).map((f) => (
                       <button
                         key={f}
-                        className={`filter-chip ${mediaFilter === f ? 'active' : ''}`}
-                        onClick={() => setMediaFilter(f)}
+                        className={`filter-chip ${mediaFilter === f ? 'active' : ''} ${f === 'TOP_PERFORMERS' ? 'top-performers-chip' : ''}`}
+                        onClick={() => handleFilterChange(f)}
+                        disabled={consolidatedLoading}
                       >
-                        {f}
+                        {f === 'TOP_PERFORMERS' ? '🔥 Top 10 Performers' : f}
                       </button>
                     ))}
                   </div>
@@ -389,7 +581,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) =
                 {/* Media Grid Cards */}
                 <div className="media-list-grid">
                   {filteredMedia.length > 0 ? (
-                    filteredMedia.map((item: any) => <MediaRow key={item.id} item={item} />)
+                    filteredMedia.map((item: any, index: number) => (
+                      <MediaRow
+                        key={item.id}
+                        item={item}
+                        rank={mediaFilter === 'TOP_PERFORMERS' ? index + 1 : undefined}
+                      />
+                    ))
                   ) : (
                     <p className="empty-subtext">No media content found matching current filter.</p>
                   )}
@@ -416,22 +614,66 @@ export const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) =
 
 // ---------- Subcomponents ----------
 
-function MediaRow({ item }: { item: any }) {
+function getInsightValue(insights: any, metricName: string): number | undefined {
+  if (!insights) return undefined;
+  const list = Array.isArray(insights) ? insights : Array.isArray(insights?.data) ? insights.data : null;
+  if (!list) return undefined;
+
+  const item = list.find((m: any) => m.name === metricName || (metricName === 'saved' && m.name === 'saves'));
+  if (!item) return undefined;
+
+  if (typeof item.values?.[0]?.value === 'number') {
+    return item.values[0].value;
+  }
+  if (typeof item.value === 'number') {
+    return item.value;
+  }
+  return undefined;
+}
+
+function getPerformanceScore(item: any): number {
+  if (!item) return 0;
+  const reach = getInsightValue(item.insights, 'reach') || 0;
+  const views = getInsightValue(item.insights, 'views') || 0;
+  const likes = getInsightValue(item.insights, 'likes') ?? item.like_count ?? 0;
+  const comments = getInsightValue(item.insights, 'comments') ?? item.comments_count ?? 0;
+  const saved = getInsightValue(item.insights, 'saved') ?? getInsightValue(item.insights, 'saves') ?? 0;
+  const shares = getInsightValue(item.insights, 'shares') || 0;
+  return reach + views + likes * 2 + comments * 3 + saved * 4 + shares * 5;
+}
+
+function MediaRow({ item, rank }: { item: any; rank?: number }) {
   const { text, tags } = splitCaption(item.caption || '');
   const typeLabel = item.media_product_type === 'REELS' ? 'Reel' : item.media_product_type === 'FEED' ? 'Post' : item.media_type || 'Post';
   const posterUrl = item.thumbnail_url || (item.media_type !== 'VIDEO' ? item.media_url : null);
 
+  const reach = getInsightValue(item.insights, 'reach');
+  const views = getInsightValue(item.insights, 'views');
+  const likes = getInsightValue(item.insights, 'likes') ?? item.like_count;
+  const comments = getInsightValue(item.insights, 'comments') ?? item.comments_count;
+  const saved = getInsightValue(item.insights, 'saved');
+  const shares = getInsightValue(item.insights, 'shares');
+
   return (
-    <article className="media-card-luxury">
-      <div className="media-card-thumb-container">
+    <article className="media-card">
+      <div className="media-card-thumb">
         {posterUrl ? (
           <img src={posterUrl} alt="Post preview" className="media-card-img" loading="lazy" />
         ) : (
-          <div className="media-card-placeholder">
+          <div className="media-card-placeholder" aria-hidden="true">
             <IconCamera />
           </div>
         )}
-        <div className="media-card-type-tag">{typeLabel}</div>
+        <span className="media-card-type-tag">{typeLabel}</span>
+        {rank && <span className="media-card-rank-tag">#{rank} Top</span>}
+
+        {/* Primary metric lives on the thumbnail, Instagram-style */}
+        {(reach !== undefined || views !== undefined) && (
+          <span className="media-card-primary-stat">
+            <IconPlay />
+            {formatNumber(views ?? reach)}
+          </span>
+        )}
       </div>
 
       <div className="media-card-content">
@@ -449,24 +691,36 @@ function MediaRow({ item }: { item: any }) {
                 #{t}
               </span>
             ))}
-            {tags.length > 4 && <span className="tag-chip tag-chip--muted">+{tags.length - 4}</span>}
+            {tags.length > 4 && (
+              <span className="tag-chip tag-chip--muted">+{tags.length - 4}</span>
+            )}
           </div>
         )}
 
         <div className="media-card-footer">
-          <div className="media-stats-group">
-            <span className="media-stat-pill" title="Likes">
-              <IconHeart /> {formatNumber(item.like_count || 0)}
-            </span>
-            <span className="media-stat-pill" title="Comments">
-              <IconComment /> {formatNumber(item.comments_count || 0)}
-            </span>
-            {item.is_comment_enabled !== undefined && (
-              <span className={`comment-status-pill ${item.is_comment_enabled ? 'enabled' : 'disabled'}`}>
-                {item.is_comment_enabled ? 'Comments On' : 'Comments Off'}
-              </span>
+          <ul className="media-stats-group" aria-label="Post metrics">
+            {reach !== undefined && (
+              <li className="media-stat" aria-label={`${formatNumber(reach)} reach`}>
+                <IconEye aria-hidden="true" /> {formatNumber(reach)}
+              </li>
             )}
-          </div>
+            <li className="media-stat" aria-label={`${formatNumber(likes)} likes`}>
+              <IconHeart aria-hidden="true" /> {formatNumber(likes)}
+            </li>
+            <li className="media-stat" aria-label={`${formatNumber(comments)} comments`}>
+              <IconComment aria-hidden="true" /> {formatNumber(comments)}
+            </li>
+            {saved !== undefined && (
+              <li className="media-stat" aria-label={`${formatNumber(saved)} saves`}>
+                <IconBookmark aria-hidden="true" /> {formatNumber(saved)}
+              </li>
+            )}
+            {shares !== undefined && (
+              <li className="media-stat" aria-label={`${formatNumber(shares)} shares`}>
+                <IconShare aria-hidden="true" /> {formatNumber(shares)}
+              </li>
+            )}
+          </ul>
 
           {item.permalink && (
             <a href={item.permalink} target="_blank" rel="noreferrer" className="media-row__link" title="Open on Instagram">
@@ -532,13 +786,7 @@ function splitCaption(caption: string): { text: string; tags: string[] } {
 
 // ---------- Icons ----------
 
-function IconSparkles() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z" />
-    </svg>
-  );
-}
+
 function IconEye() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -657,15 +905,6 @@ function IconCopy() {
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <rect x="9" y="9" width="13" height="13" rx="2" />
       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
-  );
-}
-function IconLogOut() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   );
 }

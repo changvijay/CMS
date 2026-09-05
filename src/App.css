@@ -23,7 +23,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 16px;
 }
 
 .login-card {
@@ -34,11 +34,17 @@
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 36px;
+  padding: 24px 18px;
   box-shadow: 
     0 20px 40px rgba(0, 0, 0, 0.4),
     0 0 40px var(--accent-glow);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+@media (min-width: 480px) {
+  .login-card {
+    padding: 36px;
+  }
 }
 
 .login-header {
