@@ -24,6 +24,7 @@ const poolConfig = process.env.DATABASE_URL
   ? {
     connectionString: process.env.DATABASE_URL,
     ssl: sslOption,
+    connectionTimeoutMillis: 5000,
   }
   : {
     user: process.env.PGUSER || 'postgres',
@@ -32,9 +33,16 @@ const poolConfig = process.env.DATABASE_URL
     port: parseInt(process.env.PGPORT || '5432', 10),
     database: process.env.PGDATABASE || 'cms_db',
     ssl: sslOption,
+    connectionTimeoutMillis: 5000,
   };
 
 export const pool = new Pool(poolConfig);
+
+// Handle idle pool connection errors gracefully to prevent container crashes on startup
+pool.on('error', (err) => {
+  console.warn('⚠️ Unexpected error on PostgreSQL pool connection:', err.message);
+  isDbConnected = false;
+});
 
 let isDbConnected = false;
 

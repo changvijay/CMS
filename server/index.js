@@ -20,12 +20,20 @@ import {
 
 dotenv.config();
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('⚠️ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('⚠️ Uncaught Exception thrown:', err);
+});
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distPath = path.join(__dirname, '../dist');
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = parseInt(process.env.PORT || '8080', 10);
 const JWT_SECRET = process.env.JWT_SECRET || 'default_secure_jwt_secret_key';
 
 app.use(cors());
