@@ -36,15 +36,17 @@ const poolConfig = process.env.DATABASE_URL
     connectionTimeoutMillis: 5000,
   };
 
+let isDbConnected = false;
+let dbLastError = null;
+
 export const pool = new Pool(poolConfig);
 
 // Handle idle pool connection errors gracefully to prevent container crashes on startup
 pool.on('error', (err) => {
   console.warn('⚠️ Unexpected error on PostgreSQL pool connection:', err.message);
   isDbConnected = false;
+  dbLastError = err.message;
 });
-
-let isDbConnected = false;
 
 // Dynamic in-memory store for fallback mode when database is not initialized
 const memoryDb = {
@@ -67,6 +69,7 @@ export async function initDb() {
     const client = await pool.connect();
     console.log('✅ Connected to PostgreSQL database successfully!');
     isDbConnected = true;
+    dbLastError = null;
 
     // Run schema.sql script to ensure tables exist
     const schemaPath = path.join(__dirname, 'schema.sql');
@@ -93,6 +96,7 @@ export async function initDb() {
       '\n👉 Note: Operating in fallback mode.'
     );
     isDbConnected = false;
+    dbLastError = err.message;
   }
 }
 
@@ -100,10 +104,13 @@ export function getDbStatus() {
   return {
     connected: isDbConnected,
     mode: isDbConnected ? 'PostgreSQL' : 'Disconnected / Memory Mode',
+    error: isDbConnected ? null : dbLastError,
     config: {
       host: process.env.PGHOST || 'localhost',
       port: process.env.PGPORT || '5432',
       database: process.env.PGDATABASE || 'cms_db',
+      has_user: Boolean(process.env.PGUSER),
+      has_password: Boolean(process.env.PGPASSWORD),
     },
   };
 }

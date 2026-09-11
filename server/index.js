@@ -135,11 +135,13 @@ async function getAccountForUser(userId, accountId) {
 
 app.get('/api/health', (req, res) => {
   const status = getDbStatus();
+  const host = req.get('host');
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     database: status,
-    swagger: `http://localhost:${PORT}/api-docs`,
+    swagger: `${protocol}://${host}/api-docs`,
   });
 });
 
