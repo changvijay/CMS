@@ -24,7 +24,8 @@ const poolConfig = process.env.DATABASE_URL
   ? {
     connectionString: process.env.DATABASE_URL,
     ssl: sslOption,
-    connectionTimeoutMillis: 5000,
+    max: 5,
+    connectionTimeoutMillis: 15000,
   }
   : {
     user: process.env.PGUSER || 'postgres',
@@ -33,7 +34,8 @@ const poolConfig = process.env.DATABASE_URL
     port: parseInt(process.env.PGPORT || '5432', 10),
     database: process.env.PGDATABASE || 'cms_db',
     ssl: sslOption,
-    connectionTimeoutMillis: 5000,
+    max: 5,
+    connectionTimeoutMillis: 15000,
   };
 
 let isDbConnected = false;
