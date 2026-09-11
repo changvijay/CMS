@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
 import { YouTubeDashboard } from './components/YouTubeDashboard';
@@ -6,11 +7,11 @@ import { Navbar } from './components/Navbar';
 import { getCurrentUser, type User } from './services/api';
 import './App.css';
 
-function App() {
+function MainApp() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('cms_token'));
   const [user, setUser] = useState<User | null>(null);
   const [loadingSession, setLoadingSession] = useState<boolean>(true);
-  const [activePlatform, setActivePlatform] = useState<'instagram' | 'youtube'>('instagram');
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function verifySession() {
@@ -39,12 +40,18 @@ function App() {
     localStorage.setItem('cms_token', newToken);
     setToken(newToken);
     setUser(loggedInUser);
+    navigate('/instagram');
   };
 
   const handleLogout = () => {
     localStorage.removeItem('cms_token');
     setToken(null);
     setUser(null);
+    navigate('/login');
+  };
+
+  const handleSwitchPlatform = (platform: 'instagram' | 'youtube') => {
+    navigate(`/${platform}`);
   };
 
   if (loadingSession) {
@@ -56,27 +63,39 @@ function App() {
     );
   }
 
+  if (!token || !user) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
   return (
     <div className="app-root">
-      {token && user ? (
-        <>
-          <Navbar
-            user={user}
-            onLogout={handleLogout}
-            activePlatform={activePlatform}
-            onSwitchPlatform={setActivePlatform}
-          />
-          {activePlatform === 'youtube' ? (
-            <YouTubeDashboard token={token} user={user} />
-          ) : (
-            <Dashboard token={token} user={user} />
-          )}
-        </>
-      ) : (
-        <Login onLoginSuccess={handleLoginSuccess} />
-      )}
+      <Navbar user={user} onLogout={handleLogout} />
+      <Routes>
+        <Route path="/" element={<Navigate to="/instagram" replace />} />
+        <Route
+          path="/instagram"
+          element={<Dashboard token={token} user={user} onSwitchPlatform={handleSwitchPlatform} />}
+        />
+        <Route
+          path="/youtube"
+          element={<YouTubeDashboard token={token} user={user} onSwitchPlatform={handleSwitchPlatform} />}
+        />
+        <Route path="/login" element={<Navigate to="/instagram" replace />} />
+        <Route path="*" element={<Navigate to="/instagram" replace />} />
+      </Routes>
     </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <BrowserRouter>
+      <MainApp />
+    </BrowserRouter>
+  );
+}

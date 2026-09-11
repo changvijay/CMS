@@ -5,6 +5,8 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import {
   initDb,
   getDbStatus,
@@ -18,12 +20,17 @@ import {
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.join(__dirname, '../dist');
+
 const app = express();
 const PORT = process.env.PORT || 5001;
 const JWT_SECRET = process.env.JWT_SECRET || 'default_secure_jwt_secret_key';
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(distPath));
 
 // Initialize Database connection on boot
 initDb();
@@ -996,6 +1003,18 @@ app.get('/api/youtube/dashboard-summary', authenticateToken, async (req, res) =>
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Express server running at http://localhost:${PORT}`);
+// SPA Fallback: Serve index.html for non-API routes when frontend build is present
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/api-docs')) {
+    return next();
+  }
+  res.sendFile(path.join(distPath, 'index.html'), (err) => {
+    if (err) {
+      next();
+    }
+  });
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Express server running on port ${PORT}`);
 });

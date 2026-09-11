@@ -1,64 +1,86 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import type { User } from '../services/api';
+import './Navbar.css';
 
 interface NavbarProps {
   user: User;
   onLogout: () => void;
-  activePlatform: 'instagram' | 'youtube';
-  onSwitchPlatform: (platform: 'instagram' | 'youtube') => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   user,
   onLogout,
-  activePlatform,
-  onSwitchPlatform,
 }) => {
+  const location = useLocation();
+  const isYouTube = location.pathname.startsWith('/youtube');
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
+
   return (
     <header className="navbar">
       <div className="nav-brand">
-        <div className={`brand-icon-wrapper ${activePlatform === 'youtube' ? 'youtube-brand-icon' : ''}`}>
-          {activePlatform === 'youtube' ? <IconYouTubePlay /> : <IconSparkles />}
+        <div className={`brand-icon-wrapper ${isYouTube ? 'youtube-brand-icon' : ''}`}>
+          {isYouTube ? <IconYouTubePlay /> : <IconSparkles />}
         </div>
         <span className="brand-title">CMS Analytics Studio</span>
       </div>
 
-      {/* Central Navigation Items: Only Instagram and YouTube */}
-      <nav className="central-nav">
-        <div className="platform-nav-tabs">
-          <button
-            className={`platform-tab ${activePlatform === 'instagram' ? 'active' : ''}`}
-            onClick={() => onSwitchPlatform('instagram')}
-            title="Switch to Instagram Page"
-          >
-            <IconInstagram />
-            <span>Instagram</span>
-          </button>
+      {/* Hamburger toggle - mobile only */}
+      <button
+        className="menu-toggle"
+        onClick={() => setMenuOpen((prev) => !prev)}
+        aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+        aria-expanded={menuOpen}
+      >
+        {menuOpen ? <IconClose /> : <IconMenu />}
+      </button>
 
-          <button
-            className={`platform-tab ${activePlatform === 'youtube' ? 'active youtube-active' : ''}`}
-            onClick={() => onSwitchPlatform('youtube')}
-            title="Switch to YouTube Page"
-          >
-            <IconYouTubePlay />
-            <span>YouTube</span>
-          </button>
-        </div>
-      </nav>
+      {/* Overlay behind mobile menu */}
+      {menuOpen && <div className="nav-overlay" onClick={() => setMenuOpen(false)} />}
 
-      {/* User Information & Logout Button */}
-      <div className="nav-user">
-        <div className="user-badge">
-          <div className="avatar-circle">{user.username.charAt(0).toUpperCase()}</div>
-          <div className="user-meta">
-            <span className="user-name">@{user.username}</span>
-            <span className="user-email">{user.email_address}</span>
+      <div className={`nav-collapsible ${menuOpen ? 'open' : ''}`}>
+        {/* Central Navigation Items: Only Instagram and YouTube */}
+        <nav className="central-nav">
+          <div className="platform-nav-tabs">
+            <NavLink
+              to="/instagram"
+              className={({ isActive }) => `platform-tab ${isActive ? 'active' : ''}`}
+              title="Switch to Instagram Page"
+            >
+              <IconInstagram />
+              <span>Instagram</span>
+            </NavLink>
+
+            <NavLink
+              to="/youtube"
+              className={({ isActive }) => `platform-tab ${isActive ? 'active youtube-active' : ''}`}
+              title="Switch to YouTube Page"
+            >
+              <IconYouTubePlay />
+              <span>YouTube</span>
+            </NavLink>
           </div>
+        </nav>
+
+        {/* User Information & Logout Button */}
+        <div className="nav-user">
+          <div className="user-badge">
+            <div className="avatar-circle">{user.username.charAt(0).toUpperCase()}</div>
+            <div className="user-meta">
+              <span className="user-name">@{user.username}</span>
+              <span className="user-email">{user.email_address}</span>
+            </div>
+          </div>
+          <button onClick={onLogout} className="logout-btn" title="Sign Out">
+            <IconLogOut />
+            <span className="logout-text">Logout</span>
+          </button>
         </div>
-        <button onClick={onLogout} className="logout-btn" title="Sign Out">
-          <IconLogOut />
-          <span className="logout-text">Logout</span>
-        </button>
       </div>
     </header>
   );
@@ -97,6 +119,25 @@ function IconLogOut() {
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <polyline points="16 17 21 12 16 7" />
       <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+
+function IconMenu() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  );
+}
+
+function IconClose() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   );
 }

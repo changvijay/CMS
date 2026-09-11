@@ -73,6 +73,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [panelView, setPanelView] = useState<PanelView>('overview');
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>('ALL');
   const [mediaLimit, setMediaLimit] = useState<number>(7);
+  const [mediaSearch, setMediaSearch] = useState<string>('');
+  const [mediaSortBy, setMediaSortBy] = useState<'newest' | 'reach' | 'likes' | 'engagement'>('newest');
+  const [mediaViewMode, setMediaViewMode] = useState<'grid' | 'list'>('grid');
   const [copiedJson, setCopiedJson] = useState(false);
   const getInitialDateRange = () => {
     const untilObj = new Date();
@@ -316,14 +319,86 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const netFollowers = followerTrend.reduce((sum: number, v: any) => sum + (v.value || 0), 0);
 
   const filteredMedia = useMemo(() => {
-    const items = [...(consolidatedData?.summary?.media || [])];
+    let items = [...(consolidatedData?.summary?.media || [])];
+
     if (mediaFilter === 'TOP_PERFORMERS') {
       items.sort((a: any, b: any) => getPerformanceScore(b) - getPerformanceScore(a));
-      return items.slice(0, 10);
+      items = items.slice(0, 10);
+    } else if (mediaFilter !== 'ALL') {
+      items = items.filter(
+        (item: any) => item.media_product_type === mediaFilter || item.media_type === mediaFilter
+      );
     }
-    if (mediaFilter === 'ALL') return items;
-    return items.filter((item: any) => item.media_product_type === mediaFilter || item.media_type === mediaFilter);
-  }, [consolidatedData, mediaFilter]);
+
+    if (mediaSearch.trim()) {
+      const q = mediaSearch.toLowerCase().trim();
+      items = items.filter((item: any) => {
+        const caption = (item.caption || '').toLowerCase();
+        const shortcode = (item.shortcode || item.id || '').toLowerCase();
+        return caption.includes(q) || shortcode.includes(q);
+      });
+    }
+
+    if (mediaFilter !== 'TOP_PERFORMERS') {
+      items.sort((a: any, b: any) => {
+        if (mediaSortBy === 'newest') {
+          const timeA = new Date(a.timestamp || 0).getTime();
+          const timeB = new Date(b.timestamp || 0).getTime();
+          return timeB - timeA;
+        }
+        if (mediaSortBy === 'reach') {
+          const reachA = getInsightValue(a.insights, 'reach') ?? getInsightValue(a.insights, 'views') ?? 0;
+          const reachB = getInsightValue(b.insights, 'reach') ?? getInsightValue(b.insights, 'views') ?? 0;
+          return reachB - reachA;
+        }
+        if (mediaSortBy === 'likes') {
+          const likesA = getInsightValue(a.insights, 'likes') ?? a.like_count ?? 0;
+          const likesB = getInsightValue(b.insights, 'likes') ?? b.like_count ?? 0;
+          return likesB - likesA;
+        }
+        if (mediaSortBy === 'engagement') {
+          return getPerformanceScore(b) - getPerformanceScore(a);
+        }
+        return 0;
+      });
+    }
+
+    return items;
+  }, [consolidatedData, mediaFilter, mediaSearch, mediaSortBy]);
+
+  const mediaStatsSummary = useMemo(() => {
+    const allMedia = consolidatedData?.summary?.media || [];
+    let totalReach = 0;
+    let totalLikes = 0;
+    let totalComments = 0;
+    let totalSaves = 0;
+    let totalShares = 0;
+
+    allMedia.forEach((item: any) => {
+      const r = getInsightValue(item.insights, 'reach') ?? getInsightValue(item.insights, 'views') ?? 0;
+      const l = getInsightValue(item.insights, 'likes') ?? item.like_count ?? 0;
+      const c = getInsightValue(item.insights, 'comments') ?? item.comments_count ?? 0;
+      const s = getInsightValue(item.insights, 'saved') ?? getInsightValue(item.insights, 'saves') ?? 0;
+      const sh = getInsightValue(item.insights, 'shares') ?? 0;
+
+      totalReach += r;
+      totalLikes += l;
+      totalComments += c;
+      totalSaves += s;
+      totalShares += sh;
+    });
+
+    const totalInteractions = totalLikes + totalComments + totalSaves + totalShares;
+    const avgEngagementRate = totalReach > 0 ? ((totalInteractions / totalReach) * 100).toFixed(1) : '0';
+
+    return {
+      count: allMedia.length,
+      totalReach,
+      totalLikes,
+      totalInteractions,
+      avgEngagementRate,
+    };
+  }, [consolidatedData]);
 
   const handleCopyJson = () => {
     if (!consolidatedData) return;
@@ -546,50 +621,161 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </>
             ) : panelView === 'media' ? (
               <div className="media-section-wrapper">
-                {/* Media Control Toolbar */}
-                <div className="media-toolbar">
-                  <div className="media-filter-bar">
-                    <span className="empty-subtext">Filter:</span>
-                    {(['ALL', 'REELS', 'FEED', 'TOP_PERFORMERS'] as MediaFilter[]).map((f) => (
-                      <button
-                        key={f}
-                        className={`filter-chip ${mediaFilter === f ? 'active' : ''} ${f === 'TOP_PERFORMERS' ? 'top-performers-chip' : ''}`}
-                        onClick={() => handleFilterChange(f)}
-                        disabled={consolidatedLoading}
-                      >
-                        {f === 'TOP_PERFORMERS' ? '🔥 Top 10 Performers' : f}
-                      </button>
-                    ))}
+                {/* Media Analytics Summary Banner */}
+                <div className="media-summary-banner">
+                  <div className="media-summary-card">
+                    <span className="media-summary-label">Total Loaded</span>
+                    <span className="media-summary-val">{mediaStatsSummary.count} posts</span>
                   </div>
-
-                  {/* Dynamic Limit Selector */}
-                  <div className="media-limit-bar">
-                    <span className="empty-subtext">Fetch Limit:</span>
-                    {LIMIT_OPTIONS.map((lim) => (
-                      <button
-                        key={lim}
-                        className={`limit-chip ${mediaLimit === lim ? 'active' : ''}`}
-                        onClick={() => handleLimitChange(lim)}
-                        disabled={consolidatedLoading}
-                      >
-                        {lim} items
-                      </button>
-                    ))}
+                  <div className="media-summary-card">
+                    <span className="media-summary-label">Cumulative Reach</span>
+                    <span className="media-summary-val">{formatNumber(mediaStatsSummary.totalReach)}</span>
+                  </div>
+                  <div className="media-summary-card">
+                    <span className="media-summary-label">Total Interactions</span>
+                    <span className="media-summary-val">{formatNumber(mediaStatsSummary.totalInteractions)}</span>
+                  </div>
+                  <div className="media-summary-card">
+                    <span className="media-summary-label">Avg Engagement</span>
+                    <span className="media-summary-val media-summary-val--highlight">
+                      {mediaStatsSummary.avgEngagementRate}%
+                    </span>
                   </div>
                 </div>
 
-                {/* Media Grid Cards */}
-                <div className="media-list-grid">
+                {/* Media Control Toolbar */}
+                <div className="media-toolbar">
+                  <div className="media-toolbar-row media-toolbar-row--primary">
+                    {/* Search Bar */}
+                    <div className="media-search-box">
+                      <IconSearch />
+                      <input
+                        type="text"
+                        placeholder="Search captions or #hashtags..."
+                        value={mediaSearch}
+                        onChange={(e) => setMediaSearch(e.target.value)}
+                        className="media-search-input"
+                      />
+                      {mediaSearch && (
+                        <button
+                          type="button"
+                          className="media-search-clear"
+                          onClick={() => setMediaSearch('')}
+                          title="Clear search"
+                        >
+                          <IconX />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Sort Selector */}
+                    <div className="media-sort-wrapper">
+                      <span className="media-control-label">Sort:</span>
+                      <div className="media-sort-select-container">
+                        <IconSort />
+                        <select
+                          value={mediaSortBy}
+                          onChange={(e) => setMediaSortBy(e.target.value as any)}
+                          className="media-sort-select"
+                          disabled={mediaFilter === 'TOP_PERFORMERS'}
+                        >
+                          <option value="newest">Newest First</option>
+                          <option value="reach">Highest Reach</option>
+                          <option value="likes">Most Liked</option>
+                          <option value="engagement">Highest Engagement</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* View Mode Toggle */}
+                    <div className="media-view-toggle">
+                      <button
+                        type="button"
+                        className={`media-view-btn ${mediaViewMode === 'grid' ? 'active' : ''}`}
+                        onClick={() => setMediaViewMode('grid')}
+                        title="Grid view"
+                      >
+                        <IconGrid />
+                      </button>
+                      <button
+                        type="button"
+                        className={`media-view-btn ${mediaViewMode === 'list' ? 'active' : ''}`}
+                        onClick={() => setMediaViewMode('list')}
+                        title="Compact list view"
+                      >
+                        <IconList />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="media-toolbar-row media-toolbar-row--secondary">
+                    {/* Filter Chips */}
+                    <div className="media-filter-bar">
+                      <span className="media-control-label">Filter:</span>
+                      {(['ALL', 'REELS', 'FEED', 'TOP_PERFORMERS'] as MediaFilter[]).map((f) => (
+                        <button
+                          key={f}
+                          className={`filter-chip ${mediaFilter === f ? 'active' : ''} ${f === 'TOP_PERFORMERS' ? 'top-performers-chip' : ''}`}
+                          onClick={() => handleFilterChange(f)}
+                          disabled={consolidatedLoading}
+                        >
+                          {f === 'TOP_PERFORMERS' ? '🔥 Top 10 Performers' : f === 'REELS' ? 'Reels' : f === 'FEED' ? 'Posts' : 'All Media'}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Fetch Limit Bar */}
+                    <div className="media-limit-bar">
+                      <span className="media-control-label">Fetch Limit:</span>
+                      {LIMIT_OPTIONS.map((lim) => (
+                        <button
+                          key={lim}
+                          className={`limit-chip ${mediaLimit === lim ? 'active' : ''}`}
+                          onClick={() => handleLimitChange(lim)}
+                          disabled={consolidatedLoading}
+                        >
+                          {lim} items
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Media Cards / Table */}
+                <div className={mediaViewMode === 'grid' ? 'media-list-grid' : 'media-list-table'}>
                   {filteredMedia.length > 0 ? (
                     filteredMedia.map((item: any, index: number) => (
                       <MediaRow
                         key={item.id}
                         item={item}
                         rank={mediaFilter === 'TOP_PERFORMERS' ? index + 1 : undefined}
+                        viewMode={mediaViewMode}
                       />
                     ))
                   ) : (
-                    <p className="empty-subtext">No media content found matching current filter.</p>
+                    <div className="media-empty-state">
+                      <div className="media-empty-icon">
+                        <IconCamera />
+                      </div>
+                      <h4>No media items found</h4>
+                      <p className="empty-subtext">
+                        {mediaSearch
+                          ? `No posts matching "${mediaSearch}". Try updating your search or filter.`
+                          : 'No posts matching current filter criteria.'}
+                      </p>
+                      {(mediaSearch || mediaFilter !== 'ALL') && (
+                        <button
+                          type="button"
+                          className="media-reset-btn"
+                          onClick={() => {
+                            setMediaSearch('');
+                            handleFilterChange('ALL');
+                          }}
+                        >
+                          Reset Filters
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -642,7 +828,7 @@ function getPerformanceScore(item: any): number {
   return reach + views + likes * 2 + comments * 3 + saved * 4 + shares * 5;
 }
 
-function MediaRow({ item, rank }: { item: any; rank?: number }) {
+function MediaRow({ item, rank, viewMode = 'grid' }: { item: any; rank?: number; viewMode?: 'grid' | 'list' }) {
   const { text, tags } = splitCaption(item.caption || '');
   const typeLabel = item.media_product_type === 'REELS' ? 'Reel' : item.media_product_type === 'FEED' ? 'Post' : item.media_type || 'Post';
   const posterUrl = item.thumbnail_url || (item.media_type !== 'VIDEO' ? item.media_url : null);
@@ -651,11 +837,11 @@ function MediaRow({ item, rank }: { item: any; rank?: number }) {
   const views = getInsightValue(item.insights, 'views');
   const likes = getInsightValue(item.insights, 'likes') ?? item.like_count;
   const comments = getInsightValue(item.insights, 'comments') ?? item.comments_count;
-  const saved = getInsightValue(item.insights, 'saved');
+  const saved = getInsightValue(item.insights, 'saved') ?? getInsightValue(item.insights, 'saves');
   const shares = getInsightValue(item.insights, 'shares');
 
   return (
-    <article className="media-card">
+    <article className={`media-card ${viewMode === 'list' ? 'media-card--list' : ''}`}>
       <div className="media-card-thumb">
         {posterUrl ? (
           <img src={posterUrl} alt="Post preview" className="media-card-img" loading="lazy" />
@@ -667,7 +853,6 @@ function MediaRow({ item, rank }: { item: any; rank?: number }) {
         <span className="media-card-type-tag">{typeLabel}</span>
         {rank && <span className="media-card-rank-tag">#{rank} Top</span>}
 
-        {/* Primary metric lives on the thumbnail, Instagram-style */}
         {(reach !== undefined || views !== undefined) && (
           <span className="media-card-primary-stat">
             <IconPlay />
@@ -682,7 +867,7 @@ function MediaRow({ item, rank }: { item: any; rank?: number }) {
           <span className="media-card-time">{formatRelativeTime(item.timestamp)}</span>
         </div>
 
-        <p className="media-card-caption">{truncate(text, 140)}</p>
+        <p className="media-card-caption">{truncate(text, viewMode === 'list' ? 90 : 130)}</p>
 
         {tags.length > 0 && (
           <div className="media-card-tags">
@@ -700,23 +885,23 @@ function MediaRow({ item, rank }: { item: any; rank?: number }) {
         <div className="media-card-footer">
           <ul className="media-stats-group" aria-label="Post metrics">
             {reach !== undefined && (
-              <li className="media-stat" aria-label={`${formatNumber(reach)} reach`}>
+              <li className="media-stat media-stat--reach" aria-label={`${formatNumber(reach)} reach`}>
                 <IconEye aria-hidden="true" /> {formatNumber(reach)}
               </li>
             )}
-            <li className="media-stat" aria-label={`${formatNumber(likes)} likes`}>
+            <li className="media-stat media-stat--likes" aria-label={`${formatNumber(likes)} likes`}>
               <IconHeart aria-hidden="true" /> {formatNumber(likes)}
             </li>
-            <li className="media-stat" aria-label={`${formatNumber(comments)} comments`}>
+            <li className="media-stat media-stat--comments" aria-label={`${formatNumber(comments)} comments`}>
               <IconComment aria-hidden="true" /> {formatNumber(comments)}
             </li>
             {saved !== undefined && (
-              <li className="media-stat" aria-label={`${formatNumber(saved)} saves`}>
+              <li className="media-stat media-stat--saves" aria-label={`${formatNumber(saved)} saves`}>
                 <IconBookmark aria-hidden="true" /> {formatNumber(saved)}
               </li>
             )}
             {shares !== undefined && (
-              <li className="media-stat" aria-label={`${formatNumber(shares)} shares`}>
+              <li className="media-stat media-stat--shares" aria-label={`${formatNumber(shares)} shares`}>
                 <IconShare aria-hidden="true" /> {formatNumber(shares)}
               </li>
             )}
@@ -905,6 +1090,53 @@ function IconCopy() {
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <rect x="9" y="9" width="13" height="13" rx="2" />
       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+function IconSearch() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
+function IconGrid() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  );
+}
+function IconList() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" />
+      <line x1="3" y1="12" x2="3.01" y2="12" />
+      <line x1="3" y1="18" x2="3.01" y2="18" />
+    </svg>
+  );
+}
+function IconSort() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="m3 16 4 4 4-4" />
+      <path d="M7 20V4" />
+      <path d="m21 8-4-4-4 4" />
+      <path d="M17 4v16" />
+    </svg>
+  );
+}
+function IconX() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M18 6 6 18M6 6l12 12" />
     </svg>
   );
 }
