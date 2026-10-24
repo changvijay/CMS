@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { loginUser, type User } from '../services/api';
+import { errorMessage } from '../utils/errors';
 
 interface LoginProps {
   onLoginSuccess: (token: string, user: User) => void;
@@ -25,8 +26,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     try {
       const data = await loginUser(username, password);
       onLoginSuccess(data.token, data.user);
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred during login.');
+    } catch (err) {
+      setError(errorMessage(err, 'An unexpected error occurred during login.'));
     } finally {
       setLoading(false);
     }
@@ -140,6 +141,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
         <div className="login-footer">
           <p>Protected by Enterprise Node.js & PostgreSQL Security</p>
+          <p><a href="https://changtechs.com/" target="_blank" rel="noopener">← Back to changtechs.com</a></p>
         </div>
       </div>
     </div>

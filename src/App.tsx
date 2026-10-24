@@ -1,11 +1,21 @@
-import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { lazy, Suspense, useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Login } from './components/Login';
-import { Dashboard } from './components/Dashboard';
-import { YouTubeDashboard } from './components/YouTubeDashboard';
 import { Navbar } from './components/Navbar';
+import { Footer } from './components/Footer';
+const PlatformPage = lazy(() => import('./components/workspace/PlatformPage'));
+const Overview = lazy(() => import('./components/Overview'));
+const Accounts = lazy(() => import('./components/Accounts'));
+const Profile = lazy(() => import('./components/Profile'));
+const Automation = lazy(() => import('./components/Automation'));
 import { getCurrentUser, type User } from './services/api';
 import './App.css';
+
+/** Old /trends/:platform links now live inside the platform workspace. */
+function TrendsRedirect() {
+  const { platform } = useParams();
+  return <Navigate to={platform === 'youtube' ? '/youtube' : '/instagram'} replace />;
+}
 
 function MainApp() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('cms_token'));
@@ -40,7 +50,7 @@ function MainApp() {
     localStorage.setItem('cms_token', newToken);
     setToken(newToken);
     setUser(loggedInUser);
-    navigate('/instagram');
+    navigate('/overview');
   };
 
   const handleLogout = () => {
@@ -50,15 +60,11 @@ function MainApp() {
     navigate('/login');
   };
 
-  const handleSwitchPlatform = (platform: 'instagram' | 'youtube') => {
-    navigate(`/${platform}`);
-  };
-
   if (loadingSession) {
     return (
       <div className="session-loader">
         <div className="spinner large"></div>
-        <p>Connecting to CMS PostgreSQL Node.js Service...</p>
+        <p>Loading your dashboard…</p>
       </div>
     );
   }
@@ -76,18 +82,53 @@ function MainApp() {
     <div className="app-root">
       <Navbar user={user} onLogout={handleLogout} />
       <Routes>
-        <Route path="/" element={<Navigate to="/instagram" replace />} />
+        <Route path="/" element={<Navigate to="/overview" replace />} />
         <Route
-          path="/instagram"
-          element={<Dashboard token={token} user={user} onSwitchPlatform={handleSwitchPlatform} />}
+          path="/overview"
+          element={
+            <Suspense fallback={<div className="session-loader"><div className="spinner large"></div></div>}>
+              <Overview token={token} />
+            </Suspense>
+          }
         />
         <Route
-          path="/youtube"
-          element={<YouTubeDashboard token={token} user={user} onSwitchPlatform={handleSwitchPlatform} />}
+          path="/accounts"
+          element={
+            <Suspense fallback={<div className="session-loader"><div className="spinner large"></div></div>}>
+              <Accounts token={token} />
+            </Suspense>
+          }
         />
-        <Route path="/login" element={<Navigate to="/instagram" replace />} />
-        <Route path="*" element={<Navigate to="/instagram" replace />} />
+        <Route
+          path="/automation"
+          element={
+            <Suspense fallback={<div className="session-loader"><div className="spinner large"></div></div>}>
+              <Automation token={token} />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <Suspense fallback={<div className="session-loader"><div className="spinner large"></div></div>}>
+              <Profile user={user} token={token} onLogout={handleLogout} />
+            </Suspense>
+          }
+        />
+        <Route path="/trends" element={<Navigate to="/instagram" replace />} />
+        <Route path="/trends/:platform" element={<TrendsRedirect />} />
+        <Route
+          path="/:platform/:tab?"
+          element={
+            <Suspense fallback={<div className="session-loader"><div className="spinner large"></div></div>}>
+              <PlatformPage token={token} />
+            </Suspense>
+          }
+        />
+        <Route path="/login" element={<Navigate to="/overview" replace />} />
+        <Route path="*" element={<Navigate to="/overview" replace />} />
       </Routes>
+      <Footer />
     </div>
   );
 }
