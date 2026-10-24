@@ -4,6 +4,14 @@ import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import swaggerUi from 'swagger-ui-express';
+import { getGoogleAccessTokenFromRefreshToken } from './services/googleAuth.js';
+import { createHistoryRouter } from './routes/history.js';
+import { createAccountsRouter } from './routes/accounts.js';
+import { createInsightsRouter } from './routes/insights.js';
+import { createDeepRouter } from './routes/deep.js';
+import { createWebhooksRouter } from './routes/webhooks.js';
+import { createAutomationRouter } from './routes/automation.js';
+import { startSnapshotSchedule } from './jobs/snapshot.js';
 import swaggerJsdoc from 'swagger-jsdoc';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -34,10 +42,18 @@ const distPath = path.join(__dirname, '../dist');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '8080', 10);
-const JWT_SECRET = process.env.JWT_SECRET || 'default_secure_jwt_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('JWT_SECRET is not set. Refusing to start without a signing secret.');
+  process.exit(1);
+}
 
-app.use(cors());
-app.use(express.json());
+const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',').map((o) => o.trim()).filter(Boolean);
+app.use(cors(allowedOrigins.length ? { origin: allowedOrigins } : undefined));
+// Cloud Run (and most hosts) terminate TLS in front of us; trust the forwarded protocol/host.
+app.set('trust proxy', true);
+// Keep the raw body: Instagram's webhook signature is computed over the exact bytes it sent.
+app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } }));
 app.use(express.static(distPath));
 
 // Initialize Database connection on boot
@@ -232,7 +248,8 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 
 app.get('/api/instagram-accounts', authenticateToken, async (req, res) => {
   try {
-    const accounts = await getInstagramAccountsByUserId(req.user.userId);
+    const rows = await getInstagramAccountsByUserId(req.user.userId);
+    const accounts = rows.map(({ access_token, ...safe }) => safe);
     return res.json({ accounts });
   } catch (error) {
     console.error('Error fetching instagram accounts:', error);
@@ -243,7 +260,8 @@ app.get('/api/instagram-accounts', authenticateToken, async (req, res) => {
 app.get('/api/youtube-accounts', authenticateToken, async (req, res) => {
   try {
     const tableName = req.query.tableName || 'Youtube_accounts';
-    const accounts = await getDataFromTable(tableName, req.user.userId);
+    const rows = await getDataFromTable(tableName, req.user.userId);
+    const accounts = rows.map(({ access_token, ...safe }) => safe);
     return res.json({ table_name: tableName, accounts });
   } catch (error) {
     console.error('Error fetching youtube accounts:', error);
@@ -605,140 +623,9 @@ async function getYoutubeAccountForUser(userId, accountId) {
   return accounts[0];
 }
 
-function generateYoutubeDashboardSummary(account, startDateStr, endDateStr, limit = 7) {
-  const start = new Date(startDateStr || '2026-08-01');
-  const end = new Date(endDateStr || '2026-08-31');
-
-  const dailyGraph = [];
-  const curr = new Date(start);
-  let dayIdx = 1;
-  let totalViews = 0;
-  let totalMinutes = 0;
-  let totalLikes = 0;
-  let totalComments = 0;
-  let totalShares = 0;
-  let totalSubGained = 0;
-  let totalSubLost = 0;
-
-  while (curr <= end) {
-    const dStr = curr.toISOString().split('T')[0];
-    const views = 2800 + Math.floor(Math.sin(dayIdx * 0.8) * 1200) + (dayIdx % 6 === 0 ? 2500 : 0);
-    const estMin = Math.floor(views * 3.8);
-    const likes = Math.floor(views * 0.065);
-    const comments = Math.floor(views * 0.009);
-    const shares = Math.floor(views * 0.007);
-    const subGained = Math.floor(views * 0.012);
-    const subLost = Math.floor(subGained * 0.08);
-
-    dailyGraph.push({
-      day: dStr,
-      views,
-      likes,
-      comments,
-      shares,
-      estimatedMinutesWatched: estMin,
-      subscribersGained: subGained,
-      subscribersLost: subLost,
-    });
-
-    totalViews += views;
-    totalMinutes += estMin;
-    totalLikes += likes;
-    totalComments += comments;
-    totalShares += shares;
-    totalSubGained += subGained;
-    totalSubLost += subLost;
-
-    curr.setDate(curr.getDate() + 1);
-    dayIdx++;
-  }
-
-  const avgViewDurationSec = totalViews > 0 ? Math.floor((totalMinutes * 60) / totalViews) : 210;
-
-  const sampleVideos = [
-    {
-      id: 'v_yt_101',
-      title: 'Building Enterprise Full-Stack AI Coding Assistants with Node.js & React',
-      description: 'In-depth architectural breakdown of agentic AI coding assistants with modern UI/UX.',
-      publishedAt: '2026-08-26T14:30:00Z',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80',
-      views: 45200,
-      likes: 3120,
-      comments: 480,
-      shares: 390,
-      estimatedMinutesWatched: 198400,
-      averageViewDuration: 263,
-      subscribersGained: 680,
-      subscribersLost: 24,
-      duration: 'PT14M32S',
-    },
-    {
-      id: 'v_yt_102',
-      title: 'Instagram Graph API v24.0 & YouTube Analytics API v2 Complete Masterclass',
-      description: 'Master OAuth tokens, analytics reports, Insights metrics, and multi-account databases.',
-      publishedAt: '2026-08-20T10:15:00Z',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&auto=format&fit=crop&q=80',
-      views: 38400,
-      likes: 2640,
-      comments: 390,
-      shares: 280,
-      estimatedMinutesWatched: 165000,
-      averageViewDuration: 258,
-      subscribersGained: 520,
-      subscribersLost: 18,
-      duration: 'PT18M05S',
-    },
-    {
-      id: 'v_yt_103',
-      title: 'Obsidian Glass UI & Mobile-First CSS Architecture Best Practices 2026',
-      description: 'Designing luxury dark mode interfaces with zero framework dependencies.',
-      publishedAt: '2026-08-15T18:00:00Z',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80',
-      views: 29800,
-      likes: 2150,
-      comments: 295,
-      shares: 210,
-      estimatedMinutesWatched: 122000,
-      averageViewDuration: 245,
-      subscribersGained: 390,
-      subscribersLost: 12,
-      duration: 'PT11M48S',
-    },
-    {
-      id: 'v_yt_104',
-      title: 'PostgreSQL vs Memory Fallback Databases in Modern CMS Backends',
-      description: 'Architecting zero-downtime database connection pools and dynamic fallbacks.',
-      publishedAt: '2026-08-08T11:20:00Z',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1544383835-bda2bc66a55d?w=600&auto=format&fit=crop&q=80',
-      views: 22100,
-      likes: 1540,
-      comments: 185,
-      shares: 145,
-      estimatedMinutesWatched: 88400,
-      averageViewDuration: 240,
-      subscribersGained: 280,
-      subscribersLost: 9,
-      duration: 'PT09M15S',
-    },
-    {
-      id: 'v_yt_105',
-      title: 'Building Executive CMS Dashboards with Vite, React & Express REST APIs',
-      description: 'Step-by-step tutorial on multi-channel analytics aggregation.',
-      publishedAt: '2026-08-02T16:45:00Z',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&auto=format&fit=crop&q=80',
-      views: 18900,
-      likes: 1280,
-      comments: 142,
-      shares: 110,
-      estimatedMinutesWatched: 73700,
-      averageViewDuration: 234,
-      subscribersGained: 210,
-      subscribersLost: 7,
-      duration: 'PT13M10S',
-    },
-  ];
-
-  return {
+function youtubeErrorResponse(res, account, status, errorDetails, extra = {}) {
+  const httpStatus = Number.isInteger(status) && status >= 400 && status < 600 ? status : 502;
+  return res.status(httpStatus).json({
     account: {
       id: account.id,
       user_id: account.user_id,
@@ -746,107 +633,11 @@ function generateYoutubeDashboardSummary(account, startDateStr, endDateStr, limi
       playlist_id: account.playlist_id,
       table_name: 'Youtube_accounts',
     },
-    channel: {
-      title: account.channel_name || 'Chang Research Base',
-      subscriber_count: 54200,
-      total_views: 2485000,
-      video_count: 148,
-      playlist_id: account.playlist_id,
-    },
-    summary_report: {
-      views: totalViews,
-      estimatedMinutesWatched: totalMinutes,
-      averageViewDuration: avgViewDurationSec,
-      likes: totalLikes,
-      comments: totalComments,
-      shares: totalShares,
-      subscribersGained: totalSubGained,
-      subscribersLost: totalSubLost,
-      netSubscribers: totalSubGained - totalSubLost,
-    },
-    daily_graph: dailyGraph,
-    top_videos_report: sampleVideos.slice(0, limit),
-    playlist_items: sampleVideos.slice(0, limit),
-    raw: {
-      channels_api: {
-        kind: 'youtube#channelListResponse',
-        items: [
-          {
-            id: 'UC_sample_channel_id',
-            snippet: { title: account.channel_name, description: 'Chang Research Base YouTube Analytics Channel' },
-            statistics: { viewCount: '2485000', subscriberCount: '54200', videoCount: '148' },
-            contentDetails: { relatedPlaylists: { uploads: account.playlist_id } },
-          },
-        ],
-      },
-      analytics_summary_report: {
-        kind: 'youtubeAnalytics#resultTable',
-        columnHeaders: [
-          { name: 'views', dataType: 'INTEGER' },
-          { name: 'estimatedMinutesWatched', dataType: 'INTEGER' },
-          { name: 'averageViewDuration', dataType: 'INTEGER' },
-          { name: 'likes', dataType: 'INTEGER' },
-          { name: 'comments', dataType: 'INTEGER' },
-          { name: 'shares', dataType: 'INTEGER' },
-          { name: 'subscribersGained', dataType: 'INTEGER' },
-          { name: 'subscribersLost', dataType: 'INTEGER' },
-        ],
-        rows: [
-          [
-            totalViews,
-            totalMinutes,
-            avgViewDurationSec,
-            totalLikes,
-            totalComments,
-            totalShares,
-            totalSubGained,
-            totalSubLost,
-          ],
-        ],
-      },
-    },
+    is_live_api: false,
+    error_details: errorDetails,
+    ...extra,
     fetched_at: new Date().toISOString(),
-  };
-}
-
-async function getGoogleAccessTokenFromRefreshToken(rawToken) {
-  const clientId = process.env.client_id || process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.client_secret || process.env.GOOGLE_CLIENT_SECRET;
-  const grantType = process.env.grant_type || 'refresh_token';
-
-  if (!rawToken || rawToken === '******') {
-    throw new Error('No valid raw refresh token provided in Youtube_accounts database.');
-  }
-
-  if (rawToken.startsWith('ya29.')) {
-    return rawToken;
-  }
-
-  console.log('🔄 Exchanging raw refresh_token with https://oauth2.googleapis.com/token...');
-  const bodyParams = new URLSearchParams({
-    client_id: clientId,
-    client_secret: clientSecret,
-    refresh_token: rawToken,
-    grant_type: grantType,
   });
-
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: bodyParams.toString(),
-  });
-
-  const data = await response.json();
-  if (!response.ok || data.error) {
-    console.error('❌ Google OAuth Refresh Token Error:', data);
-    const errDesc = data.error_description || data.error || 'Failed to refresh Google OAuth access token';
-    throw new Error(`Google OAuth Exchange Failed (${response.status}): ${errDesc}`);
-  }
-
-  console.log(`✅ Obtained fresh Google access_token (expires in ${data.expires_in}s)`);
-  return data.access_token;
 }
 
 app.get('/api/youtube/dashboard-summary', authenticateToken, async (req, res) => {
@@ -865,26 +656,15 @@ app.get('/api/youtube/dashboard-summary', authenticateToken, async (req, res) =>
     const rawToken = account.access_token ? account.access_token.trim() : '';
 
     if (rawToken && rawToken !== '******') {
-      console.log('raw token from DB:', rawToken);
       let token = '';
       try {
         token = await getGoogleAccessTokenFromRefreshToken(rawToken);
       } catch (tokenErr) {
         console.warn('Google OAuth Token Refresh failed:', tokenErr.message);
-        return res.json({
-          account: {
-            id: account.id,
-            user_id: account.user_id,
-            channel_name: account.channel_name,
-            playlist_id: account.playlist_id,
-            table_name: 'Youtube_accounts',
-          },
-          is_live_api: false,
-          error_details: {
-            code: 401,
-            message: tokenErr.message,
-          },
-          fetched_at: new Date().toISOString(),
+        return youtubeErrorResponse(res, account, tokenErr.status || 401, {
+          code: tokenErr.status || 401,
+          message: tokenErr.message,
+          reason: tokenErr.reason,
         });
       }
 
@@ -933,16 +713,7 @@ app.get('/api/youtube/dashboard-summary', authenticateToken, async (req, res) =>
         const apiError = chanData.error || playData.error || sumData.error || dailyData.error || videosData.error;
         if (apiError && (!chanData.items || chanData.items.length === 0)) {
           console.warn('Google YouTube API Returned Error:', apiError);
-          return res.json({
-            account: {
-              id: account.id,
-              user_id: account.user_id,
-              channel_name: account.channel_name,
-              playlist_id: account.playlist_id,
-              table_name: 'Youtube_accounts',
-            },
-            is_live_api: false,
-            error_details: apiError,
+          return youtubeErrorResponse(res, account, apiError.code || 502, apiError, {
             google_api_errors: {
               channels: chanData.error || null,
               playlist_items: playData.error || null,
@@ -957,7 +728,6 @@ app.get('/api/youtube/dashboard-summary', authenticateToken, async (req, res) =>
               summary_analytics_api: sumData,
               daily_analytics_api: dailyData,
             },
-            fetched_at: new Date().toISOString(),
           });
         }
 
@@ -999,19 +769,36 @@ app.get('/api/youtube/dashboard-summary', authenticateToken, async (req, res) =>
             fetched_at: new Date().toISOString(),
           });
         }
+
+        return youtubeErrorResponse(res, account, 404, {
+          code: 404,
+          message: 'YouTube returned no channel for this token. Re-authorize the channel and try again.',
+        });
       } catch (liveErr) {
         console.warn('Live YouTube API fetch error:', liveErr.message);
+        return youtubeErrorResponse(res, account, 502, {
+          code: 502,
+          message: `Failed to reach the YouTube API: ${liveErr.message}`,
+        });
       }
     }
 
-    // Fallback dynamic generator with full realistic analytics metrics when token is not provided
-    const summaryData = generateYoutubeDashboardSummary(account, startDateStr, endDateStr, limit);
-    return res.json(summaryData);
+    return youtubeErrorResponse(res, account, 400, {
+      code: 400,
+      message: 'No refresh token stored for this YouTube account. Add one in Youtube_accounts.access_token.',
+    });
   } catch (error) {
     console.error('Error fetching YouTube summary:', error);
     return res.status(500).json({ error: 'Failed to generate YouTube dashboard summary.' });
   }
 });
+
+app.use('/api', createAccountsRouter(authenticateToken));
+app.use('/api', createHistoryRouter(authenticateToken));
+app.use('/api', createInsightsRouter(authenticateToken));
+app.use('/api', createDeepRouter(authenticateToken));
+app.use('/api', createWebhooksRouter());
+app.use('/api', createAutomationRouter(authenticateToken));
 
 // SPA Fallback: Serve index.html for non-API routes when frontend build is present
 app.get('*', (req, res, next) => {
@@ -1027,4 +814,5 @@ app.get('*', (req, res, next) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Express server running on port ${PORT}`);
+  startSnapshotSchedule();
 });
