@@ -23,12 +23,16 @@ export function createWebhooksRouter({ env = process.env, processor = processPay
   });
 
   router.post('/webhooks/instagram', async (req, res) => {
-    if (!env.META_APP_SECRET) {
+    // Instagram Login webhooks are signed with the Instagram app secret, which differs from the Meta app secret.
+    const secrets = [env.INSTAGRAM_APP_SECRET, env.META_APP_SECRET].map((s) => String(s ?? '').trim()).filter(Boolean);
+    if (!secrets.length) {
       console.error('Webhook received but META_APP_SECRET is not set; refusing to process unsigned events.');
       return res.status(503).json({ error: 'META_APP_SECRET is not configured.' });
     }
-    if (!verifySignature(req.rawBody, req.get('x-hub-signature-256'), env.META_APP_SECRET)) {
-      console.error('Webhook rejected: signature does not match META_APP_SECRET.');
+    const signature = req.get('x-hub-signature-256');
+    if (!secrets.some((secret) => verifySignature(req.rawBody, signature, secret))) {
+      console.error(`Webhook rejected: signature does not match ${secrets.length > 1 ? 'INSTAGRAM_APP_SECRET or META_APP_SECRET' : 'META_APP_SECRET'}. `
+        + 'Use the "Instagram app secret" from Meta -> Instagram -> API setup with Instagram login.');
       return res.sendStatus(403);
     }
     if (!isReady()) return res.sendStatus(503); // Meta will retry later

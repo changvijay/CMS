@@ -43,12 +43,25 @@ let dbLastError = null;
 
 export const pool = new Pool(poolConfig);
 
-// Handle idle pool connection errors gracefully to prevent container crashes on startup
+// Handle idle pool connection errors gracefully to prevent container crashes on startup.
+// Managed Postgres drops idle connections, so an error here must trigger a reconnect, not a permanent outage.
 pool.on('error', (err) => {
   console.warn('⚠️ Unexpected error on PostgreSQL pool connection:', err.message);
   isDbConnected = false;
   dbLastError = err.message;
+  scheduleReconnect();
 });
+
+const RECONNECT_DELAY_MS = 10000;
+let reconnectTimer = null;
+
+function scheduleReconnect() {
+  if (reconnectTimer) return;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    initDb();
+  }, RECONNECT_DELAY_MS);
+}
 
 // Dynamic in-memory store for fallback mode when database is not initialized
 const memoryDb = {
@@ -58,8 +71,9 @@ const memoryDb = {
 };
 
 export async function initDb() {
+  let client;
   try {
-    const client = await pool.connect();
+    client = await pool.connect();
     console.log('✅ Connected to PostgreSQL database successfully!');
     isDbConnected = true;
     dbLastError = null;
@@ -72,7 +86,9 @@ export async function initDb() {
       console.log('✅ PostgreSQL Schema verified/initialized.');
     }
     client.release();
+    client = null;
   } catch (err) {
+    client?.release(err);
     console.warn(
       '⚠️ PostgreSQL connection status:',
       err.message,
@@ -80,6 +96,7 @@ export async function initDb() {
     );
     isDbConnected = false;
     dbLastError = err.message;
+    scheduleReconnect(); // a boot-time timeout must not leave the server disconnected until the next deploy
   }
 }
 

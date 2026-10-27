@@ -35,7 +35,7 @@ Each rule applies to **Everything**, **All reels**, **All posts**, or **One spec
 
 ### One-time setup
 
-1. Set `META_APP_SECRET` and `WEBHOOK_VERIFY_TOKEN` on the server (see `.env.example`).
+1. Set `INSTAGRAM_APP_SECRET` (Meta → Instagram → API setup with Instagram login → *Instagram app secret*; this is what signs the webhooks), `META_APP_SECRET` and `WEBHOOK_VERIFY_TOKEN` on the server (see `.env.example`). A `403 signature does not match` in the logs means the wrong secret.
 2. In **Meta for Developers → your app → Instagram → API setup with Instagram login → Configure webhooks**:
    - Callback URL: `https://<your-server>/api/webhooks/instagram` (the Auto-replies page shows the exact address)
    - Verify token: the same value as `WEBHOOK_VERIFY_TOKEN`

@@ -85,6 +85,14 @@ describe('webhook route configuration', () => {
     server.close();
   });
 
+  it('accepts a webhook signed with INSTAGRAM_APP_SECRET when it differs from META_APP_SECRET', async () => {
+    await boot({ META_APP_SECRET: 'other-meta-secret', INSTAGRAM_APP_SECRET: SECRET });
+    const body = '{}';
+    expect((await post(body, { 'X-Hub-Signature-256': sign(body) })).status).toBe(200);
+    expect(calls).toHaveLength(1);
+    server.close();
+  });
+
   it('answers 503 (so Meta retries) while the database is unavailable', async () => {
     await boot({ META_APP_SECRET: SECRET }, { ready: false });
     const body = '{}';
