@@ -173,6 +173,10 @@ CREATE TABLE IF NOT EXISTS automation_events (
     UNIQUE (account_id, source, event_key)
 );
 
+-- Instagram webhooks identify the account by its professional account id (user_id), not the id the API returns as `id`
+ALTER TABLE instagram_accounts ADD COLUMN IF NOT EXISTS ig_user_id VARCHAR(100);
+CREATE INDEX IF NOT EXISTS idx_instagram_accounts_ig_user_id ON instagram_accounts(ig_user_id);
+
 CREATE INDEX IF NOT EXISTS idx_automation_rules_account ON automation_rules(account_id);
 CREATE INDEX IF NOT EXISTS idx_automation_events_cooldown ON automation_events(rule_id, sender_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_automation_events_account_time ON automation_events(account_id, created_at DESC);

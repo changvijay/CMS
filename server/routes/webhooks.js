@@ -2,7 +2,7 @@ import express from 'express';
 import { pool, isDbReady } from '../db.js';
 import { processPayload } from '../services/automationEngine.js';
 import { createAutomationDb } from '../services/automationDb.js';
-import { sender } from '../services/instagramMessaging.js';
+import { sender, checkToken } from '../services/instagramMessaging.js';
 import { verifySignature } from '../services/webhookEvents.js';
 
 /**
@@ -10,7 +10,7 @@ import { verifySignature } from '../services/webhookEvents.js';
  * Replies are sent BEFORE answering 200: on Cloud Run the CPU is throttled once a response is sent,
  * so background work could stall. Duplicates from Meta's retries are absorbed by the event table.
  */
-export function createWebhooksRouter({ env = process.env, processor = processPayload, dbFactory = () => createAutomationDb(pool), isReady = isDbReady } = {}) {
+export function createWebhooksRouter({ env = process.env, processor = processPayload, dbFactory = () => createAutomationDb(pool, { checkToken }), isReady = isDbReady } = {}) {
   const router = express.Router();
 
   // One-time handshake when the webhook is saved in the Meta dashboard

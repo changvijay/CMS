@@ -87,7 +87,7 @@ function Setup({ token, accountsTick, onChanged }: { token: string; accountsTick
                   <div>
                     <Mark ok={a.subscribed} /> Subscribed to comments and messages
                     {a.subscription_error && <small className="err">error {a.subscription_error.code}: {a.subscription_error.message}</small>}
-                    {!a.subscribed && <button className="btn btn-secondary" onClick={() => subscribe(a.id)} disabled={busy === a.id}>{busy === a.id ? 'Subscribing…' : 'Subscribe'}</button>}
+                    <button className="btn btn-secondary" onClick={() => subscribe(a.id)} disabled={busy === a.id}>{busy === a.id ? 'Subscribing…' : a.subscribed ? 'Subscribe again' : 'Subscribe'}</button>
                   </div>
                 </li>
               ))}

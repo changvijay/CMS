@@ -1,9 +1,34 @@
 /** Database access for the auto-reply engine. Kept separate so the engine can be tested with a fake. */
-export function createAutomationDb(pool) {
+const ACCOUNT_COLUMNS = 'id, user_id, page_name, page_id, ig_user_id, access_token';
+
+/**
+ * `checkToken(account)` (optional) asks Instagram who the token belongs to; it lets a webhook for an account that has no
+ * ig_user_id stored yet be matched, since webhooks carry the user_id while page_id holds the API's own `id`.
+ */
+export function createAutomationDb(pool, { checkToken } = {}) {
+  const findAccount = async (igId) => {
+    const { rows } = await pool.query(`SELECT ${ACCOUNT_COLUMNS} FROM instagram_accounts WHERE ig_user_id = $1 OR page_id = $1 LIMIT 1`, [String(igId)]);
+    return rows[0] ?? null;
+  };
+
+  const backfillIgUserIds = async () => {
+    const { rows } = await pool.query(`SELECT ${ACCOUNT_COLUMNS} FROM instagram_accounts WHERE ig_user_id IS NULL`);
+    let filled = 0;
+    for (const account of rows) {
+      const me = await checkToken(account);
+      const userId = me.data?.user_id;
+      if (!userId) continue;
+      await pool.query('UPDATE instagram_accounts SET ig_user_id = $2 WHERE id = $1', [account.id, String(userId)]);
+      filled += 1;
+    }
+    return filled;
+  };
+
   return {
     async getAccountByIgId(igId) {
-      const { rows } = await pool.query('SELECT id, user_id, page_name, page_id, access_token FROM instagram_accounts WHERE page_id = $1 LIMIT 1', [String(igId)]);
-      return rows[0] ?? null;
+      const found = await findAccount(igId);
+      if (found || !checkToken) return found;
+      return (await backfillIgUserIds()) ? findAccount(igId) : null;
     },
 
     async getActiveRules(accountId) {
