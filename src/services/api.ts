@@ -653,7 +653,7 @@ export interface AutomationRuleInput {
 export interface AutomationEvent {
   id: string | number;
   source: AutomationTrigger;
-  status: 'sent' | 'failed' | 'skipped' | 'dry_run' | 'processing';
+  status: 'sent' | 'failed' | 'skipped' | 'dry_run' | 'processing' | 'ignored';
   skip_reason: string | null;
   error_code: number | null;
   error_message: string | null;

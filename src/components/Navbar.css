@@ -72,7 +72,7 @@
 .central-nav {
   flex: 1;
   display: flex;
-  justify-content: center;
+  justify-content: end;
 }
 
 .platform-nav-tabs {
@@ -109,7 +109,9 @@
 }
 
 /* ----- Profile menu ----- */
-.user-menu { position: relative; }
+.user-menu {
+  position: relative;
+}
 
 .user-menu-trigger {
   display: inline-flex;
@@ -127,10 +129,18 @@
 }
 
 .user-menu-trigger:hover,
-.user-menu-trigger[aria-expanded='true'] { background: #f3f4f6; }
+.user-menu-trigger[aria-expanded='true'] {
+  background: #f3f4f6;
+}
 
-.user-menu-trigger svg { color: var(--text-muted); transition: transform 0.15s; }
-.user-menu-trigger[aria-expanded='true'] svg { transform: rotate(180deg); }
+.user-menu-trigger svg {
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+
+.user-menu-trigger[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
 
 .avatar-circle {
   width: 30px;
@@ -146,7 +156,11 @@
   flex-shrink: 0;
 }
 
-.avatar-circle.large { width: 40px; height: 40px; font-size: 1rem; }
+.avatar-circle.large {
+  width: 40px;
+  height: 40px;
+  font-size: 1rem;
+}
 
 .user-menu-panel {
   position: absolute;
@@ -161,7 +175,9 @@
   z-index: 70;
 }
 
-.user-menu-panel[hidden] { display: none; }
+.user-menu-panel[hidden] {
+  display: none;
+}
 
 .user-menu-head {
   display: flex;
@@ -172,9 +188,23 @@
   margin-bottom: 6px;
 }
 
-.user-menu-head div { display: flex; flex-direction: column; min-width: 0; }
-.user-menu-head strong { color: var(--text-primary); font-size: 0.9rem; }
-.user-menu-head span:not(.avatar-circle) { color: var(--text-muted); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; }
+.user-menu-head div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.user-menu-head strong {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.user-menu-head span:not(.avatar-circle) {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .user-menu-panel a,
 .user-menu-panel button[role='menuitem'] {
@@ -197,21 +227,42 @@
 .user-menu-panel a:hover,
 .user-menu-panel button[role='menuitem']:hover,
 .user-menu-panel a:focus-visible,
-.user-menu-panel button[role='menuitem']:focus-visible { background: #f3f4f6; color: var(--text-primary); outline: none; }
+.user-menu-panel button[role='menuitem']:focus-visible {
+  background: #f3f4f6;
+  color: var(--text-primary);
+  outline: none;
+}
 
-.user-menu-sep { height: 1px; background: var(--border-color); margin: 6px 0; }
+.user-menu-sep {
+  height: 1px;
+  background: var(--border-color);
+  margin: 6px 0;
+}
 
-.user-menu-panel .user-menu-logout { color: #b42318; }
+.user-menu-panel .user-menu-logout {
+  color: #b42318;
+}
+
 .user-menu-panel .user-menu-logout:hover,
-.user-menu-panel .user-menu-logout:focus-visible { background: #fef3f2; color: #b42318; }
+.user-menu-panel .user-menu-logout:focus-visible {
+  background: #fef3f2;
+  color: #b42318;
+}
 
 @media (max-width: 980px) {
-  .user-menu-name { display: none; }
-  .user-menu-trigger { padding-right: 8px; }
+  .user-menu-name {
+    display: none;
+  }
+
+  .user-menu-trigger {
+    padding-right: 8px;
+  }
 }
 
 @media (max-width: 860px) {
-  .navbar { padding: 0 16px; }
+  .navbar {
+    padding: 0 16px;
+  }
 
   .menu-toggle {
     display: flex;
@@ -245,9 +296,14 @@
     overflow-y: auto;
   }
 
-  .nav-collapsible.open { right: 0; }
+  .nav-collapsible.open {
+    right: 0;
+  }
 
-  .central-nav { width: 100%; justify-content: stretch; }
+  .central-nav {
+    width: 100%;
+    justify-content: stretch;
+  }
 
   .platform-nav-tabs {
     flex-direction: column;
@@ -262,12 +318,29 @@
   }
 
   /* In the drawer the profile menu is always open and listed in full */
-  .user-menu { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color); }
-  .user-menu-trigger { display: none; }
+  .user-menu {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .user-menu-trigger {
+    display: none;
+  }
+
   .user-menu-panel,
-  .user-menu-panel[hidden] { display: block; position: static; width: 100%; box-shadow: none; border: 0; padding: 0; }
+  .user-menu-panel[hidden] {
+    display: block;
+    position: static;
+    width: 100%;
+    box-shadow: none;
+    border: 0;
+    padding: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nav-collapsible { transition: none; }
+  .nav-collapsible {
+    transition: none;
+  }
 }

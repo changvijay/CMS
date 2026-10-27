@@ -103,14 +103,15 @@ describe('processPayload', () => {
     expect(sender.calls).toHaveLength(2);
   });
 
-  it('stays quiet for non-matching text, unknown accounts and things it must never answer', async () => {
+  it('never replies to non-matching text, unknown accounts or things it must never answer, and logs only the no-match', async () => {
     expect((await processPayload(dmPayload('hello there'), { db, sender }))[0]).toMatchObject({ reason: 'no_match' });
     expect((await processPayload({ entry: [{ id: '999', messaging: [{ sender: { id: '5' }, message: { mid: 'x', text: 'link' } }] }] }, { db, sender }))[0]).toMatchObject({ reason: 'unknown_account' });
     expect((await processPayload(dmPayload('link', 'e1', IG), { db, sender }))[0]).toMatchObject({ reason: 'own_message' });
     expect((await processPayload(commentPayload({ parent_id: 'c0' }, 'c2'), { db, sender }))[0]).toMatchObject({ reason: 'reply_comment' });
     expect((await processPayload(commentPayload({ from: { id: IG, username: 'me' } }, 'c3'), { db, sender }))[0]).toMatchObject({ reason: 'own_comment' });
     expect(sender.calls).toHaveLength(0);
-    expect(db.events).toHaveLength(0); // nothing is logged for chatter that does not match
+    expect(db.events).toHaveLength(1); // only the non-matching text is logged, so the Activity page shows the webhook arrived
+    expect(db.events[0]).toMatchObject({ status: 'ignored', skipReason: 'no_match', ruleId: null });
   });
 
   it('dry run records the message but sends nothing', async () => {

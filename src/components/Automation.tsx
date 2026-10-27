@@ -448,7 +448,7 @@ function TryIt({ token, accounts }: { token: string; accounts: InstagramAccount[
   );
 }
 
-const STATUS_TEXT: Record<AutomationEvent['status'], string> = { sent: '✓ Sent', failed: '✕ Failed', skipped: '⚠ Skipped', dry_run: '◌ Test only', processing: '… Working' };
+const STATUS_TEXT: Record<AutomationEvent['status'], string> = { sent: '✓ Sent', failed: '✕ Failed', skipped: '⚠ Skipped', dry_run: '◌ Test only', processing: '… Working', ignored: '– No rule matched' };
 
 function Activity({ token, tick }: { token: string; tick: number }) {
   const [refresh, setRefresh] = useState(0);

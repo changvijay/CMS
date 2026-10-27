@@ -25,6 +25,12 @@ export async function processPayload(payload, { db, sender, dryRun = false }) {
       }
       const picked = pickRule(await db.getActiveRules(account.id), event);
       if (!picked) {
+        // Recorded so the Activity log shows the webhook arrived but no rule fit it.
+        const noMatchId = await db.claimEvent({
+          accountId: account.id, ruleId: null, source: event.source, eventKey: event.eventKey,
+          senderId: event.senderId, username: event.username, text: event.text,
+        });
+        if (noMatchId !== null) await db.finishEvent(noMatchId, { status: 'ignored', skipReason: 'no_match' });
         results.push({ ...base, status: 'ignored', reason: 'no_match' });
         continue;
       }

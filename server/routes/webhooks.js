@@ -28,14 +28,15 @@ export function createWebhooksRouter({ env = process.env, processor = processPay
       return res.status(503).json({ error: 'META_APP_SECRET is not configured.' });
     }
     if (!verifySignature(req.rawBody, req.get('x-hub-signature-256'), env.META_APP_SECRET)) {
+      console.error('Webhook rejected: signature does not match META_APP_SECRET.');
       return res.sendStatus(403);
     }
     if (!isReady()) return res.sendStatus(503); // Meta will retry later
 
     try {
       const results = await processor(req.body, { db: dbFactory(), sender, dryRun: env.AUTOMATION_DRY_RUN === 'true' });
-      const acted = results.filter((r) => r.status !== 'ignored');
-      if (acted.length) console.log('Auto-reply:', acted.map((r) => `${r.source}:${r.status}${r.error ? `(${r.error.code})` : ''}`).join(', '));
+      if (results.length) console.log('Webhook:', results.map((r) => `${r.source}:${r.status}${r.reason ? `[${r.reason}]` : ''}${r.error ? `(${r.error.code})` : ''}`).join(', '));
+      else console.log('Webhook received with no comment or message events.');
       return res.sendStatus(200);
     } catch (error) {
       console.error('Webhook processing error:', error);
