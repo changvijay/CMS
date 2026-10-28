@@ -9,6 +9,7 @@ const Accounts = lazy(() => import('./components/Accounts'));
 const Profile = lazy(() => import('./components/Profile'));
 const Automation = lazy(() => import('./components/Automation'));
 import { getCurrentUser, type User } from './services/api';
+import { clearLiveCache } from './components/workspace/useLive';
 import './App.css';
 
 /** Old /trends/:platform links now live inside the platform workspace. */
@@ -36,6 +37,7 @@ function MainApp() {
       } catch (err) {
         console.warn('Session verification failed, logging out:', err);
         localStorage.removeItem('cms_token');
+        clearLiveCache();
         setToken(null);
         setUser(null);
       } finally {
@@ -47,6 +49,7 @@ function MainApp() {
   }, [token]);
 
   const handleLoginSuccess = (newToken: string, loggedInUser: User) => {
+    clearLiveCache();
     localStorage.setItem('cms_token', newToken);
     setToken(newToken);
     setUser(loggedInUser);
@@ -55,6 +58,7 @@ function MainApp() {
 
   const handleLogout = () => {
     localStorage.removeItem('cms_token');
+    clearLiveCache();
     setToken(null);
     setUser(null);
     navigate('/login');

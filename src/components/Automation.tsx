@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useMemo, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   deleteAutomationRule, fetchAutomationLog, fetchAutomationMedia, fetchAutomationRules, fetchAutomationStatus, getInstagramAccounts,
@@ -9,7 +9,7 @@ import {
 import { errorMessage } from '../utils/errors';
 import '../assets/css/workspace.css';
 import { MAX_MESSAGE_BYTES, byteLength, parseKeywords, previewMessage } from './workspace/automationPreview';
-import { LiveBlock, Panel } from './workspace/ui';
+import { LiveBlock, Modal, Panel } from './workspace/ui';
 import { useLive, type LiveState } from './workspace/useLive';
 
 const MATCH_LABELS: Record<MatchType, string> = { contains: 'Contains the word', starts_with: 'Starts with', exact: 'Is exactly' };
@@ -71,7 +71,7 @@ function Setup({ token, accountsTick, onChanged }: { token: string; accountsTick
   };
 
   return (
-    <Panel title="1. Setup check" sub="Everything here must be green for replies to be sent.">
+    <Panel bare title="Setup check" sub="Everything here must be green for replies to be sent.">
       <LiveBlock<AutomationStatus> state={state}>
         {(s) => (
           <>
@@ -319,24 +319,26 @@ function Rules({ token, accounts, tick, onChanged, prefill, onPrefillUsed }: { t
 
   return (
     <Panel
-      title="2. Your rules"
+      title="Your rules"
       sub="Each rule says: when someone writes one of these words, send this message. Set different rules for different reels and posts."
-      actions={editing === null && accounts.length > 0 ? <button className="btn btn-primary" onClick={() => setEditing('new')}>New rule</button> : undefined}
+      actions={accounts.length > 0 ? <button className="btn btn-primary" onClick={() => setEditing('new')}>New rule</button> : undefined}
     >
       {error && <div className="error-banner" role="alert"><span>{error}</span></div>}
       {editing !== null && (
-        <RuleForm
-          key={editing === 'new' ? 'new' : String(editing.id)}
-          token={token}
-          accounts={accounts}
-          initial={editing === 'new' ? newForm() : formFor(editing)}
-          editing={editing === 'new' ? undefined : editing}
-          onDone={close}
-        />
+        <Modal title={editing === 'new' ? 'New rule' : `Edit rule: ${editing.name}`} onClose={close}>
+          <RuleForm
+            key={editing === 'new' ? 'new' : String(editing.id)}
+            token={token}
+            accounts={accounts}
+            initial={editing === 'new' ? newForm() : formFor(editing)}
+            editing={editing === 'new' ? undefined : editing}
+            onDone={close}
+          />
+        </Modal>
       )}
       <LiveBlock state={state}>
         {(rules) => {
-          if (rules.length === 0) return editing === null ? <p className="trends-empty-inline">No rules yet. Create one, for example the keyword <b>link</b>.</p> : null;
+          if (rules.length === 0) return <p className="trends-empty-inline">No rules yet. Create one, for example the keyword <b>link</b>.</p>;
           const count = (s: AutomationScope) => rules.filter((r) => r.scope === s).length;
           const shown = filter === 'all' ? rules : rules.filter((r) => r.scope === filter);
           return (
@@ -347,29 +349,40 @@ function Rules({ token, accounts, tick, onChanged, prefill, onPrefillUsed }: { t
                   <button key={s} className={`chip ${filter === s ? 'active' : ''}`} aria-pressed={filter === s} onClick={() => setFilter(s)}>{SCOPE_CHIP[s]} ({count(s)})</button>
                 ))}
               </div>
-              <ul className="rule-list">
-                {shown.map((r) => (
-                  <li key={r.id} className={r.is_active ? '' : 'off'}>
-                    <div className="rule-main">
-                      <b>{r.name}</b> <span className="media-rank-meta">{r.account_name}</span>
-                      <div className="chip-row">
-                        <span className="tag tag-scope">{r.scope === 'specific' ? (r.media_label || 'One reel/post') : SCOPE_CHIP[r.scope]}</span>
-                        {r.scope === 'specific' && r.media_permalink && <a className="content-link" href={r.media_permalink} target="_blank" rel="noopener noreferrer">Open ↗</a>}
-                        {r.keywords.map((k) => <span key={k} className="tag">{k}</span>)}
-                        <span className="tag tag-rate">{MATCH_LABELS[r.match_type]}</span>
-                        {r.triggers.map((t) => <span key={t} className="tag">{t === 'dm' ? 'Direct messages' : 'Comments'}</span>)}
-                      </div>
-                      <p className="rule-msg">{previewMessage(r)}</p>
-                      <small className="rule-sent">{r.sent_count ?? 0} {r.sent_count === 1 ? 'reply' : 'replies'} sent</small>
-                    </div>
-                    <div className="rule-actions">
-                      <label className="ws-check"><input type="checkbox" checked={r.is_active} onChange={(e) => run(() => setAutomationRuleActive(token, r.id, e.target.checked))} /> Active</label>
-                      <button className="btn btn-secondary" onClick={() => setEditing(r)}>Edit</button>
-                      <button className="btn btn-secondary btn-danger" onClick={() => window.confirm(`Delete “${r.name}”?`) && run(() => deleteAutomationRule(token, r.id))}>Delete</button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              <div className="viz-table-wrap tall">
+                <table className="viz-table rules-table">
+                  <thead>
+                    <tr><th>On</th><th>Rule</th><th>Applies to</th><th>When they write</th><th>Where</th><th>Reply we send</th><th>Sent</th><th><span className="sr-only">Actions</span></th></tr>
+                  </thead>
+                  <tbody>
+                    {shown.map((r) => (
+                      <tr key={r.id} className={r.is_active ? '' : 'off'}>
+                        <td>
+                          <label className="ws-check" title={r.is_active ? 'Turn off' : 'Turn on'}>
+                            <input type="checkbox" checked={r.is_active} aria-label={`${r.name} is active`} onChange={(e) => run(() => setAutomationRuleActive(token, r.id, e.target.checked))} />
+                          </label>
+                        </td>
+                        <td><b>{r.name}</b><small className="cell-sub">{r.account_name}</small></td>
+                        <td>
+                          <span className="tag tag-scope">{r.scope === 'specific' ? (r.media_label || 'One reel/post') : SCOPE_CHIP[r.scope]}</span>
+                          {r.scope === 'specific' && r.media_permalink && <a className="content-link cell-sub" href={r.media_permalink} target="_blank" rel="noopener noreferrer">Open ↗</a>}
+                        </td>
+                        <td>
+                          <div className="cell-tags">{r.keywords.map((k) => <span key={k} className="tag">{k}</span>)}</div>
+                          <small className="cell-sub">{MATCH_LABELS[r.match_type]}</small>
+                        </td>
+                        <td>{r.triggers.map((t) => (t === 'dm' ? 'Direct messages' : 'Comments')).join(' + ')}</td>
+                        <td className="rule-msg-cell">{previewMessage(r)}</td>
+                        <td>{r.sent_count ?? 0}</td>
+                        <td className="rule-actions-cell">
+                          <button className="btn btn-secondary" onClick={() => setEditing(r)}>Edit</button>
+                          <button className="btn btn-secondary btn-danger" onClick={() => window.confirm(`Delete “${r.name}”?`) && run(() => deleteAutomationRule(token, r.id))}>Delete</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </>
           );
         }}
@@ -409,7 +422,7 @@ function TryIt({ token, accounts }: { token: string; accounts: InstagramAccount[
   };
 
   return (
-    <Panel title="3. Try it" sub="Type what someone might write, and where. Nothing is sent to anyone.">
+    <Panel bare title="Try it" sub="Type what someone might write, and where. Nothing is sent to anyone.">
       <form className="inline-form" onSubmit={run}>
         {accounts.length > 1 && (
           <label className="ws-select"><span className="sr-only">Account</span>
@@ -454,7 +467,7 @@ function Activity({ token, tick }: { token: string; tick: number }) {
   const [refresh, setRefresh] = useState(0);
   const state = useLive(() => fetchAutomationLog(token), `log:${tick}:${refresh}`);
   return (
-    <Panel title="4. Activity" sub="The latest messages the automation handled, with Instagram's own error code when something fails." actions={<button className="btn btn-secondary" onClick={() => setRefresh((r) => r + 1)}>Refresh</button>}>
+    <Panel bare title="Activity" sub="The latest messages the automation handled, with Instagram's own error code when something fails." actions={<button className="btn btn-secondary" onClick={() => setRefresh((r) => r + 1)}>Refresh</button>}>
       <LiveBlock state={state}>
         {(events) =>
           events.length === 0 ? (
@@ -489,8 +502,17 @@ function Activity({ token, tick }: { token: string; tick: number }) {
   );
 }
 
+type Tool = 'setup' | 'try' | 'activity';
+const TOOLS: { id: Tool; label: string }[] = [
+  { id: 'setup', label: 'Setup check' },
+  { id: 'try', label: 'Try it' },
+  { id: 'activity', label: 'Activity' },
+];
+
 export default function Automation({ token }: { token: string }) {
   const [tick, setTick] = useState(0);
+  const [tool, setTool] = useState<Tool | null>(null);
+  const closeTool = useCallback(() => setTool(null), []);
   const [params, setParams] = useSearchParams();
   const accountsState = useLive(() => getInstagramAccounts(token), 'automation-accounts');
   const media = params.get('media');
@@ -504,6 +526,9 @@ export default function Automation({ token }: { token: string }) {
             <h2>Auto-replies</h2>
             <p className="ws-sub">When someone comments or messages a keyword like “link”, send them your URL automatically. Give each reel or post its own keyword and link.</p>
           </div>
+          <div className="seg" role="group" aria-label="Automation tools">
+            {TOOLS.map((t) => <button key={t.id} type="button" onClick={() => setTool(t.id)}>{t.label}</button>)}
+          </div>
         </div>
         <LiveBlock state={accountsState}>
           {(accounts) =>
@@ -515,10 +540,14 @@ export default function Automation({ token }: { token: string }) {
               </div>
             ) : (
               <>
-                <Setup token={token} accountsTick={tick} onChanged={() => setTick((t) => t + 1)} />
                 <Rules token={token} accounts={accounts} tick={tick} onChanged={() => setTick((t) => t + 1)} prefill={prefill} onPrefillUsed={() => setParams({}, { replace: true })} />
-                <TryIt token={token} accounts={accounts} />
-                <Activity token={token} tick={tick} />
+                {tool && (
+                  <Modal title="Automation tools" onClose={closeTool} tabs={TOOLS} activeTab={tool} onTab={(id) => setTool(id as Tool)}>
+                    {tool === 'setup' && <Setup token={token} accountsTick={tick} onChanged={() => setTick((t) => t + 1)} />}
+                    {tool === 'try' && <TryIt token={token} accounts={accounts} />}
+                    {tool === 'activity' && <Activity token={token} tick={tick} />}
+                  </Modal>
+                )}
               </>
             )
           }

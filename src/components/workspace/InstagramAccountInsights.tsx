@@ -2,7 +2,7 @@ import { fetchInstagramAccountInsights, type InstagramAccountInsights as Insight
 import { RankedBars } from '../charts/RankedBars';
 import { formatCompact, METRIC_HELP } from '../charts/viz';
 import { ErrorLine, LiveBlock, Panel, StatTiles } from './ui';
-import { useLive } from './useLive';
+import { useLive, ANALYTICS_MAX_AGE } from './useLive';
 
 const FORMAT_LABELS: Record<string, string> = { REEL: 'Reels', REELS: 'Reels', POST: 'Posts', FEED: 'Posts', STORY: 'Stories', AD: 'Ads', CAROUSEL_CONTAINER: 'Carousels', CAROUSEL_ALBUM: 'Carousels' };
 const FOLLOW_LABELS: Record<string, string> = { FOLLOWER: 'Followers', NON_FOLLOWER: 'Non-followers', UNKNOWN: 'Unknown' };
@@ -24,7 +24,7 @@ function Breakdown({ data, k, title, sub, labeler, suffix }: { data: Insights; k
 }
 
 export function InstagramAccountInsights({ token, accountId, since, until }: { token: string; accountId: string; since: string; until: string }) {
-  const state = useLive(() => fetchInstagramAccountInsights(token, { accountId, since, until }), `acct:${accountId}:${since}:${until}`);
+  const state = useLive(() => fetchInstagramAccountInsights(token, { accountId, since, until }), `acct:${accountId}:${since}:${until}`, true, { maxAge: ANALYTICS_MAX_AGE });
   const fmt = pretty(FORMAT_LABELS);
   const follow = pretty(FOLLOW_LABELS);
   const contact = pretty(CONTACT_LABELS);

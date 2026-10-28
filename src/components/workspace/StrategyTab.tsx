@@ -4,7 +4,7 @@ import { RankedBars } from '../charts/RankedBars';
 import { ENGAGEMENT_RATE_HELP, SKIP_RATE_HELP, formatCompact, formatPercent, formatSeconds } from '../charts/viz';
 import { InfoTip } from './InfoTip';
 import { LiveBlock, Panel, StatTiles } from './ui';
-import { useLive } from './useLive';
+import { useLive, ANALYTICS_MAX_AGE } from './useLive';
 import {
   cadence, captionAnalysis, durationBuckets, formatTable, instagramActions, postingSchedule, reelScorecard,
   round1, storyScorecard, titleAnalysis, uploadWeekdays, youtubeActions,
@@ -225,7 +225,7 @@ function YoutubeStrategyBody({ videos }: { videos: YoutubeVideoAnalytics[] }) {
 }
 
 function YoutubeStrategy({ token, accountId, since, until }: { token: string; accountId: string; since: string; until: string }) {
-  const state = useLive(() => fetchYoutubeVideos(token, { accountId, since, until }), `strategy-vids:${accountId}:${since}:${until}`);
+  const state = useLive(() => fetchYoutubeVideos(token, { accountId, since, until }), `strategy-vids:${accountId}:${since}:${until}`, true, { maxAge: ANALYTICS_MAX_AGE });
   return <LiveBlock state={state}>{(videos) => <YoutubeStrategyBody videos={videos} />}</LiveBlock>;
 }
 

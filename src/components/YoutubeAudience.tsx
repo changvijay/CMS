@@ -4,7 +4,7 @@ import { RankedBars } from './charts/RankedBars';
 import { Demographics } from './charts/Demographics';
 import { formatCompact, formatPercent, formatSeconds, METRIC_HELP } from './charts/viz';
 import { LiveBlock, Panel, ReportBody, StatTiles } from './workspace/ui';
-import { useLive } from './workspace/useLive';
+import { useLive, ANALYTICS_MAX_AGE } from './workspace/useLive';
 
 const TRAFFIC_LABELS: Record<string, string> = {
   YT_SEARCH: 'YouTube search', SUGGESTED_VIDEO: 'Suggested videos', BROWSE: 'Browse features', EXT_URL: 'External sites',
@@ -170,6 +170,6 @@ function Body({ d }: { d: YoutubeBreakdowns }) {
 }
 
 export function YoutubeAudience({ token, accountId, since, until }: { token: string; accountId: string; since: string; until: string }) {
-  const state = useLive(() => fetchYoutubeGroups(token, { accountId, since, until, groups: ['overview', 'audience', 'acquisition'] }), `yt:${accountId}:${since}:${until}`);
+  const state = useLive(() => fetchYoutubeGroups(token, { accountId, since, until, groups: ['overview', 'audience', 'acquisition'] }), `yt:${accountId}:${since}:${until}`, true, { maxAge: ANALYTICS_MAX_AGE });
   return <LiveBlock state={state}>{(d) => <Body d={d} />}</LiveBlock>;
 }

@@ -7,13 +7,14 @@ import { errorMessage } from '../../utils/errors';
 import { formatCompact, formatPercent, formatSeconds, formatShortDate } from '../charts/viz';
 import { CommentInsights } from './CommentInsights';
 import { ErrorLine, LiveBlock, Panel, ReportBody, StatTiles } from './ui';
-import { useLive } from './useLive';
+import { isPermissionError } from '../../utils/errors';
+import { useLive, ANALYTICS_MAX_AGE } from './useLive';
 import { cadence } from './strategy';
 
 // ---------------------------------------------------------------- Instagram
 
 function PublishingLimit({ token, accountId }: { token: string; accountId: string }) {
-  const state = useLive(() => fetchPublishingLimit(token, accountId), `limit:${accountId}`);
+  const state = useLive(() => fetchPublishingLimit(token, accountId), `limit:${accountId}`, true, { maxAge: ANALYTICS_MAX_AGE });
   return (
     <Panel title="Publishing quota" sub="Instagram caps how many posts an account can publish through the API in 24 hours.">
       <LiveBlock state={state}>
@@ -150,7 +151,7 @@ function HashtagResearch({ token, accountId }: { token: string; accountId: strin
 }
 
 function TaggedPosts({ token, accountId }: { token: string; accountId: string }) {
-  const state = useLive(() => fetchInstagramTags(token, accountId), `tags:${accountId}`);
+  const state = useLive(() => fetchInstagramTags(token, accountId), `tags:${accountId}`, true, { maxAge: ANALYTICS_MAX_AGE });
   return (
     <Panel title="Posts that tag you" sub="Content other people made about you. Great material for reposting and thanking creators.">
       <LiveBlock state={state}>
@@ -169,6 +170,8 @@ function TaggedPosts({ token, accountId }: { token: string; accountId: string })
 function Revenue({ token, accountId, since, until }: { token: string; accountId: string; since: string; until: string }) {
   const state = useLive<YoutubeRevenue>(() => fetchYoutubeRevenue(token, { accountId, since, until }), `rev:${accountId}:${since}:${until}`);
   const money = (v: number | undefined) => (v === undefined ? '–' : `$${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`);
+  // Revenue is only readable with a Google token that has the monetary permission (an admin/owner token). Others never see this section.
+  if (state.loading || (state.data?.totals?.error && isPermissionError(state.data.totals.error))) return null;
   return (
     <Panel title="Revenue" sub="Needs a monetised channel (YouTube Partner Program) and a Google token that includes the monetary permission. Amounts are in US dollars.">
       <LiveBlock state={state}>

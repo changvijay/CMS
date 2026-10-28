@@ -1,7 +1,7 @@
 import { fetchInstagramStories, type InstagramStory } from '../../services/api';
 import { formatCompact, formatPercent } from '../charts/viz';
 import { LiveBlock, Panel } from './ui';
-import { useLive } from './useLive';
+import { useLive, ANALYTICS_MAX_AGE } from './useLive';
 
 function navShare(story: InstagramStory, needle: string): number | null {
   const rows = story.breakdowns?.navigation;
@@ -12,7 +12,7 @@ function navShare(story: InstagramStory, needle: string): number | null {
 
 /** Stories are only readable for 24 hours, so this is fetched live. */
 export function InstagramStories({ token, accountId }: { token: string; accountId: string }) {
-  const state = useLive(() => fetchInstagramStories(token, accountId), `stories:${accountId}`);
+  const state = useLive(() => fetchInstagramStories(token, accountId), `stories:${accountId}`, true, { maxAge: ANALYTICS_MAX_AGE });
   return (
     <Panel title="Stories live right now" sub="Instagram only shares story numbers for 24 hours. Each time you press Update data, the current stories are saved so you keep their history.">
       <LiveBlock state={state}>

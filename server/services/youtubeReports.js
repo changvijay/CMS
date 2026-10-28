@@ -63,7 +63,7 @@ export function reportDefinitions(range) {
     overview: {
       channel_totals: { ...range, metrics: 'engagedViews,views,redViews,comments,likes,dislikes,videosAddedToPlaylists,videosRemovedFromPlaylists,shares,estimatedMinutesWatched,estimatedRedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained,subscribersLost' },
       cards: { ...range, metrics: 'cardImpressions,cardClicks,cardClickRate,cardTeaserImpressions,cardTeaserClicks,cardTeaserClickRate' },
-      content_types: { ...range, dimensions: 'creatorContentType', metrics: 'engagedViews,views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,likes,shares,videosAddedToPlaylists' },
+      content_types: { ...range, dimensions: 'creatorContentType', metrics: 'engagedViews,views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,likes,shares' }, // playlist metrics are rejected with this dimension (400)
       subscribed_status: { ...range, dimensions: 'subscribedStatus', metrics: 'engagedViews,views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,likes,shares' },
     },
     audience: {
@@ -99,11 +99,23 @@ export async function fetchYoutubeBreakdowns(account, startDate, endDate, groups
   return out;
 }
 
+/**
+ * Analytics can't break down by video and creatorContentType together (400 "query is not supported"), so the format comes from
+ * the Data API instead: live streams carry liveStreamingDetails, and Shorts are the videos of up to 3 minutes.
+ */
+export function classifyContentType(video) {
+  if (!video) return null;
+  if (video.liveStreamingDetails) return 'LIVE_STREAM';
+  const seconds = isoDurationToSeconds(video.contentDetails?.duration);
+  if (seconds === null || seconds === undefined) return null;
+  return seconds <= 180 ? 'SHORTS' : 'VIDEO_ON_DEMAND';
+}
+
 /** Per-video analytics for up to 200 videos, merged with Data API details (length, tags, publish date). */
 export async function fetchVideoAnalytics(account, startDate, endDate, limit = 200) {
   const headers = await ytHeaders(account);
   const report = await runReport(headers, {
-    startDate, endDate, dimensions: 'video,creatorContentType', sort: '-views', maxResults: String(Math.min(limit, 200)),
+    startDate, endDate, dimensions: 'video', sort: '-views', maxResults: String(Math.min(limit, 200)),
     metrics: 'engagedViews,views,comments,likes,dislikes,videosAddedToPlaylists,videosRemovedFromPlaylists,shares,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained,subscribersLost',
   });
   if (report.error) return report;
@@ -111,7 +123,7 @@ export async function fetchVideoAnalytics(account, startDate, endDate, limit = 2
   const details = {};
   const ids = report.rows.map((r) => r.video);
   for (let i = 0; i < ids.length; i += 50) {
-    const res = await dataGet(headers, 'videos', { part: 'snippet,contentDetails,statistics', id: ids.slice(i, i + 50).join(',') });
+    const res = await dataGet(headers, 'videos', { part: 'snippet,contentDetails,statistics,liveStreamingDetails', id: ids.slice(i, i + 50).join(',') });
     for (const v of res.data?.items || []) details[v.id] = v;
   }
   return {
@@ -119,6 +131,7 @@ export async function fetchVideoAnalytics(account, startDate, endDate, limit = 2
       const d = details[r.video];
       return {
         ...r,
+        creatorContentType: classifyContentType(d),
         title: d?.snippet?.title || r.video,
         thumbnail_url: d?.snippet?.thumbnails?.medium?.url || null,
         published_at: d?.snippet?.publishedAt || null,
@@ -174,9 +187,16 @@ export async function fetchPlaylists(account, startDate, endDate) {
   };
 }
 
-export async function fetchYoutubeComments(account, videoId) {
-  const headers = await ytHeaders(account);
-  const res = await dataGet(headers, 'commentThreads', { part: 'snippet', videoId, maxResults: '100', order: 'relevance', textFormat: 'plainText' });
+/**
+ * Comments on public videos are public data. With YOUTUBE_API_KEY set they are read with the key alone, so the channel's
+ * Google token does not need the youtube.force-ssl permission (the saved token usually only has youtube.readonly).
+ */
+export async function fetchYoutubeComments(account, videoId, env = process.env) {
+  const apiKey = String(env.YOUTUBE_API_KEY ?? '').trim();
+  const params = { part: 'snippet', videoId, maxResults: '100', order: 'relevance', textFormat: 'plainText' };
+  const res = apiKey
+    ? await dataGet({ Accept: 'application/json' }, 'commentThreads', { ...params, key: apiKey })
+    : await dataGet(await ytHeaders(account), 'commentThreads', params);
   if (res.error) return res;
   const comments = (res.data?.items || []).map((t) => ({
     text: t.snippet?.topLevelComment?.snippet?.textDisplay || '',

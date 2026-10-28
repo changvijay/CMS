@@ -4,7 +4,7 @@ import { RetentionChart } from '../charts/RetentionChart';
 import { formatCompact, formatPercent, formatSeconds } from '../charts/viz';
 import { CommentInsights } from './CommentInsights';
 import { LiveBlock, Panel } from './ui';
-import { useLive } from './useLive';
+import { useLive, ANALYTICS_MAX_AGE } from './useLive';
 
 type SortKey = 'views' | 'engagedViews' | 'averageViewPercentage' | 'averageViewDuration' | 'likes' | 'comments' | 'shares' | 'subscribersGained' | 'videosAddedToPlaylists' | 'duration_seconds' | 'subsPer1k';
 
@@ -50,7 +50,7 @@ function Retention({ token, accountId, videoId }: { token: string; accountId: st
 }
 
 export function YoutubeVideos({ token, accountId, since, until }: { token: string; accountId: string; since: string; until: string }) {
-  const state = useLive(() => fetchYoutubeVideos(token, { accountId, since, until }), `vids:${accountId}:${since}:${until}`);
+  const state = useLive(() => fetchYoutubeVideos(token, { accountId, since, until }), `vids:${accountId}:${since}:${until}`, true, { maxAge: ANALYTICS_MAX_AGE });
   const [sort, setSort] = useState<SortKey>('views');
   const [open, setOpen] = useState<string | null>(null);
 
