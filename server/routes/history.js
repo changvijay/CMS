@@ -1,7 +1,7 @@
 import express from 'express';
-import { pool, isDbReady, getInstagramAccountsByUserId, getYoutubeAccountsByUserId } from '../db.js';
+import { pool, isDbReady, getInstagramAccountsByUserId, getLinkedInAccountsByUserId, getYoutubeAccountsByUserId } from '../db.js';
 import { pickAccount } from '../utils/accounts.js';
-import { syncInstagramAccount, syncYoutubeAccount } from '../services/syncService.js';
+import { syncInstagramAccount, syncLinkedInAccount, syncYoutubeAccount } from '../services/syncService.js';
 import {
   METRICS,
   PRIMARY_METRIC,
@@ -17,6 +17,7 @@ import { addDays, daysBetween, isDateString, istDateString } from '../utils/date
 const TABLES = {
   instagram: { table: 'ig_daily_metrics' },
   youtube: { table: 'yt_daily_metrics' },
+  linkedin: { table: 'li_daily_metrics' },
 };
 
 const MEDIA_NUMERIC = ['reach', 'views', 'likes', 'comments', 'saves', 'shares', 'reposts', 'total_interactions', 'follows',
@@ -42,7 +43,7 @@ export function createHistoryRouter(authenticateToken) {
 
   router.get('/history/:platform', authenticateToken, async (req, res) => {
     const { platform } = req.params;
-    if (!TABLES[platform]) return res.status(400).json({ error: 'platform must be instagram or youtube.' });
+    if (!TABLES[platform]) return res.status(400).json({ error: 'platform must be instagram, youtube or linkedin.' });
     if (!isDbReady()) return res.status(503).json({ error: 'Database is not connected; stored history is unavailable.' });
 
     try {
@@ -93,7 +94,7 @@ export function createHistoryRouter(authenticateToken) {
 
   router.get('/history/:platform/media', authenticateToken, async (req, res) => {
     const { platform } = req.params;
-    if (!TABLES[platform]) return res.status(400).json({ error: 'platform must be instagram or youtube.' });
+    if (!TABLES[platform]) return res.status(400).json({ error: 'platform must be instagram, youtube or linkedin.' });
     if (!isDbReady()) return res.status(503).json({ error: 'Database is not connected; stored history is unavailable.' });
     try {
       const account = await pickAccount(platform, req.user.userId, req.query.accountId);
@@ -142,6 +143,12 @@ export function createHistoryRouter(authenticateToken) {
         for (const a of await getYoutubeAccountsByUserId(req.user.userId)) {
           if (req.body?.accountId && String(a.id) !== String(req.body.accountId)) continue;
           await run('youtube', a, (acc) => syncYoutubeAccount(acc, { days: 90, mediaLimit }));
+        }
+      }
+      if (!platform || platform === 'linkedin') {
+        for (const a of await getLinkedInAccountsByUserId(req.user.userId)) {
+          if (req.body?.accountId && String(a.id) !== String(req.body.accountId)) continue;
+          await run('linkedin', a, (acc) => syncLinkedInAccount(acc, { days: 90, mediaLimit }));
         }
       }
       return res.status(errors.length && !results.length ? 502 : 200).json({ results, errors });

@@ -4,6 +4,7 @@ import {
   fetchHistory,
   fetchStoredMedia,
   getInstagramAccounts,
+  getLinkedInAccounts,
   getYoutubeAccounts,
   syncNow,
   type HistoryResponse,
@@ -40,13 +41,18 @@ interface AccountOption {
   name: string;
 }
 
-const PLATFORM_NAME: Record<Platform, string> = { instagram: 'Instagram', youtube: 'YouTube' };
+const PLATFORM_NAME: Record<Platform, string> = { instagram: 'Instagram', youtube: 'YouTube', linkedin: 'LinkedIn' };
+const PLATFORMS: Platform[] = ['instagram', 'youtube', 'linkedin'];
+// Strategy and Research are built around Instagram and YouTube data; LinkedIn gets the other four.
+const LINKEDIN_TABS = new Set<TabKey>(['overview', 'content', 'audience', 'data']);
+const tabsFor = (platform: Platform) => TABS.filter((t) => platform !== 'linkedin' || LINKEDIN_TABS.has(t.key));
 
 export default function PlatformPage({ token }: { token: string }) {
   const { platform, tab } = useParams();
-  if (platform !== 'instagram' && platform !== 'youtube') return <Navigate to="/overview" replace />;
-  if (tab !== undefined && !TABS.some((t) => t.key === tab && t.key !== 'overview')) return <Navigate to={`/${platform}`} replace />;
-  return <Workspace key={platform} token={token} platform={platform} tab={(tab as TabKey | undefined) ?? 'overview'} />;
+  if (!PLATFORMS.includes(platform as Platform)) return <Navigate to="/overview" replace />;
+  const p = platform as Platform;
+  if (tab !== undefined && !tabsFor(p).some((t) => t.key === tab && t.key !== 'overview')) return <Navigate to={`/${p}`} replace />;
+  return <Workspace key={p} token={token} platform={p} tab={(tab as TabKey | undefined) ?? 'overview'} />;
 }
 
 function Workspace({ token, platform, tab }: { token: string; platform: Platform; tab: TabKey }) {
@@ -72,7 +78,9 @@ function Workspace({ token, platform, tab }: { token: string; platform: Platform
         const list =
           platform === 'instagram'
             ? (await getInstagramAccounts(token)).map((a) => ({ id: a.id, name: a.page_name }))
-            : (await getYoutubeAccounts(token)).map((a) => ({ id: a.id, name: a.channel_name }));
+            : platform === 'linkedin'
+              ? (await getLinkedInAccounts(token)).accounts.map((a) => ({ id: a.id, name: a.name }))
+              : (await getYoutubeAccounts(token)).map((a) => ({ id: a.id, name: a.channel_name }));
         if (cancelled) return;
         setAccounts(list);
         const requested = list.find((a) => String(a.id) === requestedAccount);
@@ -169,9 +177,13 @@ function Workspace({ token, platform, tab }: { token: string; platform: Platform
       <div className={`ws platform-${platform}`}>
         <main className="ws-main">
           <div className="ws-empty ws-empty-cta">
-            <h3>Connect your {name} account</h3>
-            <p>Add your {platform === 'instagram' ? 'Instagram professional account' : 'YouTube channel'} to start seeing your analytics here.</p>
-            <Link className="btn btn-primary" to="/accounts">Add an account</Link>
+            <h3>Connect your {name} {platform === 'linkedin' ? 'company page' : 'account'}</h3>
+            <p>
+              {platform === 'linkedin'
+                ? 'Press Connect LinkedIn on the Accounts page and sign in as a page admin. Every company page you manage is added.'
+                : `Add your ${platform === 'instagram' ? 'Instagram professional account' : 'YouTube channel'} to start seeing your analytics here.`}
+            </p>
+            <Link className="btn btn-primary" to="/accounts">{platform === 'linkedin' ? 'Connect LinkedIn' : 'Add an account'}</Link>
           </div>
         </main>
       </div>
@@ -209,18 +221,22 @@ function Workspace({ token, platform, tab }: { token: string; platform: Platform
         ))}
         {syncResult && syncResult.results.length > 0 && (
           <div className="ws-notice" role="status">
-            Updated: {syncResult.results.map((r) => `${r.days_synced} days and ${r.media_snapshots} ${platform === 'instagram' ? 'posts' : 'videos'}`).join(', ')}.
+            Updated: {syncResult.results.map((r) => `${r.days_synced} days and ${r.media_snapshots} ${platform === 'youtube' ? 'videos' : 'posts'}`).join(', ')}.
           </div>
         )}
         {history && hasData && history.coverage.days_with_data < history.range.days && ['overview', 'data'].includes(tab) && (
           <div className="ws-notice">
             Showing {history.coverage.days_with_data} of {history.range.days} days. The rest are not stored yet
-            {platform === 'instagram' ? ' (Instagram only provides about 30 days of daily history).' : '.'}
+            {platform === 'instagram'
+              ? ' (Instagram only provides about 30 days of daily history).'
+              : platform === 'linkedin'
+                ? ' (LinkedIn keeps 12 months of daily history and can lag by a day or two).'
+                : '.'}
           </div>
         )}
 
         <nav className="ws-tabs" aria-label={`${name} sections`}>
-          {TABS.map((t) => (
+          {tabsFor(platform).map((t) => (
             <NavLink key={t.key} to={`/${platform}${t.path}`} end className={({ isActive }) => `ws-tab ${isActive ? 'active' : ''}`}>
               {t.label}
             </NavLink>

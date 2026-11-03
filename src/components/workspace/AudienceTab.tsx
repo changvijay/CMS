@@ -3,6 +3,7 @@ import { InstagramAudience } from '../InstagramAudience';
 import { YoutubeAudience } from '../YoutubeAudience';
 import { InstagramAccountInsights } from './InstagramAccountInsights';
 import { InstagramDemographicsPanel } from './InstagramDemographics';
+import { LinkedInAudience } from './LinkedInAudience';
 
 interface Props {
   platform: Platform;
@@ -14,6 +15,7 @@ interface Props {
 
 /** Audience insights come straight from the platforms, so they work before any history is stored. */
 export function AudienceTab({ platform, token, accountId, since, until }: Props) {
+  if (platform === 'linkedin') return <LinkedInAudience token={token} accountId={accountId} since={since} until={until} />;
   return platform === 'instagram' ? (
     <>
       <h3 className="ws-section-title">Reach and discovery</h3>

@@ -8,11 +8,9 @@ import { AVERAGE_METRICS, ENGAGEMENT_RATE_HELP, KPI_KEYS, METRIC_HELP, PLATFORM_
 import { buildInsights } from './insights';
 import { Panel, StatTiles } from './ui';
 import { reelScorecard, storyScorecard } from './strategy';
+import { totalsEngagementRate } from './content';
 
-function rate(t: Record<string, number>): number | null {
-  const engagement = (t.likes ?? 0) + (t.comments ?? 0) + (t.saves ?? 0) + (t.shares ?? 0);
-  return t.views > 0 ? Math.round((engagement / t.views) * 1000) / 10 : null;
-}
+const rate = totalsEngagementRate;
 
 export function OverviewTab({ platform, history, media }: { platform: Platform; history: HistoryResponse; media: StoredMedia[] }) {
   const metrics = PLATFORM_METRICS[platform];
@@ -141,7 +139,9 @@ export function OverviewTab({ platform, history, media }: { platform: Platform; 
       <div className="viz-two-col">
         <section className="viz-panel">
           <h3>How people engage</h3>
-          <p className="ws-sub">Daily likes, comments{platform === 'instagram' ? ', saves' : ''} and shares.</p>
+          <p className="ws-sub">
+            {platform === 'linkedin' ? 'Daily reactions, comments, reposts and clicks.' : `Daily likes, comments${platform === 'instagram' ? ', saves' : ''} and shares.`}
+          </p>
           <EngagementStack platform={platform} daily={history.daily} />
         </section>
         <section className="viz-panel">

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Area, AreaChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { fetchOverview, syncNow, type OverviewResponse, type SyncResult } from '../services/api';
@@ -10,8 +10,9 @@ import { downloadCsv, toCsv } from '../utils/csv';
 import '../assets/css/workspace.css';
 
 const RANGES = [7, 14, 30, 90];
-const PLATFORM_COLOR = { instagram: 'var(--series-1)', youtube: 'var(--series-2)' } as const;
-const PLATFORM_NAME = { instagram: 'Instagram', youtube: 'YouTube' } as const;
+const PLATFORM_COLOR = { instagram: 'var(--series-1)', youtube: 'var(--series-2)', linkedin: 'var(--series-3)' } as const;
+const PLATFORM_NAME = { instagram: 'Instagram', youtube: 'YouTube', linkedin: 'LinkedIn' } as const;
+const ALL_PLATFORMS = ['instagram', 'youtube', 'linkedin'] as const;
 const KPI = [
   { key: 'views', label: 'Views' },
   { key: 'interactions', label: 'Interactions' },
@@ -65,12 +66,11 @@ export default function Overview({ token }: { token: string }) {
     }
   }, [token]);
 
-  const hasData = !!data && (data.coverage.instagram_days > 0 || data.coverage.youtube_days > 0);
+  const hasData = !!data && (data.coverage.instagram_days > 0 || data.coverage.youtube_days > 0 || data.coverage.linkedin_days > 0);
+  // Only platforms with a connected account get a line, a slice and a column.
+  const shown = data ? ALL_PLATFORMS.filter((p) => data.accounts[p] > 0) : [];
   const share = data
-    ? [
-        { name: 'Instagram', platform: 'instagram' as const, value: data.totals.instagram.views },
-        { name: 'YouTube', platform: 'youtube' as const, value: data.totals.youtube.views },
-      ].filter((s) => s.value > 0)
+    ? shown.map((p) => ({ name: PLATFORM_NAME[p], platform: p, value: data.totals[p].views })).filter((s) => s.value > 0)
     : [];
   const totalViews = share.reduce((a, s) => a + s.value, 0);
 
@@ -80,7 +80,7 @@ export default function Overview({ token }: { token: string }) {
         <div className="ws-pagehead">
           <div>
             <h2>Overview</h2>
-            <p className="ws-sub">Instagram and YouTube side by side, from your stored history</p>
+            <p className="ws-sub">Instagram, YouTube and LinkedIn side by side, from your stored history. LinkedIn impressions count as views.</p>
           </div>
         </div>
 
@@ -99,7 +99,7 @@ export default function Overview({ token }: { token: string }) {
               onClick={() =>
                 downloadCsv(
                   `overview-${data.range.since}_${data.range.until}.csv`,
-                  toCsv(data.daily.map((d) => ({ date: d.date, instagram_views: d.instagram_views, youtube_views: d.youtube_views })))
+                  toCsv(data.daily.map((d) => ({ date: d.date, instagram_views: d.instagram_views, youtube_views: d.youtube_views, linkedin_impressions: d.linkedin_views })))
                 )
               }
             >
@@ -143,7 +143,7 @@ export default function Overview({ token }: { token: string }) {
                   label={`${k.label} (combined)`}
                   value={data.totals.combined[k.key] ?? 0}
                   delta={data.deltas.combined[k.key]}
-                  series={k.key === 'views' ? data.daily.map((d) => d.instagram_views + d.youtube_views) : []}
+                  series={k.key === 'views' ? data.daily.map((d) => d.instagram_views + d.youtube_views + d.linkedin_views) : []}
                 />
               ))}
             </section>
@@ -153,7 +153,7 @@ export default function Overview({ token }: { token: string }) {
             <div className="viz-two-col wide-left">
               <section className="viz-panel">
                 <h3>Daily views by platform</h3>
-                <div className="viz-chart" role="img" aria-label="Daily views for Instagram and YouTube">
+                <div className="viz-chart" role="img" aria-label="Daily views by platform">
                   <ResponsiveContainer width="100%" height={280}>
                     <AreaChart data={data.daily} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                       <CartesianGrid vertical={false} stroke="var(--grid)" />
@@ -166,8 +166,9 @@ export default function Overview({ token }: { token: string }) {
                         cursor={{ stroke: 'var(--axis)' }}
                       />
                       <Legend verticalAlign="top" align="left" height={28} iconType="plainline" wrapperStyle={{ color: 'var(--text-secondary)', fontSize: 12 }} />
-                      <Area isAnimationActive={false} type="monotone" dataKey="instagram_views" name="Instagram" stroke={PLATFORM_COLOR.instagram} fill={PLATFORM_COLOR.instagram} fillOpacity={0.12} strokeWidth={2} dot={false} />
-                      <Area isAnimationActive={false} type="monotone" dataKey="youtube_views" name="YouTube" stroke={PLATFORM_COLOR.youtube} fill={PLATFORM_COLOR.youtube} fillOpacity={0.12} strokeWidth={2} dot={false} />
+                      {shown.map((p) => (
+                        <Area key={p} isAnimationActive={false} type="monotone" dataKey={`${p}_views`} name={PLATFORM_NAME[p]} stroke={PLATFORM_COLOR[p]} fill={PLATFORM_COLOR[p]} fillOpacity={0.12} strokeWidth={2} dot={false} />
+                      ))}
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -197,19 +198,21 @@ export default function Overview({ token }: { token: string }) {
               <div className="viz-table-wrap">
                 <table className="viz-table">
                   <thead>
-                    <tr><th>Metric</th><th>Instagram</th><th>vs prev</th><th>YouTube</th><th>vs prev</th></tr>
+                    <tr><th>Metric</th>{shown.map((p) => <Fragment key={p}><th>{PLATFORM_NAME[p]}</th><th>vs prev</th></Fragment>)}</tr>
                   </thead>
                   <tbody>
                     {KPI.map((k) => {
-                      const pct = (p: 'instagram' | 'youtube') => data.deltas[p][k.key]?.change_pct;
+                      const pct = (p: (typeof ALL_PLATFORMS)[number]) => data.deltas[p][k.key]?.change_pct;
                       const fmt = (v: number | null | undefined) => (v === null || v === undefined ? '–' : `${v > 0 ? '+' : ''}${v}%`);
                       return (
                         <tr key={k.key}>
                           <td>{k.label}</td>
-                          <td>{data.totals.instagram[k.key]?.toLocaleString()}</td>
-                          <td>{fmt(pct('instagram'))}</td>
-                          <td>{data.totals.youtube[k.key]?.toLocaleString()}</td>
-                          <td>{fmt(pct('youtube'))}</td>
+                          {shown.map((p) => (
+                            <Fragment key={p}>
+                              <td>{data.totals[p][k.key]?.toLocaleString()}</td>
+                              <td>{fmt(pct(p))}</td>
+                            </Fragment>
+                          ))}
                         </tr>
                       );
                     })}
@@ -217,9 +220,11 @@ export default function Overview({ token }: { token: string }) {
                 </table>
               </div>
               <p className="trends-foot">
-                Net followers = Instagram follower change, and YouTube subscribers gained minus lost.
-                {data.coverage.instagram_days < data.range.days && ` Instagram: ${data.coverage.instagram_days} of ${data.range.days} days stored.`}
-                {data.coverage.youtube_days < data.range.days && ` YouTube: ${data.coverage.youtube_days} of ${data.range.days} days stored.`}
+                Net followers = Instagram follower change, YouTube subscribers gained minus lost, and LinkedIn followers gained.
+                {shown.map((p) => {
+                  const stored = data.coverage[`${p}_days`];
+                  return stored < data.range.days ? ` ${PLATFORM_NAME[p]}: ${stored} of ${data.range.days} days stored.` : '';
+                })}
               </p>
             </section>
 

@@ -40,11 +40,26 @@ export const PLATFORM_METRICS: Record<Platform, MetricInfo[]> = {
     { key: 'card_clicks', label: 'Card clicks' },
     { key: 'premium_views', label: 'Premium views' },
   ],
+  linkedin: [
+    { key: 'impressions', label: 'Impressions' },
+    { key: 'unique_impressions', label: 'Unique impressions' },
+    { key: 'clicks', label: 'Clicks' },
+    { key: 'likes', label: 'Reactions' },
+    { key: 'comments', label: 'Comments' },
+    { key: 'shares', label: 'Reposts' },
+    { key: 'organic_follower_gain', label: 'New followers (organic)' },
+    { key: 'paid_follower_gain', label: 'New followers (paid)' },
+    { key: 'page_views', label: 'Page views' },
+    { key: 'unique_page_views', label: 'Unique page visitors' },
+    { key: 'desktop_page_views', label: 'Page views (desktop)' },
+    { key: 'mobile_page_views', label: 'Page views (mobile)' },
+  ],
 };
 
 export const KPI_KEYS: Record<Platform, string[]> = {
   instagram: ['reach', 'views', 'total_interactions', 'accounts_engaged', 'follower_change', 'profile_links_taps'],
   youtube: ['views', 'engaged_views', 'minutes_watched', 'avg_view_percentage', 'subs_gained', 'subs_lost', 'likes', 'comments'],
+  linkedin: ['impressions', 'unique_impressions', 'clicks', 'likes', 'comments', 'shares', 'organic_follower_gain', 'page_views'],
 };
 
 /** Metrics that are averages: shown as-is, never "compact" formatted and never summed. */
@@ -53,6 +68,7 @@ export const AVERAGE_METRICS = new Set(['avg_view_duration', 'avg_view_percentag
 export const ENGAGEMENT_KEYS: Record<Platform, string[]> = {
   instagram: ['likes', 'comments', 'saves', 'shares'],
   youtube: ['likes', 'comments', 'shares'],
+  linkedin: ['likes', 'comments', 'shares', 'clicks'],
 };
 
 /** Fixed, per-entity colors (dark-surface steps of the validated categorical palette). */
@@ -61,6 +77,7 @@ export const METRIC_COLORS: Record<string, string> = {
   comments: 'var(--series-2)',
   saves: 'var(--series-3)',
   shares: 'var(--series-4)',
+  clicks: 'var(--series-3)',
 };
 
 export const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -125,6 +142,15 @@ export const METRIC_HELP: Record<string, string> = {
   card_impressions: 'Times a card (the small "i" prompts) was shown on your videos.',
   card_clicks: 'Clicks on cards in your videos.',
   premium_views: 'Views from YouTube Premium members.',
+  impressions: 'Times your company page posts were shown on screen. One person can count more than once.',
+  unique_impressions: 'Distinct LinkedIn members who saw your posts.',
+  clicks: 'Clicks on your posts, your company name or logo. Reactions, comments and reposts are not counted here.',
+  organic_follower_gain: 'People who followed the page on their own, minus anyone who unfollowed.',
+  paid_follower_gain: 'Followers gained through sponsored content or follower ads.',
+  page_views: 'Times your company page was opened, on all sections and devices.',
+  unique_page_views: 'Distinct members who opened your company page each day.',
+  desktop_page_views: 'Page views from a computer.',
+  mobile_page_views: 'Page views from the LinkedIn app or mobile web.',
   skip_rate: 'Share of reel plays skipped within the first 3 seconds. Lower is better: it measures how strong your opening is. Instagram estimates this.',
   avg_watch_time: 'Average time people spend watching your reels, in seconds.',
 };

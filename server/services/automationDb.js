@@ -58,13 +58,39 @@ export function createAutomationDb(pool, { checkToken } = {}) {
       return rowCount > 0;
     },
 
-    async finishEvent(id, { status, skipReason = null, errorCode = null, errorMessage = null, messageId = null, messageText = null, note = null }) {
+    async finishEvent(id, {
+      status, skipReason = null, errorCode = null, errorMessage = null, messageId = null, messageText = null, note = null,
+      keywordMatched = null, publicReplyText = null, retryAt = null, commentId = null,
+    }) {
       await pool.query(
         `UPDATE automation_events
-            SET status=$2, skip_reason=$3, error_code=$4, error_message=$5, message_id=$6, message_text=$7, note=$8
+            SET status=$2, skip_reason=$3, error_code=$4, error_message=$5, message_id=$6, message_text=$7, note=$8,
+                keyword_matched=COALESCE($9, keyword_matched), public_reply_text=$10, retry_at=$11, comment_id=COALESCE($12, comment_id),
+                attempts = attempts + CASE WHEN $2 = 'queued' OR status = 'queued' THEN 1 ELSE 0 END
           WHERE id=$1`,
-        [id, status, skipReason, errorCode, errorMessage, messageId, messageText, note]
+        [id, status, skipReason, errorCode, errorMessage, messageId, messageText, note, keywordMatched, publicReplyText, retryAt, commentId]
       );
+    },
+
+    /** An active rule of this account (used when someone taps "I followed"). */
+    async getRule(id, accountId) {
+      if (!/^\d+$/.test(String(id))) return null;
+      const { rows } = await pool.query('SELECT * FROM automation_rules WHERE id = $1 AND account_id = $2 AND is_active = TRUE', [id, accountId]);
+      return rows[0] ?? null;
+    },
+
+    /** Rate-limited replies whose retry time has come, with their rule and account. */
+    async listQueued(now = Date.now()) {
+      const { rows } = await pool.query(
+        `SELECT e.*, row_to_json(r) AS rule, row_to_json(a) AS account
+           FROM automation_events e
+           JOIN automation_rules r ON r.id = e.rule_id
+           JOIN (SELECT ${ACCOUNT_COLUMNS} FROM instagram_accounts) a ON a.id = e.account_id
+          WHERE e.status = 'queued' AND e.retry_at <= $1
+          ORDER BY e.retry_at LIMIT 50`,
+        [new Date(now)]
+      );
+      return rows;
     },
   };
 }

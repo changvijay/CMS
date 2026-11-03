@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
   fetchInstagramProfile,
+  fetchLinkedInProfile,
   fetchYoutubeChannel,
   type InstagramProfile,
+  type LinkedInProfile,
   type Platform,
   type YoutubeChannelInfo,
 } from '../../services/api';
@@ -55,6 +57,20 @@ function toYoutubeCard(c: YoutubeChannelInfo): Card {
   };
 }
 
+function toLinkedInCard(p: LinkedInProfile): Card {
+  return {
+    title: p.name,
+    handle: p.vanity_name ? `linkedin.com/company/${p.vanity_name}` : null,
+    bio: p.description || '',
+    avatar: null,
+    link: p.vanity_name ? `https://www.linkedin.com/company/${p.vanity_name}/` : null,
+    stats: [
+      { label: 'Followers', value: p.followers === null ? '–' : formatCompact(p.followers) },
+      ...(p.staff_count ? [{ label: 'Company size', value: p.staff_count.replace(' employees', '') }] : []),
+    ],
+  };
+}
+
 export function ProfileHeader({ platform, token, accountId, accountName }: Props) {
   const [card, setCard] = useState<Card | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -67,7 +83,9 @@ export function ProfileHeader({ platform, token, accountId, accountName }: Props
         const next =
           platform === 'instagram'
             ? toInstagramCard(await fetchInstagramProfile(token, accountId), accountName)
-            : toYoutubeCard(await fetchYoutubeChannel(token, accountId));
+            : platform === 'linkedin'
+              ? toLinkedInCard(await fetchLinkedInProfile(token, accountId))
+              : toYoutubeCard(await fetchYoutubeChannel(token, accountId));
         if (cancelled) return;
         setCard(next);
         setNote(null);

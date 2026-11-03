@@ -54,6 +54,7 @@ export function extractEvents(payload) {
       events.push({
         source: 'dm', igAccountId, eventKey: String(message.mid ?? ''), commentId: null, messageId: message.mid ? String(message.mid) : null,
         senderId, username: null, text: message.text ?? '', mediaId: null, mediaProductType: null, ignore: message.mid ? ignore : ignore ?? 'no_message_id',
+        quickReplyPayload: message.quick_reply?.payload ? String(message.quick_reply.payload) : null,
       });
     }
   }

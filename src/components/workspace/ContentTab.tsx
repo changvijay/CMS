@@ -9,16 +9,20 @@ import { InstagramStories } from './InstagramStories';
 import { YoutubeVideos } from './YoutubeVideos';
 import { hashtagPerformance, mediaEngagementRate, performanceByFormat, typeLabel } from './content';
 
-type SortKey = 'newest' | 'views' | 'engagement' | 'likes' | 'comments' | 'saves' | 'shares' | 'skip' | 'watch';
+type SortKey = 'newest' | 'views' | 'engagement' | 'likes' | 'comments' | 'saves' | 'shares' | 'clicks' | 'skip' | 'watch';
 
 const SORTS: { key: SortKey; label: string; platforms?: Platform[] }[] = [
   { key: 'newest', label: 'Newest first' },
-  { key: 'views', label: 'Most views' },
+  { key: 'views', label: 'Most views', platforms: ['instagram', 'youtube'] },
+  { key: 'views', label: 'Most impressions', platforms: ['linkedin'] },
   { key: 'engagement', label: 'Best engagement rate' },
-  { key: 'likes', label: 'Most likes' },
+  { key: 'likes', label: 'Most likes', platforms: ['instagram', 'youtube'] },
+  { key: 'likes', label: 'Most reactions', platforms: ['linkedin'] },
   { key: 'comments', label: 'Most comments' },
   { key: 'saves', label: 'Most saves', platforms: ['instagram'] },
   { key: 'shares', label: 'Most shares', platforms: ['instagram'] },
+  { key: 'shares', label: 'Most reposts', platforms: ['linkedin'] },
+  { key: 'clicks', label: 'Most clicks', platforms: ['linkedin'] },
   { key: 'skip', label: 'Lowest skip rate (reels)', platforms: ['instagram'] },
   { key: 'watch', label: 'Longest avg watch time (reels)', platforms: ['instagram'] },
 ];
@@ -44,7 +48,8 @@ export function ContentTab({ platform, media, token, accountId, since, until }: 
   const [sort, setSort] = useState<SortKey>('newest');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
 
-  const noun = platform === 'instagram' ? 'posts' : 'videos';
+  const noun = platform === 'youtube' ? 'videos' : 'posts';
+  const li = platform === 'linkedin';
   const posts = useMemo(() => media.filter((m) => m.media_type !== 'STORY'), [media]);
   const storyCount = media.length - posts.length;
 
@@ -68,6 +73,7 @@ export function ContentTab({ platform, media, token, accountId, since, until }: 
         case 'comments': return (b.comments ?? 0) - (a.comments ?? 0);
         case 'saves': return (b.saves ?? 0) - (a.saves ?? 0);
         case 'shares': return (b.shares ?? 0) - (a.shares ?? 0);
+        case 'clicks': return (b.link_clicks ?? 0) - (a.link_clicks ?? 0);
         case 'skip': return (a.skip_rate ?? 101) - (b.skip_rate ?? 101);
         case 'watch': return (b.avg_watch_seconds ?? -1) - (a.avg_watch_seconds ?? -1);
         default: return time(b) - time(a);
@@ -76,7 +82,7 @@ export function ContentTab({ platform, media, token, accountId, since, until }: 
   }, [media, posts, query, type, sort]);
 
   const formats = useMemo(() => performanceByFormat(posts), [posts]);
-  const hashtags = useMemo(() => (platform === 'instagram' ? hashtagPerformance(posts).slice(0, 10) : []), [posts, platform]);
+  const hashtags = useMemo(() => (platform !== 'youtube' ? hashtagPerformance(posts).slice(0, 10) : []), [posts, platform]);
 
   const totalViews = shown.reduce((a, m) => a + (m.views ?? m.reach ?? 0), 0);
   const rates = shown.map(mediaEngagementRate).filter((r): r is number => r !== null);
@@ -97,7 +103,7 @@ export function ContentTab({ platform, media, token, accountId, since, until }: 
           <label className="ws-select">
             <span className="sr-only">Sort by</span>
             <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
-              {SORTS.filter((s) => !s.platforms || s.platforms.includes(platform)).map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+              {SORTS.filter((s) => !s.platforms || s.platforms.includes(platform)).map((s) => <option key={`${s.key}-${s.label}`} value={s.key}>{s.label}</option>)}
             </select>
           </label>
           <div className="seg" role="group" aria-label="Layout">
@@ -117,7 +123,7 @@ export function ContentTab({ platform, media, token, accountId, since, until }: 
 
         <dl className="stat-strip">
           <div><dt>Showing</dt><dd>{shown.length} {type === 'STORY' ? 'stories' : noun}</dd></div>
-          <div><dt>Total views</dt><dd>{formatCompact(totalViews)}</dd></div>
+          <div><dt>{li ? 'Total impressions' : 'Total views'}</dt><dd>{formatCompact(totalViews)}</dd></div>
           <div><dt>Avg engagement rate<InfoTip text={ENGAGEMENT_RATE_HELP} /></dt><dd>{avgRate === null ? '–' : `${avgRate}%`}</dd></div>
           {avgSkip !== null && <div><dt>Avg skip rate<InfoTip text={SKIP_RATE_HELP} /></dt><dd>{avgSkip}%</dd></div>}
         </dl>
@@ -130,7 +136,17 @@ export function ContentTab({ platform, media, token, accountId, since, until }: 
         <ul className={`content-list ${layout === 'grid' ? 'content-grid' : 'content-list-view'}`}>
           {shown.map((m) => {
             const rate = mediaEngagementRate(m);
-            const stats: [string, string | null][] = [
+            const reactions = li ? (m.extra?.reactions as Record<string, number> | null | undefined) : null;
+            const ctr = li && m.views && m.link_clicks !== null ? Math.round((m.link_clicks / m.views) * 1000) / 10 : null;
+            const stats: [string, string | null][] = li ? [
+              ['Impressions', m.views !== null ? formatCompact(m.views) : null],
+              ['Unique impressions', m.reach !== null ? formatCompact(m.reach) : null],
+              ['Clicks', m.link_clicks !== null ? formatCompact(m.link_clicks) : null],
+              ['Click-through', ctr !== null ? `${ctr}%` : null],
+              ['Reactions', m.likes !== null ? formatCompact(m.likes) : null],
+              ['Comments', m.comments !== null ? formatCompact(m.comments) : null],
+              ['Reposts', m.shares !== null ? formatCompact(m.shares) : null],
+            ] : [
               ['Views', m.views !== null ? formatCompact(m.views) : null],
               ['Reach', m.reach !== null ? formatCompact(m.reach) : null],
               ['Likes', m.likes !== null ? formatCompact(m.likes) : null],
@@ -161,8 +177,15 @@ export function ContentTab({ platform, media, token, accountId, since, until }: 
                       <div key={label}><dd>{v}</dd><dt>{label}</dt></div>
                     ))}
                   </dl>
+                  {reactions && Object.values(reactions).some((n) => n > 0) && (
+                    <p className="reaction-row" aria-label="Reactions by type">
+                      {Object.entries(reactions).filter(([, n]) => n > 0).map(([label, n]) => (
+                        <span key={label} className="tag">{label} {formatCompact(n)}</span>
+                      ))}
+                    </p>
+                  )}
                   <div className="content-actions">
-                    {m.permalink && <a className="content-link" href={m.permalink} target="_blank" rel="noreferrer">Open on {platform === 'instagram' ? 'Instagram' : 'YouTube'} ↗</a>}
+                    {m.permalink && <a className="content-link" href={m.permalink} target="_blank" rel="noreferrer">Open on {platform === 'instagram' ? 'Instagram' : platform === 'linkedin' ? 'LinkedIn' : 'YouTube'} ↗</a>}
                     {platform === 'instagram' && m.media_type !== 'STORY' && /^\d+$/.test(m.media_id) && (
                       <Link className="content-link" to={`/automation?account=${accountId}&media=${m.media_id}`}>Set up auto-reply for this {m.media_type === 'REEL' ? 'reel' : 'post'} →</Link>
                     )}
@@ -186,7 +209,7 @@ export function ContentTab({ platform, media, token, accountId, since, until }: 
               <RankedBars rows={formats.map((f) => ({ label: `${f.label} (${f.count})`, value: f.avgRate }))} valueSuffix="%" />
             </section>
           )}
-          {platform === 'instagram' && (
+          {platform !== 'youtube' && (
             <section className="viz-panel">
               <h3>Hashtag performance</h3>
               <p className="ws-sub">Hashtags used on at least 2 posts, ranked by average engagement rate.</p>

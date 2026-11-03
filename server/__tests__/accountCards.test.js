@@ -12,6 +12,11 @@ describe('shapeCardMetrics', () => {
     expect(m).toMatchObject({ views: 2000, watch_hours: 20, net_subscribers: 40, interactions: 130, avg_view_percentage: 41.3, engagement_rate: 6.5 });
   });
 
+  it('shapes a LinkedIn page card with clicks in the engagement rate', () => {
+    const m = shapeCardMetrics('linkedin', { impressions: '1000', clicks: '30', likes: '15', comments: '3', shares: '2', page_views: '80', net_followers: '9' });
+    expect(m).toEqual({ impressions: 1000, clicks: 30, reactions: 15, net_followers: 9, page_views: 80, engagement_rate: 5 });
+  });
+
   it('is all zeros for an account with no stored data', () => {
     expect(shapeCardMetrics('instagram', undefined)).toEqual({ reach: 0, views: 0, interactions: 0, net_followers: 0, link_taps: 0, engagement_rate: 0 });
   });

@@ -4,13 +4,22 @@ import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import swaggerUi from 'swagger-ui-express';
-import { getGoogleAccessTokenFromRefreshToken } from './services/googleAuth.js';
+import { canUpload, getGoogleAccessTokenFromRefreshToken } from './services/googleAuth.js';
 import { createHistoryRouter } from './routes/history.js';
 import { createAccountsRouter } from './routes/accounts.js';
+import { createLinkedInRouter } from './routes/linkedin.js';
+import { createLinkedInInsightsRouter } from './routes/linkedinInsights.js';
 import { createInsightsRouter } from './routes/insights.js';
 import { createDeepRouter } from './routes/deep.js';
 import { createWebhooksRouter } from './routes/webhooks.js';
 import { createAutomationRouter } from './routes/automation.js';
+import { createFacebookRouter } from './routes/facebook.js';
+import { createGoogleRouter } from './routes/google.js';
+import { createInstagramRouter } from './routes/instagram.js';
+import { createPublishRouter } from './routes/publish.js';
+import { startPublishSchedule } from './jobs/publishQueue.js';
+import { tokenStatus } from './services/instagramAuth.js';
+import { checkToken as checkInstagramToken } from './services/instagramMessaging.js';
 import { startSnapshotSchedule } from './jobs/snapshot.js';
 import swaggerJsdoc from 'swagger-jsdoc';
 import path from 'path';
@@ -249,7 +258,11 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 app.get('/api/instagram-accounts', authenticateToken, async (req, res) => {
   try {
     const rows = await getInstagramAccountsByUserId(req.user.userId);
-    const accounts = rows.map(({ access_token, ...safe }) => safe);
+    // Only when renewing failed do we spend an API call to see whether the token still works.
+    const accounts = await Promise.all(rows.map(async ({ access_token, last_refresh_failed_at, ...safe }) => {
+      const liveOk = safe.last_refresh_error ? !(await checkInstagramToken({ ...safe, access_token })).error : null;
+      return { ...safe, token: tokenStatus(safe, liveOk) };
+    }));
     return res.json({ accounts });
   } catch (error) {
     console.error('Error fetching instagram accounts:', error);
@@ -261,7 +274,18 @@ app.get('/api/youtube-accounts', authenticateToken, async (req, res) => {
   try {
     const tableName = req.query.tableName || 'Youtube_accounts';
     const rows = await getDataFromTable(tableName, req.user.userId);
-    const accounts = rows.map(({ access_token, ...safe }) => safe);
+    // Google refresh tokens don't expire on a schedule, so a real exchange is the only honest status check.
+    const accounts = await Promise.all(rows.map(async ({ access_token, ...safe }) => {
+      let status = 'ok';
+      let message = null;
+      try {
+        await getGoogleAccessTokenFromRefreshToken(access_token);
+      } catch (err) {
+        status = 'expired';
+        message = err.message;
+      }
+      return { ...safe, token: { status, message, can_upload: canUpload(safe.scope) } };
+    }));
     return res.json({ table_name: tableName, accounts });
   } catch (error) {
     console.error('Error fetching youtube accounts:', error);
@@ -794,11 +818,17 @@ app.get('/api/youtube/dashboard-summary', authenticateToken, async (req, res) =>
 });
 
 app.use('/api', createAccountsRouter(authenticateToken));
+app.use('/api', createLinkedInRouter(authenticateToken, JWT_SECRET));
+app.use('/api', createLinkedInInsightsRouter(authenticateToken));
 app.use('/api', createHistoryRouter(authenticateToken));
 app.use('/api', createInsightsRouter(authenticateToken));
 app.use('/api', createDeepRouter(authenticateToken));
 app.use('/api', createWebhooksRouter());
 app.use('/api', createAutomationRouter(authenticateToken));
+app.use('/api', createFacebookRouter(authenticateToken, JWT_SECRET));
+app.use('/api', createGoogleRouter(authenticateToken, JWT_SECRET));
+app.use('/api', createInstagramRouter(authenticateToken, JWT_SECRET));
+app.use('/api', createPublishRouter(authenticateToken));
 
 // SPA Fallback: Serve index.html for non-API routes when frontend build is present
 app.get('*', (req, res, next) => {
@@ -815,4 +845,5 @@ app.get('*', (req, res, next) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Express server running on port ${PORT}`);
   startSnapshotSchedule();
+  startPublishSchedule();
 });

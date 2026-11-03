@@ -2,6 +2,8 @@ import { pool } from '../db.js';
 import { getGoogleAccessTokenFromRefreshToken } from './googleAuth.js';
 import { MEDIA_FIELDS, fetchMediaInsights, igGet, mediaLabel } from './instagramApi.js';
 import { isoDurationToSeconds } from '../utils/duration.js';
+import { refreshIfNeeded, tokenState } from './linkedinAuth.js';
+import { fetchDailyStats, fetchPostSnapshots } from './linkedinApi.js';
 import { addDays, dateRange, istDateString, istDayWindowSeconds } from '../utils/dates.js';
 
 const IG_DAILY_METRICS = 'reach,views,likes,comments,saves,shares,replies,reposts,total_interactions,accounts_engaged,profile_links_taps';
@@ -246,4 +248,46 @@ export async function syncYoutubeAccount(account, { days = 90, mediaLimit = 50 }
   await upsertMediaSnapshots('youtube', account.id, today, rows);
 
   return { platform: 'youtube', account_id: account.id, days_synced: daysSynced, media_snapshots: rows.length };
+}
+
+// ---------------------------------------------------------------------------
+// LinkedIn company pages
+// ---------------------------------------------------------------------------
+
+const LI_DAILY_COLUMNS = ['impressions', 'unique_impressions', 'clicks', 'likes', 'comments', 'shares', 'page_views',
+  'unique_page_views', 'desktop_page_views', 'mobile_page_views', 'organic_follower_gain', 'paid_follower_gain'];
+
+/** A working access token for a linkedin_accounts row, refreshing it first when it is close to expiring. */
+export async function linkedInTokenFor(account) {
+  const fresh = await refreshIfNeeded(account);
+  if (tokenState(fresh) === 'expired') {
+    throw Object.assign(new Error('LinkedIn access expired. Reconnect LinkedIn on the Accounts page.'), { status: 401, reason: 'token_expired' });
+  }
+  return fresh.access_token;
+}
+
+export async function syncLinkedInAccount(account, { days = 90, mediaLimit = 50 } = {}) {
+  const accessToken = await linkedInTokenFor(account);
+  const orgId = account.page_id;
+  const today = istDateString();
+  const end = addDays(today, -1);
+  const start = addDays(today, -Math.min(days, 360)); // LinkedIn keeps 12 months of daily statistics
+
+  const daily = await fetchDailyStats(accessToken, orgId, start, end);
+  let daysSynced = 0;
+  for (const [date, m] of Object.entries(daily)) {
+    if (date < start || date > end) continue;
+    await pool.query(
+      `INSERT INTO li_daily_metrics (account_id, metric_date, ${LI_DAILY_COLUMNS.join(', ')}, synced_at)
+       VALUES ($1, $2, ${LI_DAILY_COLUMNS.map((_, i) => `$${i + 3}`).join(', ')}, NOW())
+       ON CONFLICT (account_id, metric_date) DO UPDATE SET
+         ${LI_DAILY_COLUMNS.map((c) => `${c} = COALESCE(EXCLUDED.${c}, li_daily_metrics.${c})`).join(', ')}, synced_at = NOW()`,
+      [account.id, date, ...LI_DAILY_COLUMNS.map((c) => m[c] ?? null)]
+    );
+    daysSynced += 1;
+  }
+
+  const posts = await fetchPostSnapshots(accessToken, orgId, Math.min(mediaLimit, 100));
+  await upsertMediaSnapshots('linkedin', account.id, today, posts);
+  return { platform: 'linkedin', account_id: account.id, days_synced: daysSynced, media_snapshots: posts.length };
 }

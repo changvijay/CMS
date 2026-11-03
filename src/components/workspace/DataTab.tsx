@@ -44,9 +44,10 @@ export function DataTab({ platform, history }: { platform: Platform; history: Hi
         </table>
       </div>
       <p className="ws-note">
-        How this works: pressing <b>Update data</b> copies the latest daily numbers from {platform === 'instagram' ? 'Instagram' : 'YouTube'} into
+        How this works: pressing <b>Update data</b> copies the latest daily numbers from {platform === 'instagram' ? 'Instagram' : platform === 'linkedin' ? 'LinkedIn' : 'YouTube'} into
         your own database, and a scheduled job repeats that every night. That history is what makes period comparisons, forecasts and trends possible.
         {platform === 'instagram' && ' Instagram only exposes about 30 days of daily history, so older days appear as you keep syncing.'}
+        {platform === 'linkedin' && ' LinkedIn keeps 12 months of daily history and its numbers can lag by a day or two.'}
       </p>
     </section>
   );

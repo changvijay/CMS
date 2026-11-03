@@ -28,6 +28,7 @@
 
 .platform-instagram { --accent: #c2347f; --accent-soft: #fdf2f8; --accent-ink: #9d174d; }
 .platform-youtube { --accent: #d92d20; --accent-soft: #fef3f2; --accent-ink: #b42318; }
+.platform-linkedin { --accent: #0a66c2; --accent-soft: #e8f3ff; --accent-ink: #004182; }
 
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
@@ -442,3 +443,29 @@ select:focus, input:focus, textarea:focus { border-color: var(--accent); outline
 @media (prefers-reduced-motion: reduce) {
   .info-tip-bubble { transition: none; }
 }
+
+/* LinkedIn connect */
+.btn-linkedin { display: inline-flex; align-items: center; gap: 8px; background: #0a66c2; color: #fff; }
+.btn-linkedin:hover:not(:disabled) { background: #004182; }
+.linkedin-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 8px 0 4px; }
+.linkedin-empty p { margin: 0; color: var(--text-secondary, #475467); max-width: 560px; }
+.linkedin-person { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.linkedin-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: #e8f3ff; color: #0a66c2; font-weight: 700; }
+.linkedin-status.ok { color: #067647; }
+.linkedin-status.warn { color: #b54708; }
+.linkedin-status.bad { color: #b42318; font-weight: 600; }
+
+.reaction-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; }
+
+/* Connect buttons, one per platform */
+.btn-connect { display: inline-flex; align-items: center; gap: 8px; color: #fff; }
+.btn-connect svg { background: #fff; border-radius: 4px; padding: 1px; }
+.btn-instagram { background: linear-gradient(45deg, #f09433, #dc2743 50%, #bc1888); }
+.btn-facebook { background: #1877f2; }
+.btn-youtube { background: #d92d20; }
+.btn-connect:hover:not(:disabled) { filter: brightness(0.92); }
+.account-manual { margin-top: 10px; }
+.account-manual summary { cursor: pointer; font-size: 0.85rem; color: var(--text-muted); }
+.account-token-form { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; }
+.account-token-form input { flex: 1; min-width: 200px; }
+.account-list a { color: inherit; }

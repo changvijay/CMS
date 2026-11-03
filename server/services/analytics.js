@@ -2,12 +2,14 @@ export const METRICS = {
   instagram: ['reach', 'views', 'likes', 'comments', 'saves', 'shares', 'total_interactions', 'accounts_engaged', 'profile_links_taps', 'follower_change', 'replies', 'reposts'],
   youtube: ['views', 'likes', 'comments', 'shares', 'minutes_watched', 'subs_gained', 'subs_lost', 'engaged_views', 'avg_view_duration',
     'avg_view_percentage', 'playlist_adds', 'playlist_removes', 'dislikes', 'card_impressions', 'card_clicks', 'premium_views'],
+  linkedin: ['impressions', 'unique_impressions', 'clicks', 'likes', 'comments', 'shares', 'page_views', 'unique_page_views',
+    'desktop_page_views', 'mobile_page_views', 'organic_follower_gain', 'paid_follower_gain'],
 };
 
 /** Averages that must be weighted by views rather than summed across days. */
 export const WEIGHTED_AVERAGES = { avg_view_duration: 'views', avg_view_percentage: 'views' };
 
-export const PRIMARY_METRIC = { instagram: 'reach', youtube: 'views' };
+export const PRIMARY_METRIC = { instagram: 'reach', youtube: 'views', linkedin: 'impressions' };
 
 const n = (v) => (v === null || v === undefined ? 0 : Number(v));
 

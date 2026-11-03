@@ -186,3 +186,152 @@ ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS scope VARCHAR(10) NOT NULL
 ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS media_label TEXT;
 ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS media_permalink TEXT;
 UPDATE automation_rules SET scope = 'specific' WHERE media_id IS NOT NULL AND scope = 'all';
+
+-- ---------------------------------------------------------------------------
+-- LinkedIn accounts (connected with the "Connect LinkedIn" button, refreshed automatically)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS linkedin_accounts (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    member_id VARCHAR(100) NOT NULL,             -- the company page URN, e.g. urn:li:organization:12345
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    picture_url TEXT,
+    access_token TEXT NOT NULL,
+    access_token_expires_at TIMESTAMPTZ NOT NULL,
+    refresh_token TEXT,                          -- only issued when LinkedIn enables refresh tokens for the app
+    refresh_token_expires_at TIMESTAMPTZ,
+    scope TEXT,
+    last_refresh_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, member_id)
+);
+CREATE INDEX IF NOT EXISTS idx_linkedin_accounts_user_id ON linkedin_accounts(user_id);
+ALTER TABLE linkedin_accounts ADD COLUMN IF NOT EXISTS vanity_name VARCHAR(255);  -- linkedin.com/company/<vanity_name>
+
+-- Daily LinkedIn company page metrics (LinkedIn day buckets are UTC days; it keeps 12 months)
+CREATE TABLE IF NOT EXISTS li_daily_metrics (
+    account_id BIGINT NOT NULL REFERENCES linkedin_accounts(id) ON DELETE CASCADE,
+    metric_date DATE NOT NULL,
+    impressions BIGINT,
+    unique_impressions BIGINT,
+    clicks BIGINT,
+    likes BIGINT,                 -- all reactions
+    comments BIGINT,
+    shares BIGINT,                -- reposts
+    page_views BIGINT,
+    unique_page_views BIGINT,
+    desktop_page_views BIGINT,
+    mobile_page_views BIGINT,
+    organic_follower_gain BIGINT,
+    paid_follower_gain BIGINT,
+    synced_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (account_id, metric_date)
+);
+CREATE INDEX IF NOT EXISTS idx_li_daily_date ON li_daily_metrics(metric_date);
+
+-- ---------------------------------------------------------------------------
+-- Social Post: publishing to Instagram, Facebook, LinkedIn and YouTube
+-- ---------------------------------------------------------------------------
+-- Facebook Pages, connected with the "Connect Facebook" button. Page tokens made from a long-lived user token do not expire.
+CREATE TABLE IF NOT EXISTS facebook_pages (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    page_id VARCHAR(100) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    picture_url TEXT,
+    page_access_token TEXT NOT NULL,
+    ig_user_id VARCHAR(100),                    -- the Instagram professional account linked to this page, if any
+    scope TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, page_id)
+);
+CREATE INDEX IF NOT EXISTS idx_facebook_pages_user_id ON facebook_pages(user_id);
+
+-- LinkedIn can now hold personal profiles (urn:li:person:...) as well as company pages
+ALTER TABLE linkedin_accounts ADD COLUMN IF NOT EXISTS account_type VARCHAR(20) NOT NULL DEFAULT 'organization';
+
+-- Lets us tell whether a stored YouTube refresh token is allowed to upload
+ALTER TABLE Youtube_accounts ADD COLUMN IF NOT EXISTS scope TEXT;
+ALTER TABLE Youtube_accounts ADD COLUMN IF NOT EXISTS channel_id VARCHAR(100);
+ALTER TABLE Youtube_accounts ADD COLUMN IF NOT EXISTS picture_url TEXT;
+
+-- Files uploaded for posts (stored in Google Cloud Storage)
+CREATE TABLE IF NOT EXISTS media_assets (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    gcs_key TEXT NOT NULL,
+    public_url TEXT NOT NULL,
+    file_name TEXT,
+    mime VARCHAR(100) NOT NULL,
+    bytes BIGINT,
+    width INTEGER,
+    height INTEGER,
+    duration_s NUMERIC,
+    uploaded BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_media_assets_user ON media_assets(user_id);
+
+-- One post made in the wizard; it fans out to one target per platform account
+CREATE TABLE IF NOT EXISTS posts (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL DEFAULT 'draft',          -- draft | scheduled | publishing | done | partial | failed
+    wizard_state JSONB NOT NULL DEFAULT '{}'::jsonb,      -- everything the wizard needs to reopen the draft
+    schedule_at TIMESTAMPTZ,
+    timezone VARCHAR(60),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_posts_user ON posts(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS post_targets (
+    id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    platform VARCHAR(20) NOT NULL,                         -- instagram | facebook | linkedin | youtube
+    account_id BIGINT NOT NULL,
+    post_type VARCHAR(30) NOT NULL,
+    fields JSONB NOT NULL DEFAULT '{}'::jsonb,             -- the final per-platform payload
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',         -- pending | scheduled | publishing | done | failed
+    step VARCHAR(20),                                      -- upload | container | poll | publish | done
+    schedule_at TIMESTAMPTZ,
+    native_scheduled BOOLEAN NOT NULL DEFAULT FALSE,       -- the platform itself holds the schedule (Facebook, YouTube)
+    external_id TEXT,
+    permalink TEXT,
+    error_code INTEGER,
+    error_message TEXT,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    next_attempt_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_post_targets_post ON post_targets(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_targets_due ON post_targets(status, schedule_at);
+
+-- Auto-replies made for one post in the wizard
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS post_target_id BIGINT REFERENCES post_targets(id) ON DELETE SET NULL;
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS public_reply_variants TEXT[];
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS send_dm BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS dm_buttons JSONB;               -- [{ title, url }]
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS quick_replies JSONB;            -- [{ title }]
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS require_follow BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS active_from TIMESTAMPTZ;
+ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS active_until TIMESTAMPTZ;
+ALTER TABLE automation_events ADD COLUMN IF NOT EXISTS keyword_matched TEXT;
+ALTER TABLE automation_events ADD COLUMN IF NOT EXISTS public_reply_text TEXT;
+ALTER TABLE automation_events ADD COLUMN IF NOT EXISTS retry_at TIMESTAMPTZ;
+ALTER TABLE automation_events ADD COLUMN IF NOT EXISTS comment_id VARCHAR(120);
+ALTER TABLE post_targets ADD COLUMN IF NOT EXISTS note TEXT;           -- e.g. "Thumbnail not set: …" when the post itself succeeded
+ALTER TABLE automation_events ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0;
+
+-- Instagram long-lived tokens are renewed automatically (every 7 days, each renewal lasts 60 days)
+ALTER TABLE instagram_accounts ADD COLUMN IF NOT EXISTS token_expires_at TIMESTAMPTZ;
+ALTER TABLE instagram_accounts ADD COLUMN IF NOT EXISTS token_refreshed_at TIMESTAMPTZ;
+ALTER TABLE instagram_accounts ADD COLUMN IF NOT EXISTS last_refresh_error TEXT;
+ALTER TABLE instagram_accounts ADD COLUMN IF NOT EXISTS last_refresh_failed_at TIMESTAMPTZ;
+
+-- LinkedIn: wait before retrying a failed token renewal
+ALTER TABLE linkedin_accounts ADD COLUMN IF NOT EXISTS last_refresh_failed_at TIMESTAMPTZ;
+ALTER TABLE instagram_accounts ADD COLUMN IF NOT EXISTS profile_picture_url TEXT;

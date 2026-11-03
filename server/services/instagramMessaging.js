@@ -19,13 +19,19 @@ async function call(account, method, path, { body, params } = {}) {
   }
 }
 
+// `message` is plain text or a full message object (button template, quick replies) from buildMessage().
+const asMessage = (message) => (typeof message === 'string' ? { text: message } : message);
+
 /** A direct message to someone who messaged us (inside Instagram's 24-hour window). */
-export const sendDirectMessage = (account, recipientId, text) =>
-  call(account, 'POST', `${account.page_id}/messages`, { body: { recipient: { id: recipientId }, message: { text } } });
+export const sendDirectMessage = (account, recipientId, message) =>
+  call(account, 'POST', `${account.page_id}/messages`, { body: { recipient: { id: recipientId }, message: asMessage(message) } });
 
 /** The one private message allowed per comment, within 7 days of the comment. */
-export const sendPrivateReply = (account, commentId, text) =>
-  call(account, 'POST', `${account.page_id}/messages`, { body: { recipient: { comment_id: commentId }, message: { text } } });
+export const sendPrivateReply = (account, commentId, message) =>
+  call(account, 'POST', `${account.page_id}/messages`, { body: { recipient: { comment_id: commentId }, message: asMessage(message) } });
+
+/** Name, username and whether they follow us. Only works for someone who has messaged the account. */
+export const getUserProfile = (account, igsid) => call(account, 'GET', igsid, { params: { fields: 'name,username,is_user_follow_business' } });
 
 /** A public reply under a comment. */
 export const replyToComment = (account, commentId, text) =>
@@ -39,4 +45,4 @@ export const getSubscriptions = (account) => call(account, 'GET', `${account.pag
 /** A cheap call that proves the token still works. */
 export const checkToken = (account) => call(account, 'GET', 'me', { params: { fields: 'user_id,username' } });
 
-export const sender = { sendDirectMessage, sendPrivateReply, replyToComment };
+export const sender = { sendDirectMessage, sendPrivateReply, replyToComment, getUserProfile };

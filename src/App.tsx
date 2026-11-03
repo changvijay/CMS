@@ -8,6 +8,7 @@ const Overview = lazy(() => import('./components/Overview'));
 const Accounts = lazy(() => import('./components/Accounts'));
 const Profile = lazy(() => import('./components/Profile'));
 const Automation = lazy(() => import('./components/Automation'));
+const PublishWizard = lazy(() => import('./components/publish/PublishWizard'));
 import { getCurrentUser, type User } from './services/api';
 import { clearLiveCache } from './components/workspace/useLive';
 import './App.css';
@@ -15,7 +16,7 @@ import './App.css';
 /** Old /trends/:platform links now live inside the platform workspace. */
 function TrendsRedirect() {
   const { platform } = useParams();
-  return <Navigate to={platform === 'youtube' ? '/youtube' : '/instagram'} replace />;
+  return <Navigate to={platform === 'youtube' || platform === 'linkedin' ? `/${platform}` : '/instagram'} replace />;
 }
 
 function MainApp() {
@@ -111,6 +112,17 @@ function MainApp() {
             </Suspense>
           }
         />
+        {['/publish', '/publish/:postId'].map((path) => (
+          <Route
+            key={path}
+            path={path}
+            element={
+              <Suspense fallback={<div className="session-loader"><div className="spinner large"></div></div>}>
+                <PublishWizard token={token} />
+              </Suspense>
+            }
+          />
+        ))}
         <Route
           path="/profile"
           element={

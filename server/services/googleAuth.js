@@ -1,3 +1,19 @@
+// Analytics + comments (already used by the dashboards) plus upload, thumbnails and playlists for publishing.
+export const YOUTUBE_SCOPES = [
+  'https://www.googleapis.com/auth/youtube.readonly',
+  'https://www.googleapis.com/auth/yt-analytics.readonly',
+  'https://www.googleapis.com/auth/youtube.force-ssl',
+  'https://www.googleapis.com/auth/youtube.upload',
+  'https://www.googleapis.com/auth/youtube',
+];
+
+/** True when a stored scope string allows uploading. Unknown (null) means a hand-pasted token: we can't tell. */
+export function canUpload(scope) {
+  if (!scope) return null;
+  // videos.insert accepts any of these (youtube.readonly alone does not).
+  return String(scope).split(/\s+/).some((s) => /auth\/youtube(\.upload|\.force-ssl)?$/.test(s));
+}
+
 /**
  * Exchanges a stored Google refresh token for a short-lived access token.
  * Errors carry `status` (HTTP-ish code) and `reason` (Google's error code) for the UI.

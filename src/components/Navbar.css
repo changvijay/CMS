@@ -108,6 +108,11 @@
   color: #b42318;
 }
 
+.platform-tab.linkedin-active {
+  background: #e8f3ff;
+  color: #004182;
+}
+
 /* ----- Profile menu ----- */
 .user-menu {
   position: relative;

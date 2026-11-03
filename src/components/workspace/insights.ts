@@ -1,6 +1,6 @@
 import type { HistoryResponse, Platform, StoredMedia } from '../../services/api';
 import { WEEKDAYS, formatCompact, formatShortDate, metricLabel } from '../charts/viz';
-import { mediaEngagementRate, typeLabel } from './content';
+import { mediaEngagementRate, totalsEngagementRate, typeLabel } from './content';
 
 export interface Insight {
   tone: 'good' | 'bad' | 'neutral';
@@ -8,11 +8,7 @@ export interface Insight {
   text: string;
 }
 
-function rateFromTotals(t: Record<string, number>): number | null {
-  const engagement = (t.likes ?? 0) + (t.comments ?? 0) + (t.saves ?? 0) + (t.shares ?? 0);
-  const audience = t.views ?? 0;
-  return audience > 0 ? Math.round((engagement / audience) * 1000) / 10 : null;
-}
+const rateFromTotals = totalsEngagementRate;
 
 /** Plain-language takeaways, ordered by usefulness. At most six. */
 export function buildInsights(platform: Platform, history: HistoryResponse, media: StoredMedia[]): Insight[] {
@@ -20,7 +16,7 @@ export function buildInsights(platform: Platform, history: HistoryResponse, medi
   const primary = history.primary_metric;
   const label = metricLabel(platform, primary);
   const days = history.range.days;
-  const verb = primary === 'views' ? 'are' : 'is';
+  const verb = primary === 'views' || primary === 'impressions' ? 'are' : 'is';
 
   const d = history.deltas[primary];
   if (d && d.change_pct !== null) {

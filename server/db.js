@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import pg from 'pg';
 import dotenv from 'dotenv';
+import { refreshIfDue } from './services/instagramAuth.js';
 
 dotenv.config();
 
@@ -161,16 +162,20 @@ export async function updateUserPassword(userId, newPasswordHash) {
   }
 }
 
+const INSTAGRAM_COLUMNS = `id, user_id, page_name, access_token, page_id, ig_user_id, created_at,
+  token_expires_at, token_refreshed_at, last_refresh_error, last_refresh_failed_at, profile_picture_url`;
+
 export async function getInstagramAccountsByUserId(userId) {
   if (isDbConnected) {
     const query = `
-      SELECT id, page_name, access_token, page_id, created_at 
-      FROM instagram_accounts 
-      WHERE user_id = $1 
+      SELECT ${INSTAGRAM_COLUMNS}
+      FROM instagram_accounts
+      WHERE user_id = $1
       ORDER BY created_at DESC
     `;
     const res = await pool.query(query, [parseInt(userId, 10)]);
-    return res.rows;
+    // Every Instagram feature loads accounts here, so tokens due for renewal are renewed before use.
+    return Promise.all(res.rows.map((a) => refreshIfDue(a)));
   } else {
     return memoryDb.instagram_accounts.filter(
       (acc) => acc.user_id === parseInt(userId, 10)
@@ -213,12 +218,31 @@ export function isDbReady() {
 
 export async function getAllInstagramAccounts() {
   if (!isDbConnected) return [];
-  const res = await pool.query('SELECT id, user_id, page_name, access_token, page_id FROM instagram_accounts');
-  return res.rows;
+  const res = await pool.query(`SELECT ${INSTAGRAM_COLUMNS} FROM instagram_accounts`);
+  return Promise.all(res.rows.map((a) => refreshIfDue(a)));
 }
 
 export async function getAllYoutubeAccounts() {
   if (!isDbConnected) return [];
   const res = await pool.query('SELECT id, user_id, channel_name, access_token, playlist_id FROM Youtube_accounts');
+  return res.rows;
+}
+
+// LinkedIn company pages. `page_name` / `page_id` mirror the Instagram shape so shared code keeps working.
+const LINKEDIN_COLUMNS = `id, user_id, name AS page_name, member_id, vanity_name, access_token, access_token_expires_at,
+  refresh_token, refresh_token_expires_at, split_part(member_id, ':', 4) AS page_id, created_at`;
+
+export async function getLinkedInAccountsByUserId(userId) {
+  if (!isDbConnected) return [];
+  const res = await pool.query(
+    `SELECT ${LINKEDIN_COLUMNS} FROM linkedin_accounts WHERE user_id = $1 AND member_id LIKE 'urn:li:organization:%' ORDER BY created_at DESC`,
+    [parseInt(userId, 10)]
+  );
+  return res.rows;
+}
+
+export async function getAllLinkedInAccounts() {
+  if (!isDbConnected) return [];
+  const res = await pool.query(`SELECT ${LINKEDIN_COLUMNS} FROM linkedin_accounts WHERE member_id LIKE 'urn:li:organization:%'`);
   return res.rows;
 }

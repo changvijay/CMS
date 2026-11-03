@@ -1,5 +1,5 @@
 import express from 'express';
-import { pool, isDbReady, getInstagramAccountsByUserId, getYoutubeAccountsByUserId } from '../db.js';
+import { pool, isDbReady, getInstagramAccountsByUserId, getLinkedInAccountsByUserId, getYoutubeAccountsByUserId } from '../db.js';
 import { pickAccount } from '../utils/accounts.js';
 import { buildBestTimeMatrix, computeDeltas, engagementRate, sumMetrics } from '../services/analytics.js';
 import { REPORT_GROUPS, fetchYoutubeBreakdowns, fetchYoutubeChannel } from '../services/youtubeReports.js';
@@ -90,12 +90,14 @@ export function createInsightsRouter(authenticateToken) {
       const prevUntil = addDays(since, -1);
       const prevSince = addDays(prevUntil, -(span - 1));
 
-      const [igAccounts, ytAccounts] = await Promise.all([
+      const [igAccounts, ytAccounts, liAccounts] = await Promise.all([
         getInstagramAccountsByUserId(req.user.userId),
         getYoutubeAccountsByUserId(req.user.userId),
+        getLinkedInAccountsByUserId(req.user.userId),
       ]);
       const igIds = igAccounts.map((a) => Number(a.id));
       const ytIds = ytAccounts.map((a) => Number(a.id));
+      const liIds = liAccounts.map((a) => Number(a.id));
 
       const igQuery = (from, to) => pool.query(
         `SELECT to_char(metric_date, 'YYYY-MM-DD') AS date,
@@ -111,37 +113,49 @@ export function createInsightsRouter(authenticateToken) {
                 COALESCE(SUM(subs_gained - subs_lost),0)::bigint AS net_followers
            FROM yt_daily_metrics WHERE account_id = ANY($1) AND metric_date BETWEEN $2 AND $3
           GROUP BY metric_date ORDER BY metric_date`, [ytIds, from, to]);
+      // LinkedIn impressions count as "views" in the combined numbers.
+      const liQuery = (from, to) => pool.query(
+        `SELECT to_char(metric_date, 'YYYY-MM-DD') AS date,
+                COALESCE(SUM(impressions),0)::bigint AS views,
+                COALESCE(SUM(COALESCE(likes,0) + COALESCE(comments,0) + COALESCE(shares,0) + COALESCE(clicks,0)),0)::bigint AS interactions,
+                COALESCE(SUM(COALESCE(organic_follower_gain,0) + COALESCE(paid_follower_gain,0)),0)::bigint AS net_followers
+           FROM li_daily_metrics WHERE account_id = ANY($1) AND metric_date BETWEEN $2 AND $3
+          GROUP BY metric_date ORDER BY metric_date`, [liIds, from, to]);
 
-      const accountCardsPromise = loadAccountCards(pool, { igAccounts, ytAccounts, since, until, prevSince, prevUntil });
-      const [ig, igPrev, yt, ytPrev, media] = await Promise.all([
+      const accountCardsPromise = loadAccountCards(pool, { igAccounts, ytAccounts, liAccounts, since, until, prevSince, prevUntil });
+      const [ig, igPrev, yt, ytPrev, li, liPrev, media] = await Promise.all([
         igQuery(since, until), igQuery(prevSince, prevUntil), ytQuery(since, until), ytQuery(prevSince, prevUntil),
+        liQuery(since, until), liQuery(prevSince, prevUntil),
         pool.query(
           `SELECT DISTINCT ON (platform, account_id, media_id) *
              FROM media_snapshots
             WHERE (platform = 'instagram' AND account_id = ANY($1)) OR (platform = 'youtube' AND account_id = ANY($2))
-            ORDER BY platform, account_id, media_id, captured_on DESC`, [igIds, ytIds]),
+               OR (platform = 'linkedin' AND account_id = ANY($3))
+            ORDER BY platform, account_id, media_id, captured_on DESC`, [igIds, ytIds, liIds]),
       ]);
 
       const keys = ['views', 'interactions', 'net_followers'];
       const num = (rows) => rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, k === 'date' ? v : Number(v)])));
       const igRows = num(ig.rows);
       const ytRows = num(yt.rows);
+      const liRows = num(li.rows);
       const totals = {
         instagram: sumMetrics(igRows, keys),
         youtube: sumMetrics(ytRows, keys),
+        linkedin: sumMetrics(liRows, keys),
       };
       const previous = {
         instagram: sumMetrics(num(igPrev.rows), keys),
         youtube: sumMetrics(num(ytPrev.rows), keys),
+        linkedin: sumMetrics(num(liPrev.rows), keys),
       };
-      const combined = Object.fromEntries(keys.map((k) => [k, totals.instagram[k] + totals.youtube[k]]));
-      const combinedPrev = Object.fromEntries(keys.map((k) => [k, previous.instagram[k] + previous.youtube[k]]));
+      const combined = Object.fromEntries(keys.map((k) => [k, totals.instagram[k] + totals.youtube[k] + totals.linkedin[k]]));
+      const combinedPrev = Object.fromEntries(keys.map((k) => [k, previous.instagram[k] + previous.youtube[k] + previous.linkedin[k]]));
 
       const byDate = new Map();
-      for (const r of igRows) byDate.set(r.date, { date: r.date, instagram_views: r.views, youtube_views: 0 });
-      for (const r of ytRows) {
-        const existing = byDate.get(r.date) || { date: r.date, instagram_views: 0 };
-        byDate.set(r.date, { ...existing, youtube_views: r.views });
+      const blank = (date) => ({ date, instagram_views: 0, youtube_views: 0, linkedin_views: 0 });
+      for (const [rows, key] of [[igRows, 'instagram_views'], [ytRows, 'youtube_views'], [liRows, 'linkedin_views']]) {
+        for (const r of rows) byDate.set(r.date, { ...(byDate.get(r.date) || blank(r.date)), [key]: r.views });
       }
       const daily = [...byDate.values()].sort((a, b) => (a.date < b.date ? -1 : 1));
 
@@ -162,12 +176,12 @@ export function createInsightsRouter(authenticateToken) {
         insights.push(`Combined views ${viewsDelta.change_pct >= 0 ? 'up' : 'down'} ${Math.abs(viewsDelta.change_pct)}% vs the previous ${span} days.`);
       }
       if (combined.views > 0) {
-        const lead = totals.instagram.views >= totals.youtube.views ? 'Instagram' : 'YouTube';
-        const share = Math.round((Math.max(totals.instagram.views, totals.youtube.views) / combined.views) * 100);
-        insights.push(`${lead} drives ${share}% of views.`);
+        const [lead, leadViews] = [['Instagram', totals.instagram.views], ['YouTube', totals.youtube.views], ['LinkedIn', totals.linkedin.views]]
+          .sort((a, b) => b[1] - a[1])[0];
+        insights.push(`${lead} drives ${Math.round((leadViews / combined.views) * 100)}% of views.`);
       }
       const dayTotals = new Map();
-      for (const d of daily) dayTotals.set(new Date(`${d.date}T00:00:00Z`).getUTCDay(), (dayTotals.get(new Date(`${d.date}T00:00:00Z`).getUTCDay()) || 0) + d.instagram_views + d.youtube_views);
+      for (const d of daily) dayTotals.set(new Date(`${d.date}T00:00:00Z`).getUTCDay(), (dayTotals.get(new Date(`${d.date}T00:00:00Z`).getUTCDay()) || 0) + d.instagram_views + d.youtube_views + d.linkedin_views);
       if (dayTotals.size) {
         const [bestDay] = [...dayTotals.entries()].sort((a, b) => b[1] - a[1])[0];
         insights.push(`${WEEKDAYS[bestDay]} is your strongest day for views.`);
@@ -176,12 +190,13 @@ export function createInsightsRouter(authenticateToken) {
 
       return res.json({
         range: { since, until, days: span, previous_since: prevSince, previous_until: prevUntil },
-        accounts: { instagram: igAccounts.length, youtube: ytAccounts.length },
-        coverage: { instagram_days: igRows.length, youtube_days: ytRows.length },
+        accounts: { instagram: igAccounts.length, youtube: ytAccounts.length, linkedin: liAccounts.length },
+        coverage: { instagram_days: igRows.length, youtube_days: ytRows.length, linkedin_days: liRows.length },
         totals: { ...totals, combined },
         deltas: {
           instagram: computeDeltas(totals.instagram, previous.instagram),
           youtube: computeDeltas(totals.youtube, previous.youtube),
+          linkedin: computeDeltas(totals.linkedin, previous.linkedin),
           combined: computeDeltas(combined, combinedPrev),
         },
         daily,

@@ -26,10 +26,18 @@ const KPIS: Record<Platform, Kpi[]> = {
     { key: 'avg_view_percentage', label: 'Avg % viewed', format: 'pct' },
     { key: 'engagement_rate', label: 'Engagement rate', format: 'pct' },
   ],
+  linkedin: [
+    { key: 'impressions', label: 'Impressions', format: 'n' },
+    { key: 'clicks', label: 'Clicks', format: 'n' },
+    { key: 'reactions', label: 'Reactions', format: 'n' },
+    { key: 'net_followers', label: 'New followers', format: 'n' },
+    { key: 'page_views', label: 'Page views', format: 'n' },
+    { key: 'engagement_rate', label: 'Engagement rate', format: 'pct' },
+  ],
 };
 
-const PLATFORM_NAME: Record<Platform, string> = { instagram: 'Instagram', youtube: 'YouTube' };
-const PLATFORM_COLOR: Record<Platform, string> = { instagram: 'var(--series-1)', youtube: 'var(--series-2)' };
+const PLATFORM_NAME: Record<Platform, string> = { instagram: 'Instagram', youtube: 'YouTube', linkedin: 'LinkedIn' };
+const PLATFORM_COLOR: Record<Platform, string> = { instagram: 'var(--series-1)', youtube: 'var(--series-2)', linkedin: 'var(--series-3)' };
 
 function Delta({ delta }: { delta?: MetricDelta }) {
   const pct = delta?.change_pct;
@@ -68,7 +76,7 @@ export function AccountCards({ cards, days }: { cards: AccountCard[]; days: numb
                   ))}
                 </dl>
                 <div className="account-card-foot">
-                  <span>Daily views</span>
+                  <span>{c.platform === 'linkedin' ? 'Daily impressions' : 'Daily views'}</span>
                   <Sparkline values={c.series} color={PLATFORM_COLOR[c.platform]} />
                 </div>
               </>

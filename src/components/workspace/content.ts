@@ -2,8 +2,20 @@ import type { StoredMedia } from '../../services/api';
 
 /** Reactions as a percentage of the audience; null without an audience. Mirrors the server's definition. */
 export function mediaEngagementRate(m: StoredMedia): number | null {
-  const engagement = (m.likes ?? 0) + (m.comments ?? 0) + (m.saves ?? 0) + (m.shares ?? 0);
+  // LinkedIn counts clicks as engagement too (its own engagement-rate formula does).
+  const clicks = m.platform === 'linkedin' ? (m.link_clicks ?? 0) : 0;
+  const engagement = (m.likes ?? 0) + (m.comments ?? 0) + (m.saves ?? 0) + (m.shares ?? 0) + clicks;
   const audience = m.views || m.reach || 0;
+  return audience > 0 ? Math.round((engagement / audience) * 1000) / 10 : null;
+}
+
+/**
+ * Engagement rate from summed totals: (likes + comments + saves + shares + clicks) / views.
+ * LinkedIn has clicks and impressions; Instagram and YouTube have neither, so they are unaffected.
+ */
+export function totalsEngagementRate(t: Record<string, number>): number | null {
+  const engagement = (t.likes ?? 0) + (t.comments ?? 0) + (t.saves ?? 0) + (t.shares ?? 0) + (t.clicks ?? 0);
+  const audience = t.views ?? t.impressions ?? 0;
   return audience > 0 ? Math.round((engagement / audience) * 1000) / 10 : null;
 }
 
@@ -14,6 +26,11 @@ export function typeLabel(type: string | null): string {
   if (type === 'IMAGE') return 'Photo posts';
   if (type === 'CAROUSEL_ALBUM') return 'Carousels';
   if (type === 'VIDEO') return 'Videos';
+  if (type === 'TEXT') return 'Text posts';
+  if (type === 'DOCUMENT') return 'Documents';
+  if (type === 'ARTICLE') return 'Articles';
+  if (type === 'POLL') return 'Polls';
+  if (type === 'REPOST') return 'Reposts';
   return type.charAt(0) + type.slice(1).toLowerCase();
 }
 

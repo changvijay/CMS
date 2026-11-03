@@ -8,6 +8,8 @@ const KINDS = {
     required: ['page_name', 'page_id', 'access_token'],
     columns: ['page_name', 'page_id', 'access_token'],
     returning: 'id, user_id, page_name, page_id, created_at',
+    // A newly pasted token starts its renewal schedule over.
+    onTokenChange: ', token_refreshed_at = NULL, token_expires_at = NULL, last_refresh_error = NULL, last_refresh_failed_at = NULL',
   },
   youtube: {
     path: 'youtube-accounts',
@@ -50,7 +52,7 @@ export function createAccountsRouter(authenticateToken) {
       if (!fields.length) return res.status(400).json({ error: 'No updatable fields provided.' });
       try {
         const { rows } = await pool.query(
-          `UPDATE ${kind.table} SET ${fields.map((f, i) => `${f} = $${i + 3}`).join(', ')}
+          `UPDATE ${kind.table} SET ${fields.map((f, i) => `${f} = $${i + 3}`).join(', ')}${fields.includes('access_token') ? kind.onTokenChange ?? '' : ''}
             WHERE id = $1 AND user_id = $2 RETURNING ${kind.returning}`,
           [req.params.id, req.user.userId, ...fields.map((f) => String(body[f]).trim())]
         );

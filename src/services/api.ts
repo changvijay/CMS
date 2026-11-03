@@ -1,3 +1,5 @@
+import type { Platform as PublishPlatform, PublishAccount, WizardState } from '../components/publish/types';
+
 export interface User {
   id: string | number;
   username: string;
@@ -13,6 +15,10 @@ export interface InstagramAccount {
   page_name: string;
   page_id: string;
   created_at: string;
+  ig_user_id?: string | null;
+  profile_picture_url?: string | null;
+  /** Automatic renewal state. `expired` only when renewal failed and the token no longer works. */
+  token?: { status: 'ok' | 'expired'; auto_refresh?: boolean; expires_at?: string | null; message: string | null };
 }
 
 export interface YoutubeAccount {
@@ -21,6 +27,10 @@ export interface YoutubeAccount {
   channel_name: string;
   playlist_id: string;
   created_at: string;
+  channel_id?: string | null;
+  picture_url?: string | null;
+  /** `expired` when Google refuses the stored refresh token; can_upload null = unknown (token pasted by hand). */
+  token?: { status: 'ok' | 'expired'; message: string | null; can_upload: boolean | null };
 }
 
 const API_BASE = '/api';
@@ -100,7 +110,9 @@ export async function getYoutubeAccounts(token: string, tableName = 'Youtube_acc
 // Stored history / trends
 // ---------------------------------------------------------------------------
 
-export type Platform = 'instagram' | 'youtube';
+export type Platform = 'instagram' | 'youtube' | 'linkedin';
+/** Platforms whose accounts are added by pasting a token (LinkedIn uses its own Connect button). */
+export type ManualPlatform = 'instagram' | 'youtube';
 
 export interface DailyPoint {
   date: string;
@@ -129,6 +141,7 @@ export interface HistoryResponse {
 }
 
 export interface StoredMedia {
+  platform?: Platform;
   media_id: string;
   title: string | null;
   media_type: string | null;
@@ -227,7 +240,7 @@ export interface NewYoutubeAccount {
   access_token: string;
 }
 
-const ACCOUNT_PATH: Record<Platform, string> = { instagram: 'instagram-accounts', youtube: 'youtube-accounts' };
+const ACCOUNT_PATH: Record<ManualPlatform, string> = { instagram: 'instagram-accounts', youtube: 'youtube-accounts' };
 
 async function accountRequest(token: string, method: string, path: string, body?: unknown): Promise<void> {
   const response = await fetch(`${API_BASE}/${path}`, {
@@ -247,16 +260,54 @@ async function accountRequest(token: string, method: string, path: string, body?
   }
 }
 
-export function createAccount(token: string, platform: Platform, body: NewInstagramAccount | NewYoutubeAccount) {
+export function createAccount(token: string, platform: ManualPlatform, body: NewInstagramAccount | NewYoutubeAccount) {
   return accountRequest(token, 'POST', ACCOUNT_PATH[platform], body);
 }
 
-export function updateAccountToken(token: string, platform: Platform, id: string | number, accessToken: string) {
+export function updateAccountToken(token: string, platform: ManualPlatform, id: string | number, accessToken: string) {
   return accountRequest(token, 'PATCH', `${ACCOUNT_PATH[platform]}/${id}`, { access_token: accessToken });
 }
 
-export function deleteAccount(token: string, platform: Platform, id: string | number) {
+export function deleteAccount(token: string, platform: ManualPlatform, id: string | number) {
   return accountRequest(token, 'DELETE', `${ACCOUNT_PATH[platform]}/${id}`);
+}
+
+// ---------------------------------------------------------------------------
+// LinkedIn (connected through LinkedIn's own sign-in, tokens refreshed on the server)
+// ---------------------------------------------------------------------------
+
+export interface LinkedInAccount {
+  id: string | number;
+  name: string;
+  organization_urn: string;
+  vanity_name: string | null;
+  status: 'ok' | 'refresh' | 'expired';
+  access_token_expires_at: string;
+  refresh_token_expires_at: string | null;
+  auto_refresh: boolean;
+  last_refresh_error: string | null;
+  created_at: string;
+}
+
+async function linkedinJson<T>(token: string, path: string): Promise<T> {
+  const response = await fetch(`${API_BASE}/${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+  return data as T;
+}
+
+export function getLinkedInAccounts(token: string) {
+  return linkedinJson<{ configured: boolean; accounts: LinkedInAccount[] }>(token, 'linkedin-accounts');
+}
+
+export async function getLinkedInConnectUrl(token: string): Promise<string> {
+  const origin = encodeURIComponent(window.location.origin);
+  const data = await linkedinJson<{ url: string }>(token, `linkedin/connect-url?origin=${origin}`);
+  return data.url;
+}
+
+export function deleteLinkedInAccount(token: string, id: string | number) {
+  return accountRequest(token, 'DELETE', `linkedin-accounts/${id}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -428,11 +479,11 @@ export interface AccountCard {
 
 export interface OverviewResponse {
   range: { since: string; until: string; days: number; previous_since: string; previous_until: string };
-  accounts: { instagram: number; youtube: number };
-  coverage: { instagram_days: number; youtube_days: number };
-  totals: Record<'instagram' | 'youtube' | 'combined', Record<string, number>>;
-  deltas: Record<'instagram' | 'youtube' | 'combined', Record<string, MetricDelta>>;
-  daily: { date: string; instagram_views: number; youtube_views: number }[];
+  accounts: { instagram: number; youtube: number; linkedin: number };
+  coverage: { instagram_days: number; youtube_days: number; linkedin_days: number };
+  totals: Record<Platform | 'combined', Record<string, number>>;
+  deltas: Record<Platform | 'combined', Record<string, MetricDelta>>;
+  daily: { date: string; instagram_views: number; youtube_views: number; linkedin_views: number }[];
   account_cards: AccountCard[];
   leaderboard: {
     platform: Platform;
@@ -760,3 +811,132 @@ export function testAutomation(
 ): Promise<RuleTestResult> {
   return sendJson(token, 'POST', 'automation/test', body);
 }
+
+// LinkedIn company page insights (live from LinkedIn)
+
+export interface LinkedInBar {
+  label: string;
+  value: number;
+}
+
+export interface LinkedInUnavailable {
+  unavailable: true;
+  reason: string;
+}
+
+export type LinkedInDemographics = Record<'function' | 'seniority' | 'industry' | 'company_size' | 'country' | 'region', LinkedInBar[]>;
+
+export interface LinkedInProfile {
+  id: string | number;
+  name: string;
+  vanity_name: string | null;
+  description: string | null;
+  website: string | null;
+  staff_count: string | null;
+  followers: number | null;
+}
+
+export interface LinkedInFollowers {
+  total: number | null;
+  growth: { date: string; organic: number; paid: number }[] | LinkedInUnavailable;
+  demographics: LinkedInDemographics | LinkedInUnavailable;
+}
+
+export type LinkedInVisitors =
+  | { sections: LinkedInBar[]; devices: LinkedInBar[]; total: number; demographics: LinkedInDemographics }
+  | LinkedInUnavailable;
+
+const liQuery = (accountId: string, extra: Record<string, string> = {}) => new URLSearchParams({ accountId, ...extra }).toString();
+
+export function fetchLinkedInProfile(token: string, accountId: string) {
+  return linkedinJson<LinkedInProfile>(token, `linkedin/profile?${liQuery(accountId)}`);
+}
+
+export function fetchLinkedInFollowers(token: string, accountId: string, since: string, until: string) {
+  return linkedinJson<LinkedInFollowers>(token, `linkedin/followers?${liQuery(accountId, { since, until })}`);
+}
+
+export function fetchLinkedInVisitors(token: string, accountId: string) {
+  return linkedinJson<LinkedInVisitors>(token, `linkedin/visitors?${liQuery(accountId)}`);
+}
+
+// ---------------------------------------------------------------------------
+// Social Post (publishing)
+// ---------------------------------------------------------------------------
+
+async function publishJson<T>(token: string, method: string, path: string, body?: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE}/${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (response.status === 204) return undefined as T;
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw Object.assign(new Error(data.error || `Request failed (${response.status})`), { errors: data.errors as string[] | undefined, status: response.status });
+  return data as T;
+}
+
+export interface PublishConfig { storage: boolean; instagram: boolean; facebook: boolean; linkedin: boolean; google: boolean }
+export const getPublishConfig = (token: string) => publishJson<PublishConfig>(token, 'GET', 'publish/config');
+export const getPublishPlatforms = (token: string) => publishJson<{ platforms: { platform: PublishPlatform; accounts: number }[] }>(token, 'GET', 'publish/platforms');
+export const getPublishAccounts = (token: string, platforms: PublishPlatform[]) =>
+  publishJson<{ accounts: Partial<Record<PublishPlatform, PublishAccount[]>> }>(token, 'GET', `publish/accounts?platforms=${platforms.join(',')}`);
+
+export const startUpload = (token: string, file: { fileName: string; mime: string; bytes: number }) =>
+  publishJson<{ id: string; uploadUrl: string; publicUrl: string }>(token, 'POST', 'publish/uploads', file);
+export const completeUpload = (token: string, id: string, meta: { width?: number | null; height?: number | null; duration?: number | null }) =>
+  publishJson<{ asset: { id: string; public_url: string; bytes: number } }>(token, 'POST', `publish/uploads/${id}/complete`, meta);
+
+export interface Place { id: string; name: string; detail?: string }
+export const searchPlaces = (token: string, q: string) => publishJson<{ places: Place[] }>(token, 'GET', `publish/instagram/locations?q=${encodeURIComponent(q)}`);
+export const searchProducts = (token: string, accountId: string, q: string) =>
+  publishJson<{ shop: boolean; products: { id: string; name: string; image?: string; review?: string }[] }>(token, 'GET', `publish/instagram/products?accountId=${encodeURIComponent(accountId)}&q=${encodeURIComponent(q)}`);
+export const getYoutubeCategories = (token: string, accountId: string, region = 'IN') =>
+  publishJson<{ categories: { id: string; title: string }[] }>(token, 'GET', `publish/youtube/categories?accountId=${encodeURIComponent(accountId)}&region=${region}`);
+export const getYoutubePlaylists = (token: string, accountId: string) =>
+  publishJson<{ playlists: { id: string; title: string }[] }>(token, 'GET', `publish/youtube/playlists?accountId=${encodeURIComponent(accountId)}`);
+
+export type PostStatus = 'draft' | 'scheduled' | 'publishing' | 'done' | 'partial' | 'failed';
+export type TargetStatus = 'pending' | 'scheduled' | 'publishing' | 'done' | 'failed';
+export interface PostSummary { id: string; status: PostStatus; schedule_at: string | null; created_at: string; updated_at: string; title: string | null; targets: { platform: PublishPlatform; status: TargetStatus; permalink: string | null }[] }
+export interface PostTarget {
+  id: string; platform: PublishPlatform; account_id: string; post_type: string; status: TargetStatus; step: string | null; schedule_at: string | null;
+  native_scheduled: boolean; external_id: string | null; permalink: string | null; error_code: number | null; error_message: string | null; note: string | null; attempts: number; updated_at: string;
+}
+export interface AutoReplyLogRow {
+  id: string; rule_id: string; comment_id: string | null; event_key: string; sender_username: string | null; keyword_matched: string | null; trigger_text: string | null;
+  message_text: string | null; public_reply_text: string | null; status: string; skip_reason: string | null; error_code: number | null; error_message: string | null; note: string | null; created_at: string;
+}
+export interface PostDetail {
+  post: { id: string; status: PostStatus; wizard_state: WizardState; schedule_at: string | null; timezone: string | null; created_at: string; updated_at: string };
+  targets: PostTarget[];
+  autoReplies: { id: string; post_target_id: string; is_active: boolean; keywords: string[]; match_type: string; media_id: string | null }[];
+  autoReplyLog: AutoReplyLogRow[];
+}
+export interface SubmitTarget { platform: PublishPlatform; accountId: string; postType: string; fields: Record<string, unknown> }
+
+export const listPosts = (token: string) => publishJson<{ posts: PostSummary[] }>(token, 'GET', 'publish/posts');
+export const createDraft = (token: string, wizard: WizardState) => publishJson<{ post: { id: string } }>(token, 'POST', 'publish/posts', { wizard });
+export const saveDraft = (token: string, id: string, wizard: WizardState) => publishJson<{ post: { id: string } }>(token, 'PATCH', `publish/posts/${id}`, { wizard });
+export const deletePost = (token: string, id: string) => publishJson<void>(token, 'DELETE', `publish/posts/${id}`);
+export const getPost = (token: string, id: string) => publishJson<PostDetail>(token, 'GET', `publish/posts/${id}`);
+export const submitPost = (token: string, id: string, body: { targets: SubmitTarget[]; scheduleAt: string | null; timezone: string; autoReply: unknown; wizard: WizardState }) =>
+  publishJson<{ id: string; scheduled: boolean }>(token, 'POST', `publish/posts/${id}/submit`, body);
+export const retryTarget = (token: string, targetId: string) => publishJson<{ ok: true }>(token, 'POST', `publish/targets/${targetId}/retry`);
+
+/** Sign-in pages for connecting (or reconnecting) a platform; you come back to `returnTo` afterwards. */
+export async function getConnectUrl(token: string, kind: 'instagram' | 'facebook' | 'youtube' | 'linkedin' | 'linkedin_person', returnTo: string): Promise<string> {
+  const origin = encodeURIComponent(window.location.origin);
+  const back = encodeURIComponent(returnTo);
+  const path = kind === 'instagram' ? 'instagram/connect-url'
+    : kind === 'facebook' ? 'facebook/connect-url'
+    : kind === 'youtube' ? 'google/connect-url'
+      : 'linkedin/connect-url';
+  const extra = kind === 'linkedin_person' ? '&type=person' : '';
+  const data = await publishJson<{ url: string }>(token, 'GET', `${path}?origin=${origin}&returnTo=${back}${extra}`);
+  return data.url;
+}
+
+export interface FacebookPage { id: string; page_id: string; name: string; picture_url: string | null; ig_user_id: string | null; created_at: string }
+export const getFacebookPages = (token: string) => publishJson<{ configured: boolean; pages: FacebookPage[] }>(token, 'GET', 'facebook-pages');
+export const deleteFacebookPage = (token: string, id: string) => publishJson<void>(token, 'DELETE', `facebook-pages/${id}`);
