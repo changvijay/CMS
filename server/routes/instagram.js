@@ -33,8 +33,10 @@ export const isInstagramConfigured = () => Boolean(instagramConfig().appId && in
 async function json(res, what) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.error || data.error_type) {
-    const message = data.error?.message || data.error_message || data.error_description || `${what} failed (${res.status})`;
-    throw Object.assign(new Error(message), { status: res.status });
+    const message = data.error?.message || data.error_message || data.error_description || `failed (${res.status})`;
+    console.error(`${what} failed (${res.status}):`, JSON.stringify(data));
+    // Say which step failed, so the error on the Accounts page points at the right call.
+    throw Object.assign(new Error(`${what}: ${message}`), { status: res.status });
   }
   return data;
 }
@@ -42,14 +44,16 @@ async function json(res, what) {
 /** code -> short-lived token -> 60-day token -> profile. */
 export async function exchangeInstagramCode(code, redirectUri, fetchImpl = fetch) {
   const { appId, appSecret } = instagramConfig();
-  const short = await json(await fetchImpl('https://api.instagram.com/oauth/access_token', {
+  const shortRes = await json(await fetchImpl('https://api.instagram.com/oauth/access_token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ client_id: appId, client_secret: appSecret, grant_type: 'authorization_code', redirect_uri: redirectUri, code }).toString(),
   }), 'Instagram sign-in');
+  // Some app setups wrap the answer as { data: [ {...} ] }.
+  const short = Array.isArray(shortRes.data) ? shortRes.data[0] || {} : shortRes;
   const long = await json(await fetchImpl(`${GRAPH}/access_token?${new URLSearchParams({ grant_type: 'ig_exchange_token', client_secret: appSecret, access_token: short.access_token })}`), 'Instagram long-lived token');
   const me = await json(await fetchImpl(`${GRAPH}/v24.0/me?${new URLSearchParams({ fields: 'id,user_id,username,name,profile_picture_url', access_token: long.access_token })}`), 'Instagram profile');
-  return { token: long.access_token, expiresIn: Number(long.expires_in) || 60 * 24 * 3600, scope: (short.permissions || []).join(',') || null, me };
+  return { token: long.access_token, expiresIn: Number(long.expires_in) || 60 * 24 * 3600, scope: [].concat(short.permissions || []).join(',') || null, me };
 }
 
 export function createInstagramRouter(authenticateToken, jwtSecret) {
