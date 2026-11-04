@@ -93,7 +93,7 @@ export function createInstagramRouter(authenticateToken, jwtSecret) {
   const router = express.Router();
 
   router.get('/instagram/connect-url', authenticateToken, (req, res) => {
-    const log = flowLogger('instagram', newFlowId('instagram'));
+    const log = flowLogger('instagram', newFlowId('instagram'), req.user?.userId);
     const cfg = instagramConfig();
     log.step('connect_url.request', { ...requestInfo(req), userId: req.user?.userId });
     log.step('connect_url.config', {
@@ -119,7 +119,7 @@ export function createInstagramRouter(authenticateToken, jwtSecret) {
   router.get('/instagram/callback', async (req, res) => {
     // Read the flow id from the state (unverified peek, only for the log) so these lines join the connect-url ones.
     const peek = jwt.decode(String(req.query.state || '')) || {};
-    const log = flowLogger('instagram', peek.fid || newFlowId('instagram'));
+    const log = flowLogger('instagram', peek.fid || newFlowId('instagram'), peek.uid);
     log.step('callback.hit', { ...requestInfo(req), hasCode: Boolean(req.query.code), hasState: Boolean(req.query.state), statePeek: peek });
     let back = '/accounts';
     const finish = (params) => {

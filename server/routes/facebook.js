@@ -11,7 +11,7 @@ export function createFacebookRouter(authenticateToken, jwtSecret) {
   const router = express.Router();
 
   router.get('/facebook/connect-url', authenticateToken, (req, res) => {
-    const log = flowLogger('facebook', newFlowId('facebook'));
+    const log = flowLogger('facebook', newFlowId('facebook'), req.user?.userId);
     const cfg = facebookConfig();
     log.step('connect_url.request', { ...requestInfo(req), userId: req.user?.userId });
     log.step('connect_url.config', {
@@ -34,7 +34,7 @@ export function createFacebookRouter(authenticateToken, jwtSecret) {
   router.get('/facebook/callback', async (req, res) => {
     // Read the flow id from the state (unverified peek, only for the log) so these lines join the connect-url ones.
     const peek = jwt.decode(String(req.query.state || '')) || {};
-    const log = flowLogger('facebook', peek.fid || newFlowId('facebook'));
+    const log = flowLogger('facebook', peek.fid || newFlowId('facebook'), peek.uid);
     log.step('callback.hit', { ...requestInfo(req), hasCode: Boolean(req.query.code), hasState: Boolean(req.query.state), statePeek: peek });
     let back = '/accounts';
     const finish = (params) => {

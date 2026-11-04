@@ -17,6 +17,10 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const LOG_FILE = process.env.OAUTH_LOG_FILE || path.join(ROOT, 'logs', 'oauth.log');
 const enabled = () => process.env.OAUTH_LOG !== 'off';
 
+// Extra place each step goes (the database, set up in index.js), so the Accounts page can show it.
+let sink = null;
+export function setOAuthLogSink(fn) { sink = fn; }
+
 const SECRET_KEYS = /^(access_token|client_secret|fb_exchange_token|code|state|token|page_access_token|appsecret_proof|refresh_token|input_token)$/i;
 
 const MASKED = /^(\*\*\*|.{6}….{4}) \(len \d+\)$/;
@@ -69,13 +73,22 @@ export const newFlowId = (platform) => `${platform === 'instagram' ? 'ig' : 'fb'
  * A logger for one flow. `step(name, details)` writes one numbered line:
  *   2026-11-04T10:00:00.123Z [oauth ig-k3x9a2 #3 +412ms] callback.state_ok {"uid":1,...}
  */
-export function flowLogger(platform, flowId = newFlowId(platform)) {
+export function flowLogger(platform, flowId = newFlowId(platform), userId = null) {
   const started = Date.now();
   let n = 0;
   const step = (name, details) => {
     n += 1;
-    const extra = details === undefined ? '' : ` ${JSON.stringify(redact(details))}`;
+    const safe = details === undefined ? undefined : redact(details);
+    const extra = safe === undefined ? '' : ` ${JSON.stringify(safe)}`;
     write(`${new Date().toISOString()} [oauth ${flowId} #${n} +${Date.now() - started}ms] ${platform}.${name}${extra}`);
+    if (enabled() && sink) {
+      try {
+        Promise.resolve(sink({ flowId, platform, userId, seq: n, step: name, details: safe ?? null, ms: Date.now() - started }))
+          .catch((err) => console.warn(`[oauth] could not save log step: ${err.message}`));
+      } catch (err) {
+        console.warn(`[oauth] could not save log step: ${err.message}`);
+      }
+    }
   };
   const error = (name, err, details = {}) => step(`${name} ERROR`, {
     ...details, error: err?.message || String(err), errorName: err?.name, status: err?.status, stack: err?.stack?.split('\n').slice(1, 4).map((s) => s.trim()),

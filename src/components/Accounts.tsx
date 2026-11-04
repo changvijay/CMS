@@ -10,6 +10,8 @@ import {
   getLinkedInAccounts,
   getPublishConfig,
   getYoutubeAccounts,
+  lastFlowId,
+  sendOAuthStep,
   updateAccountToken,
   type FacebookPage,
   type InstagramAccount,
@@ -19,6 +21,7 @@ import {
   type YoutubeAccount,
 } from '../services/api';
 import { PlatformIcon } from './publish/PlatformIcon';
+import OAuthLogPanel from './OAuthLogPanel';
 import { oauthLog, oauthReplayOnReturn } from '../services/oauthDebug';
 import '../assets/css/workspace.css';
 
@@ -398,7 +401,14 @@ export default function Accounts({ token }: { token: string }) {
   // Each section has read its "?instagram=connected" message on first render; tidy the URL so a refresh doesn't repeat it.
   useEffect(() => {
     oauthReplayOnReturn();
+    // Coming back from Meta: add what the page was told to the same attempt in the Connection log.
+    const q = new URLSearchParams(window.location.search);
+    for (const k of ['instagram', 'facebook'] as const) {
+      if (q.has(k)) sendOAuthStep(token, k, 'returned_to_app', { result: q.get(k), name: q.get('name'), message: q.get('message'), page: window.location.origin + window.location.pathname }, lastFlowId(k));
+    }
     if (window.location.search) window.history.replaceState(null, '', window.location.pathname);
+    // Once, on arrival: the return params are removed right after.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -414,6 +424,7 @@ export default function Accounts({ token }: { token: string }) {
         <FacebookSection token={token} configured={config?.facebook ?? true} />
         <YoutubeSection token={token} configured={config?.google ?? true} />
         <LinkedInSection token={token} />
+        <OAuthLogPanel token={token} />
       </main>
     </div>
   );

@@ -17,6 +17,7 @@ import { createFacebookRouter } from './routes/facebook.js';
 import { createGoogleRouter } from './routes/google.js';
 import { createInstagramRouter } from './routes/instagram.js';
 import { createPublishRouter } from './routes/publish.js';
+import { createOAuthLogRouter, startOAuthLogSink } from './routes/oauthLog.js';
 import { startPublishSchedule } from './jobs/publishQueue.js';
 import { tokenStatus } from './services/instagramAuth.js';
 import { checkToken as checkInstagramToken } from './services/instagramMessaging.js';
@@ -63,7 +64,14 @@ app.use(cors(allowedOrigins.length ? { origin: allowedOrigins } : undefined));
 app.set('trust proxy', true);
 // Keep the raw body: Instagram's webhook signature is computed over the exact bytes it sent.
 app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } }));
-app.use(express.static(distPath));
+// index.html is never cached, so after a deploy the browser picks up the new file names straight away.
+// Hashed files under /assets never change, so they can be cached for good.
+app.use(express.static(distPath, {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('index.html')) res.setHeader('Cache-Control', 'no-cache');
+    else if (filePath.includes(`${path.sep}assets${path.sep}`)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  },
+}));
 
 // Initialize Database connection on boot
 initDb();
@@ -828,6 +836,8 @@ app.use('/api', createAutomationRouter(authenticateToken));
 app.use('/api', createFacebookRouter(authenticateToken, JWT_SECRET));
 app.use('/api', createGoogleRouter(authenticateToken, JWT_SECRET));
 app.use('/api', createInstagramRouter(authenticateToken, JWT_SECRET));
+app.use('/api', createOAuthLogRouter(authenticateToken));
+startOAuthLogSink();
 app.use('/api', createPublishRouter(authenticateToken));
 
 // SPA Fallback: Serve index.html for non-API routes when frontend build is present
@@ -835,6 +845,12 @@ app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/api-docs')) {
     return next();
   }
+  // A missing script or style (e.g. an old file name from before a deploy) is a 404, not the HTML page:
+  // HTML in place of a script gives the browser "Expected a JavaScript module script ... text/html".
+  if (req.path.startsWith('/assets/') || /\.(js|mjs|css|map|wasm)$/.test(req.path)) {
+    return res.status(404).type('text/plain').send('Not found');
+  }
+  res.setHeader('Cache-Control', 'no-cache');
   res.sendFile(path.join(distPath, 'index.html'), (err) => {
     if (err) {
       next();

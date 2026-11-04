@@ -335,3 +335,18 @@ ALTER TABLE instagram_accounts ADD COLUMN IF NOT EXISTS last_refresh_failed_at T
 -- LinkedIn: wait before retrying a failed token renewal
 ALTER TABLE linkedin_accounts ADD COLUMN IF NOT EXISTS last_refresh_failed_at TIMESTAMPTZ;
 ALTER TABLE instagram_accounts ADD COLUMN IF NOT EXISTS profile_picture_url TEXT;
+
+-- Step-by-step log of Connect Instagram / Connect Facebook attempts, shown on the Accounts page.
+-- In the database (not a file) so a sign-in started on one server and finished on another reads as one story.
+CREATE TABLE IF NOT EXISTS oauth_log (
+    id BIGSERIAL PRIMARY KEY,
+    flow_id VARCHAR(32) NOT NULL,
+    platform VARCHAR(20) NOT NULL,
+    user_id BIGINT,
+    seq INTEGER NOT NULL,
+    step TEXT NOT NULL,
+    details JSONB,
+    server VARCHAR(255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS oauth_log_user_idx ON oauth_log (user_id, id DESC);

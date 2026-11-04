@@ -938,16 +938,53 @@ export async function getConnectUrl(token: string, kind: 'instagram' | 'facebook
   try {
     const data = await publishJson<{ url: string; flowId?: string }>(token, 'GET', `${path}?origin=${origin}&returnTo=${back}${extra}`);
     const u = new URL(data.url);
-    oauthLog('connect_url.received', {
+    const sent = {
       flowId: data.flowId, host: u.host, path: u.pathname,
       client_id: u.searchParams.get('client_id'), redirect_uri: u.searchParams.get('redirect_uri'),
       scope: u.searchParams.get('scope'), config_id: u.searchParams.get('config_id'),
-    });
+    };
+    oauthLog('connect_url.received', sent);
+    if (kind === 'instagram' || kind === 'facebook') {
+      rememberFlow(kind, data.flowId);
+      sendOAuthStep(token, kind, 'leaving_for_meta', { ...sent, page: window.location.href }, data.flowId);
+    }
     return data.url;
   } catch (err) {
-    oauthLog('connect_url.failed', { kind, error: err instanceof Error ? err.message : String(err), status: (err as { status?: number }).status });
+    const failed = { kind, error: err instanceof Error ? err.message : String(err), status: (err as { status?: number }).status };
+    oauthLog('connect_url.failed', failed);
+    if (kind === 'instagram' || kind === 'facebook') sendOAuthStep(token, kind, 'connect_url_failed', { ...failed, page: window.location.href });
     throw err;
   }
+}
+
+/** One step of a Connect Instagram / Connect Facebook attempt, as stored on the server (shown in the Connection log). */
+export interface OAuthLogEntry {
+  id: number; flow_id: string; platform: 'instagram' | 'facebook'; seq: number; step: string;
+  details: Record<string, unknown> | null; server: string | null; created_at: string;
+}
+export const getOAuthLog = (token: string) => publishJson<{ entries: OAuthLogEntry[] }>(token, 'GET', 'oauth-log');
+export const clearOAuthLog = (token: string) => publishJson<void>(token, 'DELETE', 'oauth-log');
+
+const FLOW_KEY = 'oauthLastFlow';
+function rememberFlow(platform: string, flowId?: string) {
+  try { if (flowId) localStorage.setItem(FLOW_KEY, JSON.stringify({ platform, flowId })); } catch { /* storage blocked */ }
+}
+/** The attempt that was in progress before Meta sent the browser back, so the "returned" step joins it. */
+export function lastFlowId(platform: string): string | undefined {
+  try {
+    const v = JSON.parse(localStorage.getItem(FLOW_KEY) || 'null');
+    return v?.platform === platform ? v.flowId : undefined;
+  } catch { return undefined; }
+}
+
+/** Adds a browser-side step to the server log. Never throws: logging must not break the Connect button. */
+export function sendOAuthStep(token: string, platform: 'instagram' | 'facebook', step: string, details: unknown, flowId?: string) {
+  fetch(`${API_BASE}/oauth-log`, {
+    method: 'POST',
+    keepalive: true, // the page is about to leave for Meta
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ platform, step, details, flowId }),
+  }).catch(() => {});
 }
 
 export interface FacebookPage { id: string; page_id: string; name: string; picture_url: string | null; ig_user_id: string | null; created_at: string }
