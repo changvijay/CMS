@@ -34,6 +34,9 @@ export function facebookConfig() {
     appId: process.env.FACEBOOK_APP_ID,
     appSecret: process.env.FACEBOOK_APP_SECRET,
     redirectUri: process.env.FACEBOOK_REDIRECT_URI || null,
+    // Facebook Login for Business: the dialog takes a saved configuration (Meta dashboard -> Facebook Login for
+    // Business -> Configurations) instead of a scope list. Without it Facebook shows "Feature unavailable".
+    configId: process.env.FACEBOOK_CONFIG_ID?.trim() || null,
     scopes: (process.env.FACEBOOK_SCOPES ? process.env.FACEBOOK_SCOPES.split(/[\s,]+/) : FACEBOOK_SCOPES).filter(Boolean),
   };
 }
@@ -41,8 +44,10 @@ export function facebookConfig() {
 export const isFacebookConfigured = () => Boolean(facebookConfig().appId && facebookConfig().appSecret);
 
 export function buildFacebookAuthUrl({ state, redirectUri }) {
-  const { appId, scopes } = facebookConfig();
-  const params = new URLSearchParams({ client_id: appId, redirect_uri: redirectUri, state, scope: scopes.join(','), response_type: 'code' });
+  const { appId, scopes, configId } = facebookConfig();
+  const params = new URLSearchParams({ client_id: appId, redirect_uri: redirectUri, state, response_type: 'code' });
+  if (configId) params.set('config_id', configId);
+  else params.set('scope', scopes.join(','));
   return `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth?${params.toString()}`;
 }
 
