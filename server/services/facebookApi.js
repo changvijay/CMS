@@ -3,6 +3,8 @@
  * The same page token also unlocks Instagram features that Instagram-Login tokens cannot use
  * (location search, product tags), through the page's linked Instagram account.
  */
+import { mask } from '../utils/oauthLog.js';
+
 export const GRAPH_VERSION = 'v24.0';
 export const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
@@ -94,23 +96,56 @@ async function must(promise) {
   return r.data;
 }
 
-export async function exchangeFacebookCode(code, redirectUri) {
+/** `log` (optional, from utils/oauthLog.js) logs every Graph call with its full masked reply. */
+const logOpts = (log, label) => (log ? { fetchImpl: log.fetchLogged(label) } : {});
+
+export async function exchangeFacebookCode(code, redirectUri, log = null) {
   const { appId, appSecret } = facebookConfig();
-  const short = await must(fbGet('oauth/access_token', null, { client_id: appId, client_secret: appSecret, redirect_uri: redirectUri, code }));
+  log?.step('exchange.start', { appId, appSecret: mask(appSecret), redirectUri, code: mask(code) });
+  const short = await must(fbGet('oauth/access_token', null, { client_id: appId, client_secret: appSecret, redirect_uri: redirectUri, code }, logOpts(log, 'short_token')));
+  log?.step('exchange.short_token', { token_type: short.token_type, expires_in: short.expires_in, access_token: mask(short.access_token) });
   // A long-lived user token makes page tokens that never expire.
-  return must(fbGet('oauth/access_token', null, { grant_type: 'fb_exchange_token', client_id: appId, client_secret: appSecret, fb_exchange_token: short.access_token }));
+  const long = await must(fbGet('oauth/access_token', null, { grant_type: 'fb_exchange_token', client_id: appId, client_secret: appSecret, fb_exchange_token: short.access_token }, logOpts(log, 'long_token')));
+  log?.step('exchange.long_token', { token_type: long.token_type, expires_in: long.expires_in ?? 'none (never expires)', access_token: mask(long.access_token) });
+  return long;
+}
+
+/**
+ * Log-only checks after sign-in: who logged in, which permissions were granted or declined, and Meta's own view
+ * of the token (granular_scopes lists the Page / Instagram ids ticked in the dialog). Never throws.
+ */
+export async function logFacebookTokenDiagnostics(userToken, log) {
+  if (!log) return;
+  try {
+    const { appId, appSecret } = facebookConfig();
+    const me = await fbGet('me', userToken, { fields: 'id,name' }, logOpts(log, 'diag.me'));
+    const perms = await fbGet('me/permissions', userToken, {}, logOpts(log, 'diag.permissions'));
+    const list = perms.data?.data || [];
+    const wanted = facebookConfig().scopes;
+    log.step('diag.permissions_summary', {
+      user: me.data || me.error,
+      granted: list.filter((p) => p.status === 'granted').map((p) => p.permission),
+      declined: list.filter((p) => p.status !== 'granted').map((p) => `${p.permission}:${p.status}`),
+      requestedButMissing: wanted.filter((w) => !list.some((p) => p.permission === w && p.status === 'granted')),
+    });
+    await fbGet('debug_token', `${appId}|${appSecret}`, { input_token: userToken }, logOpts(log, 'diag.debug_token'));
+  } catch (err) {
+    log.error('diag', err);
+  }
 }
 
 /** Every page this login manages, with its never-expiring page token and linked Instagram account. */
-export async function fetchManagedPages(userToken) {
+export async function fetchManagedPages(userToken, log = null) {
   const pages = [];
   let next = { fields: 'id,name,access_token,picture{url},instagram_business_account', limit: 100 };
   for (let i = 0; i < 10 && next; i += 1) {
-    const page = await must(fbGet('me/accounts', userToken, next));
+    const page = await must(fbGet('me/accounts', userToken, next, logOpts(log, `pages[${i}]`)));
     pages.push(...(page.data || []));
+    log?.step('pages.batch', { batch: i, count: (page.data || []).length, hasNext: Boolean(page.paging?.next) });
     const after = page.paging?.cursors?.after;
     next = page.paging?.next && after ? { ...next, after } : null;
   }
+  log?.step('pages.total', { count: pages.length, pages: pages.map((p) => ({ id: p.id, name: p.name, hasPageToken: Boolean(p.access_token), instagram: p.instagram_business_account?.id || null })) });
   return pages.map((p) => ({
     page_id: String(p.id),
     name: p.name,

@@ -1,4 +1,5 @@
 import type { Platform as PublishPlatform, PublishAccount, WizardState } from '../components/publish/types';
+import { oauthLog } from './oauthDebug';
 
 export interface User {
   id: string | number;
@@ -933,8 +934,20 @@ export async function getConnectUrl(token: string, kind: 'instagram' | 'facebook
     : kind === 'youtube' ? 'google/connect-url'
       : 'linkedin/connect-url';
   const extra = kind === 'linkedin_person' ? '&type=person' : '';
-  const data = await publishJson<{ url: string }>(token, 'GET', `${path}?origin=${origin}&returnTo=${back}${extra}`);
-  return data.url;
+  oauthLog('connect_url.request', { kind, origin: window.location.origin, returnTo, endpoint: `${API_BASE}/${path}` });
+  try {
+    const data = await publishJson<{ url: string; flowId?: string }>(token, 'GET', `${path}?origin=${origin}&returnTo=${back}${extra}`);
+    const u = new URL(data.url);
+    oauthLog('connect_url.received', {
+      flowId: data.flowId, host: u.host, path: u.pathname,
+      client_id: u.searchParams.get('client_id'), redirect_uri: u.searchParams.get('redirect_uri'),
+      scope: u.searchParams.get('scope'), config_id: u.searchParams.get('config_id'),
+    });
+    return data.url;
+  } catch (err) {
+    oauthLog('connect_url.failed', { kind, error: err instanceof Error ? err.message : String(err), status: (err as { status?: number }).status });
+    throw err;
+  }
 }
 
 export interface FacebookPage { id: string; page_id: string; name: string; picture_url: string | null; ig_user_id: string | null; created_at: string }

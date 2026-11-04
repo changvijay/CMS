@@ -19,6 +19,7 @@ import {
   type YoutubeAccount,
 } from '../services/api';
 import { PlatformIcon } from './publish/PlatformIcon';
+import { oauthLog, oauthReplayOnReturn } from '../services/oauthDebug';
 import '../assets/css/workspace.css';
 
 type Kind = 'instagram' | 'facebook' | 'youtube' | 'linkedin';
@@ -58,8 +59,11 @@ function useSection<T>(token: string, kind: Kind, load: () => Promise<T>) {
   const connect = async (k: Parameters<typeof getConnectUrl>[1] = kind) => {
     setBusy(true);
     setError(null);
+    oauthLog('connect.click', { kind: k, page: window.location.href });
     try {
-      window.location.href = await getConnectUrl(token, k, '/accounts');
+      const url = await getConnectUrl(token, k, '/accounts');
+      oauthLog('connect.redirecting', { to: url.replace(/state=[^&]+/, 'state=<jwt>') });
+      window.location.href = url;
     } catch (err) {
       setError(err instanceof Error ? err.message : `Could not start ${LABEL[kind]} sign-in`);
       setBusy(false);
@@ -393,6 +397,7 @@ export default function Accounts({ token }: { token: string }) {
 
   // Each section has read its "?instagram=connected" message on first render; tidy the URL so a refresh doesn't repeat it.
   useEffect(() => {
+    oauthReplayOnReturn();
     if (window.location.search) window.history.replaceState(null, '', window.location.pathname);
   }, []);
 
