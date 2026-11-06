@@ -33,14 +33,14 @@ describe('pruneInsights', () => {
     const result = await pruneInsights({ db, today: '2026-11-05' });
     expect(result.cutoff).toBe('2026-10-06');
     const sql = db.query.mock.calls.map(([q]) => q);
-    for (const table of ['ig_daily_metrics', 'yt_daily_metrics', 'li_daily_metrics']) {
+    for (const table of ['ig_daily_metrics', 'yt_daily_metrics', 'li_daily_metrics', 'fb_daily_metrics']) {
       expect(sql).toContainEqual(`DELETE FROM ${table} WHERE metric_date < $1`);
     }
-    expect(db.query.mock.calls.filter(([, params]) => params?.[0] === '2026-10-06')).toHaveLength(4);
+    expect(db.query.mock.calls.filter(([, params]) => params?.[0] === '2026-10-06')).toHaveLength(5);
     expect(sql.some((q) => q.includes('n.captured_on > s.captured_on'))).toBe(true);
-    expect(sql.filter((q) => q.includes('NOT EXISTS'))).toHaveLength(3);
+    expect(sql.filter((q) => q.includes('NOT EXISTS'))).toHaveLength(4);
     expect(result.deleted).toEqual({
-      ig_daily_metrics: 2, yt_daily_metrics: 2, li_daily_metrics: 2, media_snapshots: 2, orphaned_snapshots: 6, oauth_log: 2,
+      ig_daily_metrics: 2, yt_daily_metrics: 2, li_daily_metrics: 2, fb_daily_metrics: 2, media_snapshots: 2, orphaned_snapshots: 8, oauth_log: 2,
     });
   });
 });

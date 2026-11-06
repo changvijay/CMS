@@ -336,6 +336,9 @@ ALTER TABLE instagram_accounts ADD COLUMN IF NOT EXISTS last_refresh_failed_at T
 ALTER TABLE linkedin_accounts ADD COLUMN IF NOT EXISTS last_refresh_failed_at TIMESTAMPTZ;
 -- Set when LinkedIn rejects the token and renewing with the refresh token fails too: the user must reconnect
 ALTER TABLE linkedin_accounts ADD COLUMN IF NOT EXISTS token_invalid_at TIMESTAMPTZ;
+-- The LinkedIn app (client id) that issued the stored tokens. A refresh token only works with that app, so a copy of
+-- this site running with a different LinkedIn app (sharing the database) must not try to renew or flag them.
+ALTER TABLE linkedin_accounts ADD COLUMN IF NOT EXISTS client_id VARCHAR(100);
 ALTER TABLE instagram_accounts ADD COLUMN IF NOT EXISTS profile_picture_url TEXT;
 
 -- Step-by-step log of Connect Instagram / Connect Facebook attempts, shown on the Accounts page.
@@ -352,3 +355,38 @@ CREATE TABLE IF NOT EXISTS oauth_log (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS oauth_log_user_idx ON oauth_log (user_id, id DESC);
+
+-- ---------------------------------------------------------------------------
+-- Facebook Page insights: one row per Page per day (same idea as ig_/yt_/li_daily_metrics).
+-- NULL = Facebook did not return that metric; 0 = it did, and nothing happened that day.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS fb_daily_metrics (
+    account_id BIGINT NOT NULL REFERENCES facebook_pages(id) ON DELETE CASCADE,
+    metric_date DATE NOT NULL,
+    views BIGINT,                  -- page_media_view
+    reach BIGINT,                  -- page_total_media_view_unique
+    engagements BIGINT,            -- page_post_engagements
+    reactions BIGINT,              -- page_actions_post_reactions_total (all types)
+    follows BIGINT,
+    unfollows BIGINT,
+    followers_total BIGINT,        -- running total at the end of the day
+    page_visits BIGINT,
+    actions BIGINT,                -- clicks on contact info / call-to-action button
+    new_conversations BIGINT,
+    video_views BIGINT,
+    video_views_organic BIGINT,
+    video_views_paid BIGINT,
+    video_autoplayed BIGINT,
+    video_click_to_play BIGINT,
+    video_complete_30s BIGINT,
+    video_repeat_views BIGINT,
+    watch_minutes NUMERIC,
+    views_followers BIGINT,        -- page_media_view broken down by is_from_followers
+    views_non_followers BIGINT,
+    views_organic BIGINT,          -- page_media_view broken down by is_from_ads
+    views_ads BIGINT,
+    reactions_by_type JSONB,       -- e.g. {"like": 3, "love": 1}
+    synced_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (account_id, metric_date)
+);
+CREATE INDEX IF NOT EXISTS idx_fb_daily_date ON fb_daily_metrics(metric_date);

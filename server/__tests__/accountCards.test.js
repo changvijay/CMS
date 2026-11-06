@@ -103,3 +103,16 @@ describe('combineByDate', () => {
       .toEqual([{ date: 'd', views: 9, interactions: 5, net_followers: 2 }]);
   });
 });
+
+describe('facebook account card', () => {
+  it('builds a card from live Facebook rows', async () => {
+    const { buildAccountCards } = await import('../services/accountCards.js');
+    const rows = { facebook: [
+      { account_id: '5', views: 100, reach: 40, engagements: 10, page_visits: 3, follows: 4, unfollows: 1 },
+      { account_id: '5', views: 50, reach: 20, engagements: 5, page_visits: 1, follows: 0, unfollows: 0 },
+    ] };
+    const [card] = buildAccountCards({ facebook: [{ id: 5, name: 'My Page' }] }, rows, { facebook: [] });
+    expect(card).toMatchObject({ platform: 'facebook', name: 'My Page', days_with_data: 2, series: [100, 50] });
+    expect(card.totals).toEqual({ views: 150, reach: 60, engagements: 15, net_followers: 3, page_visits: 4, engagement_rate: 10 });
+  });
+});

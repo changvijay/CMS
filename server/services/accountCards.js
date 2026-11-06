@@ -18,6 +18,17 @@ export function shapeCardMetrics(platform, row) {
       engagement_rate: rate(n(r.likes) + n(r.comments) + n(r.saves) + n(r.shares), views),
     };
   }
+  if (platform === 'facebook') {
+    const views = n(r.views);
+    return {
+      views,
+      reach: n(r.reach),
+      engagements: n(r.engagements),
+      net_followers: n(r.net_followers),
+      page_visits: n(r.page_visits),
+      engagement_rate: rate(n(r.engagements), views),
+    };
+  }
   if (platform === 'linkedin') {
     const impressions = n(r.impressions);
     const interactions = n(r.likes) + n(r.comments) + n(r.shares) + n(r.clicks);
@@ -47,7 +58,7 @@ export function buildAccountCard({ platform, account, current, previous, series 
   return {
     platform,
     id: account.id,
-    name: platform === 'youtube' ? account.channel_name : account.page_name,
+    name: platform === 'youtube' ? account.channel_name : platform === 'facebook' ? account.name : account.page_name,
     days_with_data: n(current?.days),
     totals,
     deltas: computeDeltas(totals, prev),
@@ -67,6 +78,12 @@ export function aggregateCardRow(platform, rows) {
       likes: sum(rows, 'likes'), comments: sum(rows, 'comments'), saves: sum(rows, 'saves'), shares: sum(rows, 'shares'),
     };
   }
+  if (platform === 'facebook') {
+    return {
+      ...base, views: sum(rows, 'views'), reach: sum(rows, 'reach'), engagements: sum(rows, 'engagements'),
+      page_visits: sum(rows, 'page_visits'), net_followers: sum(rows, 'follows') - sum(rows, 'unfollows'),
+    };
+  }
   if (platform === 'linkedin') {
     return {
       ...base, impressions: sum(rows, 'impressions'), clicks: sum(rows, 'clicks'), likes: sum(rows, 'likes'),
@@ -84,7 +101,7 @@ export function aggregateCardRow(platform, rows) {
   };
 }
 
-const SERIES_COLUMN = { instagram: 'views', youtube: 'views', linkedin: 'impressions' };
+const SERIES_COLUMN = { instagram: 'views', youtube: 'views', linkedin: 'impressions', facebook: 'views' };
 
 /**
  * One card per connected account, in the order given. Accounts with no data still get a card.

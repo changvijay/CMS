@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { fetchBestTime, type BestTimeResponse } from '../services/api';
 import { Heatmap } from './charts/Heatmap';
 import { WEEKDAYS } from './charts/viz';
+import { SectionSkeleton } from './Skeleton';
 
 function hourText(h: number): string {
   return `${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 ? 'AM' : 'PM'}`;
@@ -38,7 +39,7 @@ export function InstagramAudience({ token, accountId }: { token: string; account
     <section className="viz-panel">
       <h3>Best time to post</h3>
       <p className="ws-sub">When your followers are online, averaged by weekday and hour (hours as reported by Instagram).</p>
-      {loading && <div className="trends-loading"><div className="spinner" /></div>}
+      {loading && <SectionSkeleton variant="chart" />}
       {error && <div className="error-banner"><span>{error}</span></div>}
       {!loading && data && data.days_sampled === 0 && (
         <p className="trends-empty-inline">Instagram returned no follower-activity data. This metric needs an account with at least 100 followers.</p>

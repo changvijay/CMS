@@ -108,6 +108,11 @@
   color: #b42318;
 }
 
+.platform-tab.facebook-active {
+  background: #e7f0fd;
+  color: #0b5ccc;
+}
+
 .platform-tab.linkedin-active {
   background: #e8f3ff;
   color: #004182;

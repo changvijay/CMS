@@ -8,6 +8,7 @@ import { PLATFORM_LABEL, nativelyScheduled, postTypeInfo } from './platforms';
 import { buildFields, emptyDraft } from './mapping';
 import { validateAutoReply, validateDraft, validateSchedule } from './validate';
 import type { AutoReplySettings, Platform, PlatformDraft, PostType, PublishAccount, SharedFields } from './types';
+import { SectionSkeleton } from '../Skeleton';
 
 const LABELS: Record<string, string> = {
   caption: 'Caption', message: 'Message', commentary: 'Text', title: 'Title', description: 'Description', link: 'Link', tags: 'Tags',
@@ -154,7 +155,7 @@ export function PostProgress({ token, postId }: { token: string; postId: string 
   const load = () => setTick((n) => n + 1);
 
   if (error && !data) return <div className="error-banner"><span>{error}</span></div>;
-  if (!data) return <div className="trends-loading"><div className="spinner" /></div>;
+  if (!data) return <SectionSkeleton variant="list" rows={3} />;
   const names = data.post.wizard_state?.accountNames ?? {};
   const retry = async (id: string) => {
     try {

@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { fetchInstagramDemographics, type DemographicResult, type InstagramDemographics } from '../../services/api';
 import { RankedBars } from '../charts/RankedBars';
 import { errorMessage } from '../../utils/errors';
+import { SectionSkeleton } from '../Skeleton';
 
 function Panel({ title, result, children }: { title: string; result: DemographicResult; children: (rows: { label: string; value: number }[]) => ReactNode }) {
   return (
@@ -63,7 +64,7 @@ export function InstagramDemographicsPanel({ token, accountId, type = 'follower'
     };
   }, [token, accountId, type]);
 
-  if (loading) return <div className="trends-loading"><div className="spinner" /></div>;
+  if (loading) return <SectionSkeleton variant="bars" rows={6} />;
   if (error) return <div className="error-banner"><span>{error}</span></div>;
   if (!data) return null;
 

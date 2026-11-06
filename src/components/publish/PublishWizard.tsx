@@ -14,6 +14,7 @@ import { PLATFORM_LABEL } from './platforms';
 import { buildFields, emptyDraft } from './mapping';
 import { hasErrors, scheduleIso, validateAutoReply, validateDraft, validateSchedule } from './validate';
 import type { AutoReplySettings, Issue, MediaItem, Platform, PlatformDraft, PublishAccount, SharedFields, StepId, WizardState } from './types';
+import { SectionSkeleton } from '../Skeleton';
 
 const STEP_TITLE: Record<StepId, string> = { platforms: 'Platform', accounts: 'Account', content: 'Content', autoreply: 'Auto reply', review: 'Review' };
 
@@ -248,7 +249,7 @@ export default function PublishWizard({ token }: { token: string }) {
 
   // A plain /publish is always a fresh wizard, whatever the last post was.
   const view = postId ? mode : 'wizard';
-  if (view === 'loading') return <div className="session-loader"><div className="spinner large" /></div>;
+  if (view === 'loading') return <div className="sk-page"><SectionSkeleton variant="list" rows={4} label="Loading your post…" /></div>;
 
   return (
     <div className="ws pf-page">

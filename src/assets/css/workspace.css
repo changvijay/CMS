@@ -486,3 +486,25 @@ select:focus, input:focus, textarea:focus { border-color: var(--accent); outline
 .oauth-step-time, .oauth-step-server { color: #667085; font-weight: 400; }
 .oauth-step-name { overflow-wrap: anywhere; }
 .oauth-steps pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; background: rgba(127,127,127,0.08); padding: 8px; border-radius: 6px; margin: 4px 0 8px; }
+
+/* Facebook Page insights */
+.platform-facebook { --accent: #1877f2; --accent-soft: #e7f0fd; --accent-ink: #0b5ccc; }
+.fb-post-cell { display: flex; align-items: center; gap: 10px; min-width: 240px; }
+.fb-post-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+
+/* ----- "Update data" results, one line per account ----- */
+.sync-report { background: #fff; border: 1px solid var(--border-color); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; box-shadow: var(--shadow-card); }
+.sync-report.has-problems { border-color: #fecdca; }
+.sync-report-head { font-weight: 600; color: var(--text-primary); margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.sync-report-head span { font-weight: 500; color: var(--text-muted); font-size: 0.85rem; }
+.sync-report ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.sync-report li { display: flex; gap: 10px; align-items: flex-start; }
+.sync-report li p { color: var(--text-secondary); font-size: 0.88rem; margin-top: 2px; }
+.sync-report li b { color: var(--text-primary); font-size: 0.92rem; }
+.sync-report li a { color: var(--accent-primary); font-weight: 600; white-space: nowrap; }
+.sync-report .sync-detail { color: var(--text-muted); font-size: 0.78rem; }
+.sync-icon { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; margin-top: 1px; }
+.sync-ok .sync-icon { background: #ecfdf3; color: #067647; }
+.sync-auth .sync-icon { background: #fffaeb; color: #b54708; }
+.sync-fail .sync-icon { background: #fef3f2; color: #b42318; }
+.sync-running { display: flex; align-items: center; gap: 10px; }

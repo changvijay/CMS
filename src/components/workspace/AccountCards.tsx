@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import type { AccountCard, MetricDelta, Platform } from '../../services/api';
+import type { AccountCard, MetricDelta, OverviewPlatform } from '../../services/api';
 import { Sparkline } from '../charts/KpiCard';
 import { formatCompact, formatPercent } from '../charts/viz';
 
@@ -9,7 +9,7 @@ interface Kpi {
   format: 'n' | 'pct';
 }
 
-const KPIS: Record<Platform, Kpi[]> = {
+const KPIS: Record<OverviewPlatform, Kpi[]> = {
   instagram: [
     { key: 'reach', label: 'Reach', format: 'n' },
     { key: 'views', label: 'Views', format: 'n' },
@@ -34,10 +34,18 @@ const KPIS: Record<Platform, Kpi[]> = {
     { key: 'page_views', label: 'Page views', format: 'n' },
     { key: 'engagement_rate', label: 'Engagement rate', format: 'pct' },
   ],
+  facebook: [
+    { key: 'views', label: 'Views', format: 'n' },
+    { key: 'reach', label: 'Reach', format: 'n' },
+    { key: 'engagements', label: 'Engagements', format: 'n' },
+    { key: 'net_followers', label: 'Net followers', format: 'n' },
+    { key: 'page_visits', label: 'Page visits', format: 'n' },
+    { key: 'engagement_rate', label: 'Engagement rate', format: 'pct' },
+  ],
 };
 
-const PLATFORM_NAME: Record<Platform, string> = { instagram: 'Instagram', youtube: 'YouTube', linkedin: 'LinkedIn' };
-const PLATFORM_COLOR: Record<Platform, string> = { instagram: 'var(--series-1)', youtube: 'var(--series-2)', linkedin: 'var(--series-3)' };
+const PLATFORM_NAME: Record<OverviewPlatform, string> = { instagram: 'Instagram', youtube: 'YouTube', linkedin: 'LinkedIn', facebook: 'Facebook' };
+const PLATFORM_COLOR: Record<OverviewPlatform, string> = { instagram: 'var(--series-1)', youtube: 'var(--series-2)', linkedin: 'var(--series-3)', facebook: 'var(--series-4)' };
 
 function Delta({ delta }: { delta?: MetricDelta }) {
   const pct = delta?.change_pct;

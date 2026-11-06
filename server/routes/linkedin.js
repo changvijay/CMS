@@ -85,16 +85,17 @@ export function createLinkedInRouter(authenticateToken, jwtSecret) {
         const me = await fetchMember(tokens.access_token);
         await pool.query(
           `INSERT INTO linkedin_accounts
-             (user_id, member_id, name, email, picture_url, access_token, access_token_expires_at, refresh_token, refresh_token_expires_at, scope, account_type)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'person')
+             (user_id, member_id, name, email, picture_url, access_token, access_token_expires_at, refresh_token, refresh_token_expires_at, scope, account_type, client_id)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'person',$11)
            ON CONFLICT (user_id, member_id) DO UPDATE SET
              name = EXCLUDED.name, email = EXCLUDED.email, picture_url = EXCLUDED.picture_url,
              access_token = EXCLUDED.access_token, access_token_expires_at = EXCLUDED.access_token_expires_at,
              refresh_token = COALESCE(EXCLUDED.refresh_token, linkedin_accounts.refresh_token),
              refresh_token_expires_at = COALESCE(EXCLUDED.refresh_token_expires_at, linkedin_accounts.refresh_token_expires_at),
-             scope = EXCLUDED.scope, account_type = 'person', last_refresh_error = NULL, last_refresh_failed_at = NULL, token_invalid_at = NULL, updated_at = NOW()`,
+             scope = EXCLUDED.scope, account_type = 'person', client_id = EXCLUDED.client_id,
+             last_refresh_error = NULL, last_refresh_failed_at = NULL, token_invalid_at = NULL, updated_at = NOW()`,
           [payload.uid, `urn:li:person:${me.sub}`, me.name || 'LinkedIn profile', me.email || null, me.picture || null,
-            tokens.access_token, personExpires, tokens.refresh_token || null, personRefreshExpires, tokens.scope || PERSON_SCOPES.join(' ')]
+            tokens.access_token, personExpires, tokens.refresh_token || null, personRefreshExpires, tokens.scope || PERSON_SCOPES.join(' '), linkedinConfig().clientId]
         );
         return finish({ linkedin: 'connected', name: me.name || 'your profile' });
       }
@@ -109,8 +110,8 @@ export function createLinkedInRouter(authenticateToken, jwtSecret) {
       for (const page of pages) {
         await pool.query(
           `INSERT INTO linkedin_accounts
-             (user_id, member_id, name, vanity_name, access_token, access_token_expires_at, refresh_token, refresh_token_expires_at, scope)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             (user_id, member_id, name, vanity_name, access_token, access_token_expires_at, refresh_token, refresh_token_expires_at, scope, client_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
            ON CONFLICT (user_id, member_id) DO UPDATE SET
              name = EXCLUDED.name,
              vanity_name = EXCLUDED.vanity_name,
@@ -119,10 +120,11 @@ export function createLinkedInRouter(authenticateToken, jwtSecret) {
              refresh_token = COALESCE(EXCLUDED.refresh_token, linkedin_accounts.refresh_token),
              refresh_token_expires_at = COALESCE(EXCLUDED.refresh_token_expires_at, linkedin_accounts.refresh_token_expires_at),
              scope = EXCLUDED.scope,
+             client_id = EXCLUDED.client_id,
              last_refresh_error = NULL, last_refresh_failed_at = NULL, token_invalid_at = NULL,
              updated_at = NOW()`,
           [payload.uid, page.urn, page.name, page.vanityName, tokens.access_token, accessExpiresAt,
-            tokens.refresh_token || null, refreshExpiresAt, tokens.scope || null]
+            tokens.refresh_token || null, refreshExpiresAt, tokens.scope || null, linkedinConfig().clientId]
         );
       }
       // Drop the placeholder row left by the earlier personal-account version, if any.

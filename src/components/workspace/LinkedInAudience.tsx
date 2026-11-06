@@ -13,6 +13,7 @@ import { RankedBars } from '../charts/RankedBars';
 import { formatCompact, formatShortDate } from '../charts/viz';
 import { errorMessage } from '../../utils/errors';
 import { Panel, StatTiles } from './ui';
+import { DashboardSkeleton } from '../Skeleton';
 
 interface Props {
   token: string;
@@ -109,7 +110,7 @@ export function LinkedInAudience({ token, accountId, since, until }: Props) {
   }, [token, accountId, since, until]);
 
   if (error) return <div className="error-banner" role="alert"><span>{error}</span></div>;
-  if (!followers || !visitors) return <div className="trends-loading"><div className="spinner large" /></div>;
+  if (!followers || !visitors) return <DashboardSkeleton kpis={3} label="Loading audience…" />;
 
   const gained = isUnavailable(followers.growth) ? null : followers.growth.reduce((a, g) => a + g.organic + g.paid, 0);
   const mobile = !isUnavailable(visitors) ? visitors.devices.find((d) => d.label === 'Mobile')?.value ?? 0 : 0;

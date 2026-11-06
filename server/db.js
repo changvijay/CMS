@@ -241,6 +241,12 @@ export async function getLinkedInAccountsByUserId(userId) {
   return res.rows;
 }
 
+export async function getAllFacebookPages() {
+  if (!isDbConnected) return [];
+  const res = await pool.query('SELECT id, user_id, page_id, name, picture_url, page_access_token FROM facebook_pages');
+  return res.rows;
+}
+
 export async function getAllLinkedInAccounts() {
   if (!isDbConnected) return [];
   const res = await pool.query(`SELECT ${LINKEDIN_COLUMNS} FROM linkedin_accounts WHERE member_id LIKE 'urn:li:organization:%'`);

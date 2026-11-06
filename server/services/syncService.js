@@ -7,6 +7,10 @@ import { fetchDailyStats, fetchPostSnapshots } from './linkedinApi.js';
 import { addDays, dateRange, istDateString, istDayWindowSeconds } from '../utils/dates.js';
 import { INSIGHTS_RETENTION_DAYS } from './retention.js';
 
+import {
+  FB_DAILY_COLUMNS, fetchPageDailyFull, fetchPagePosts, fetchPageReels, invalidateFacebookPage,
+} from './facebookInsights.js';
+
 const IG_DAILY_METRICS = 'reach,views,likes,comments,saves,shares,replies,reposts,total_interactions,accounts_engaged,profile_links_taps';
 const IG_DAILY_FALLBACK = 'reach,views,likes,comments,saves,shares,total_interactions,accounts_engaged';
 
@@ -104,7 +108,7 @@ export async function upsertDaily(table, columns, accountId, rows, { keepExistin
   const width = columns.length + 2;
   const values = [];
   const tuples = rows.map((r, i) => {
-    values.push(accountId, r.metric_date, ...columns.map((c) => r[c] ?? null));
+    values.push(accountId, r.metric_date, ...columns.map((c) => (r[c] !== null && typeof r[c] === 'object' && !(r[c] instanceof Date) ? JSON.stringify(r[c]) : r[c] ?? null)));
     return `(${Array.from({ length: width }, (_, j) => `$${i * width + j + 1}`).join(',')},NOW())`;
   });
   const set = columns.map((c) => (keepExisting ? `${c} = COALESCE(EXCLUDED.${c}, ${table}.${c})` : `${c} = EXCLUDED.${c}`));
@@ -119,7 +123,7 @@ const SNAPSHOT_COLUMNS = ['title', 'media_type', 'permalink', 'thumbnail_url', '
   'saves', 'shares', 'reposts', 'total_interactions', 'profile_visits', 'follows', 'replies', 'link_clicks', 'skip_rate',
   'avg_watch_seconds', 'total_watch_seconds', 'duration_seconds', 'extra'];
 
-async function upsertMediaSnapshots(platform, accountId, capturedOn, rows) {
+export async function upsertMediaSnapshots(platform, accountId, capturedOn, rows) {
   if (!rows.length) return;
   const cols = ['platform', 'account_id', 'media_id', 'captured_on', ...SNAPSHOT_COLUMNS];
   const updates = SNAPSHOT_COLUMNS.map((c) => `${c}=EXCLUDED.${c}`).join(', ');
@@ -311,4 +315,48 @@ export async function syncLinkedInAccount(account, { days = INSIGHTS_RETENTION_D
   const posts = await fetchPostSnapshots(accessToken, account.page_id, Math.min(mediaLimit, 100));
   await upsertMediaSnapshots('linkedin', account.id, today, posts);
   return { platform: 'linkedin', account_id: account.id, days_synced: daily.length, media_snapshots: posts.length };
+}
+
+// ---------------------------------------------------------------------------
+// Facebook
+// ---------------------------------------------------------------------------
+
+/** A Facebook post in media_snapshots' shape. Extra per-post numbers ride along in `extra`. */
+export function postSnapshot(p) {
+  return {
+    media_id: p.id, title: p.message, media_type: p.type || 'post', permalink: p.permalink, thumbnail_url: p.picture,
+    published_at: p.created_time, reach: p.reach, views: p.views, likes: p.reactions, comments: p.comments, shares: p.shares,
+    total_interactions: p.interactions, link_clicks: p.clicks, avg_watch_seconds: p.avg_watch_seconds,
+    extra: { reactions_by_type: p.reactions_by_type, video_views: p.video_views, engagement_rate: p.engagement_rate },
+  };
+}
+
+/** A Facebook reel in media_snapshots' shape (media_type REEL; views = plays). */
+export function reelSnapshot(r) {
+  return {
+    media_id: r.id, title: r.description, media_type: 'REEL', permalink: r.permalink, thumbnail_url: r.picture,
+    published_at: r.created_time, views: r.plays, likes: r.reactions, comments: r.comments, shares: r.shares,
+    total_interactions: r.reactions + r.comments + r.shares, follows: r.followers_gained, avg_watch_seconds: r.avg_watch_seconds,
+    total_watch_seconds: r.watch_minutes === null ? null : Math.round(r.watch_minutes * 60), duration_seconds: r.length_seconds === null ? null : Math.round(r.length_seconds),
+    extra: { initial_plays: r.initial_plays, replays: r.replays },
+  };
+}
+
+/** Saves a Facebook Page's last `days` days of insights, plus its posts and reels from that window. */
+export async function syncFacebookPage(page, { days = INSIGHTS_RETENTION_DAYS } = {}) {
+  const { today, start, end } = syncWindow(days);
+  // The daily numbers decide success: a broken Page token fails here and nothing half-saved is left behind.
+  const { rows } = await fetchPageDailyFull(page, start, end);
+  await upsertDaily('fb_daily_metrics', FB_DAILY_COLUMNS, page.id, rows);
+
+  // Posts and reels cover the whole stored window, so the Content tab works for any preset range.
+  const { start: mediaStart } = syncWindow(INSIGHTS_RETENTION_DAYS);
+  const [posts, reels] = await Promise.all([fetchPagePosts(page, mediaStart, end), fetchPageReels(page, mediaStart, end)]);
+  const media = [...(posts.posts || []).map(postSnapshot), ...(reels.reels || []).map(reelSnapshot)];
+  await upsertMediaSnapshots('facebook', page.id, today, media);
+  invalidateFacebookPage(page);
+  return {
+    platform: 'facebook', account_id: page.id, days_synced: rows.length,
+    media_snapshots: (posts.posts || []).length, reels: (reels.reels || []).length,
+  };
 }

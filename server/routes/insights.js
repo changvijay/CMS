@@ -7,6 +7,8 @@ import { buildAccountCards } from '../services/accountCards.js';
 import { loadDaily } from '../services/dailyInsights.js';
 import { loadPrevious, wantsLive } from './history.js';
 import { addDays, daysBetween, resolveRange } from '../utils/dates.js';
+import { loadFacebookDaily } from '../services/facebookInsights.js';
+import { getFacebookPagesByUserId } from './facebookInsights.js';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -21,7 +23,22 @@ const COMBINED = {
     interactions: v(r.likes) + v(r.comments) + v(r.shares) + v(r.clicks),
     net_followers: v(r.organic_follower_gain) + v(r.paid_follower_gain),
   }),
+  facebook: (r) => ({ views: v(r.views), interactions: v(r.engagements), net_followers: v(r.follows) - v(r.unfollows) }),
 };
+
+/** Facebook days for every Page: saved ones for the stored window, live otherwise. One failing Page doesn't hide the rest. */
+async function loadFacebookPagesDaily(pages, since, until, errors, live = false, past = false) {
+  const perPage = await Promise.all(pages.map(async (page) => {
+    try {
+      const { rows } = await loadFacebookDaily(page, since, until, { live, past });
+      return rows.map((r) => ({ ...r, account_id: String(page.id) }));
+    } catch (err) {
+      errors?.push({ platform: 'facebook', account_id: page.id, code: err.status || 502, message: err.message });
+      return [];
+    }
+  }));
+  return perPage.flat();
+}
 
 /** Daily rows of several accounts -> one row per date with the combined numbers, oldest first. */
 export function combineByDate(platform, rows) {
@@ -119,10 +136,11 @@ export function createInsightsRouter(authenticateToken) {
       const prevUntil = addDays(since, -1);
       const prevSince = addDays(prevUntil, -(span - 1));
 
-      const [igAccounts, ytAccounts, liAccounts] = await Promise.all([
+      const [igAccounts, ytAccounts, liAccounts, fbPages] = await Promise.all([
         getInstagramAccountsByUserId(req.user.userId),
         getYoutubeAccountsByUserId(req.user.userId),
         getLinkedInAccountsByUserId(req.user.userId),
+        getFacebookPagesByUserId(req.user.userId),
       ]);
       const igIds = igAccounts.map((a) => Number(a.id));
       const ytIds = ytAccounts.map((a) => Number(a.id));
@@ -131,7 +149,8 @@ export function createInsightsRouter(authenticateToken) {
       const live = wantsLive(req.query.live);
 
       const platforms = Object.keys(accountsByPlatform);
-      const [currentSets, previousSets, media] = await Promise.all([
+      const fbErrors = [];
+      const [currentSets, previousSets, media, fbCurrent, fbPrevious] = await Promise.all([
         Promise.all(platforms.map((p) => loadDaily(p, accountsByPlatform[p], since, until, { live }))),
         Promise.all(platforms.map((p) => loadPrevious(p, accountsByPlatform[p], prevSince, prevUntil))),
         pool.query(
@@ -140,32 +159,40 @@ export function createInsightsRouter(authenticateToken) {
             WHERE (platform = 'instagram' AND account_id = ANY($1)) OR (platform = 'youtube' AND account_id = ANY($2))
                OR (platform = 'linkedin' AND account_id = ANY($3))
             ORDER BY platform, account_id, media_id, captured_on DESC`, [igIds, ytIds, liIds]),
+        loadFacebookPagesDaily(fbPages, since, until, fbErrors, live),
+        loadFacebookPagesDaily(fbPages, prevSince, prevUntil, null, false, true),
       ]);
       const current = Object.fromEntries(platforms.map((p, i) => [p, currentSets[i].rows]));
       const previousRows = Object.fromEntries(platforms.map((p, i) => [p, previousSets[i]]));
-      const fetchErrors = currentSets.flatMap((set) => set.errors);
+      current.facebook = fbCurrent;
+      previousRows.facebook = fbPrevious;
+      const fetchErrors = [...currentSets.flatMap((set) => set.errors), ...fbErrors];
       const source = currentSets.some((set) => set.source === 'live') ? 'live' : 'stored';
 
       const keys = ['views', 'interactions', 'net_followers'];
       const igRows = combineByDate('instagram', current.instagram);
       const ytRows = combineByDate('youtube', current.youtube);
       const liRows = combineByDate('linkedin', current.linkedin);
+      const fbRows = combineByDate('facebook', current.facebook);
       const totals = {
         instagram: sumMetrics(igRows, keys),
         youtube: sumMetrics(ytRows, keys),
         linkedin: sumMetrics(liRows, keys),
+        facebook: sumMetrics(fbRows, keys),
       };
       const previous = {
         instagram: sumMetrics(combineByDate('instagram', previousRows.instagram), keys),
         youtube: sumMetrics(combineByDate('youtube', previousRows.youtube), keys),
         linkedin: sumMetrics(combineByDate('linkedin', previousRows.linkedin), keys),
+        facebook: sumMetrics(combineByDate('facebook', previousRows.facebook), keys),
       };
-      const combined = Object.fromEntries(keys.map((k) => [k, totals.instagram[k] + totals.youtube[k] + totals.linkedin[k]]));
-      const combinedPrev = Object.fromEntries(keys.map((k) => [k, previous.instagram[k] + previous.youtube[k] + previous.linkedin[k]]));
+      const ALL = ['instagram', 'youtube', 'linkedin', 'facebook'];
+      const combined = Object.fromEntries(keys.map((k) => [k, ALL.reduce((a, p) => a + totals[p][k], 0)]));
+      const combinedPrev = Object.fromEntries(keys.map((k) => [k, ALL.reduce((a, p) => a + previous[p][k], 0)]));
 
       const byDate = new Map();
-      const blank = (date) => ({ date, instagram_views: 0, youtube_views: 0, linkedin_views: 0 });
-      for (const [rows, key] of [[igRows, 'instagram_views'], [ytRows, 'youtube_views'], [liRows, 'linkedin_views']]) {
+      const blank = (date) => ({ date, instagram_views: 0, youtube_views: 0, linkedin_views: 0, facebook_views: 0 });
+      for (const [rows, key] of [[igRows, 'instagram_views'], [ytRows, 'youtube_views'], [liRows, 'linkedin_views'], [fbRows, 'facebook_views']]) {
         for (const r of rows) byDate.set(r.date, { ...(byDate.get(r.date) || blank(r.date)), [key]: r.views });
       }
       const daily = [...byDate.values()].sort((a, b) => (a.date < b.date ? -1 : 1));
@@ -187,14 +214,14 @@ export function createInsightsRouter(authenticateToken) {
         insights.push(`Combined views ${viewsDelta.change_pct >= 0 ? 'up' : 'down'} ${Math.abs(viewsDelta.change_pct)}% vs the previous ${span} days.`);
       }
       if (combined.views > 0) {
-        const [lead, leadViews] = [['Instagram', totals.instagram.views], ['YouTube', totals.youtube.views], ['LinkedIn', totals.linkedin.views]]
+        const [lead, leadViews] = [['Instagram', totals.instagram.views], ['YouTube', totals.youtube.views], ['LinkedIn', totals.linkedin.views], ['Facebook', totals.facebook.views]]
           .sort((a, b) => b[1] - a[1])[0];
         insights.push(`${lead} drives ${Math.round((leadViews / combined.views) * 100)}% of views.`);
       }
       const dayTotals = new Map();
       for (const d of daily) {
         const weekday = new Date(`${d.date}T00:00:00Z`).getUTCDay();
-        dayTotals.set(weekday, (dayTotals.get(weekday) || 0) + d.instagram_views + d.youtube_views + d.linkedin_views);
+        dayTotals.set(weekday, (dayTotals.get(weekday) || 0) + d.instagram_views + d.youtube_views + d.linkedin_views + d.facebook_views);
       }
       if (dayTotals.size) {
         const [bestDay] = [...dayTotals.entries()].sort((a, b) => b[1] - a[1])[0];
@@ -206,17 +233,18 @@ export function createInsightsRouter(authenticateToken) {
         source,
         errors: fetchErrors,
         range: { since, until, days: span, previous_since: prevSince, previous_until: prevUntil },
-        accounts: { instagram: igAccounts.length, youtube: ytAccounts.length, linkedin: liAccounts.length },
-        coverage: { instagram_days: igRows.length, youtube_days: ytRows.length, linkedin_days: liRows.length },
+        accounts: { instagram: igAccounts.length, youtube: ytAccounts.length, linkedin: liAccounts.length, facebook: fbPages.length },
+        coverage: { instagram_days: igRows.length, youtube_days: ytRows.length, linkedin_days: liRows.length, facebook_days: fbRows.length },
         totals: { ...totals, combined },
         deltas: {
           instagram: computeDeltas(totals.instagram, previous.instagram),
           youtube: computeDeltas(totals.youtube, previous.youtube),
           linkedin: computeDeltas(totals.linkedin, previous.linkedin),
+          facebook: computeDeltas(totals.facebook, previous.facebook),
           combined: computeDeltas(combined, combinedPrev),
         },
         daily,
-        account_cards: buildAccountCards(accountsByPlatform, current, previousRows),
+        account_cards: buildAccountCards({ ...accountsByPlatform, facebook: fbPages }, current, previousRows),
         leaderboard,
         insights,
       });

@@ -9,11 +9,13 @@ import { formatCompact, formatShortDate } from './charts/viz';
 import { lastDaysRange } from '../utils/dates';
 import { downloadCsv, toCsv } from '../utils/csv';
 import '../assets/css/workspace.css';
+import { DashboardSkeleton } from './Skeleton';
+import { SyncReport } from './workspace/SyncReport';
 
-const RANGES = [7, 14, 30, 90];
-const PLATFORM_COLOR = { instagram: 'var(--series-1)', youtube: 'var(--series-2)', linkedin: 'var(--series-3)' } as const;
-const PLATFORM_NAME = { instagram: 'Instagram', youtube: 'YouTube', linkedin: 'LinkedIn' } as const;
-const ALL_PLATFORMS = ['instagram', 'youtube', 'linkedin'] as const;
+const RANGES = [7, 14, 30];
+const PLATFORM_COLOR = { instagram: 'var(--series-1)', youtube: 'var(--series-2)', linkedin: 'var(--series-3)', facebook: 'var(--series-4)' } as const;
+const PLATFORM_NAME = { instagram: 'Instagram', youtube: 'YouTube', linkedin: 'LinkedIn', facebook: 'Facebook' } as const;
+const ALL_PLATFORMS = ['instagram', 'youtube', 'linkedin', 'facebook'] as const;
 const KPI = [
   { key: 'views', label: 'Views' },
   { key: 'interactions', label: 'Interactions' },
@@ -48,7 +50,7 @@ export default function Overview({ token }: { token: string }) {
     }
   }, [token]);
 
-  const hasData = !!data && (data.coverage.instagram_days > 0 || data.coverage.youtube_days > 0 || data.coverage.linkedin_days > 0);
+  const hasData = !!data && ALL_PLATFORMS.some((p) => data.coverage[`${p}_days`] > 0);
   // Only platforms with a connected account get a line, a slice and a column.
   const shown = data ? ALL_PLATFORMS.filter((p) => data.accounts[p] > 0) : [];
   const share = data
@@ -62,7 +64,7 @@ export default function Overview({ token }: { token: string }) {
         <div className="ws-pagehead">
           <div>
             <h2>Overview</h2>
-            <p className="ws-sub">Instagram, YouTube and LinkedIn side by side, from your stored history. LinkedIn impressions count as views.</p>
+            <p className="ws-sub">Instagram, YouTube, LinkedIn and Facebook side by side. LinkedIn impressions count as views; Facebook is read live.</p>
           </div>
         </div>
 
@@ -81,7 +83,7 @@ export default function Overview({ token }: { token: string }) {
               onClick={() =>
                 downloadCsv(
                   `overview-${data.range.since}_${data.range.until}.csv`,
-                  toCsv(data.daily.map((d) => ({ date: d.date, instagram_views: d.instagram_views, youtube_views: d.youtube_views, linkedin_impressions: d.linkedin_views })))
+                  toCsv(data.daily.map((d) => ({ date: d.date, instagram_views: d.instagram_views, youtube_views: d.youtube_views, linkedin_impressions: d.linkedin_views, facebook_views: d.facebook_views ?? 0 })))
                 )
               }
             >
@@ -100,12 +102,9 @@ export default function Overview({ token }: { token: string }) {
             <span>Could not fetch live {e.platform} numbers for account {e.account_id} (error {e.code}): {e.message}</span>
           </div>
         ))}
-        {syncResult?.errors.map((e) => (
-          <div key={`${e.platform}-${e.account_id}`} className="error-banner">
-            <span>Could not update {e.platform} account {e.account_id} (error {e.code}{e.reason ? ` · ${e.reason}` : ''}): {e.message}</span>
-          </div>
-        ))}
-        {loading && <div className="trends-loading"><div className="spinner" /></div>}
+        {syncing && <div className="ws-notice sync-running" role="status">Updating Instagram, YouTube, LinkedIn and Facebook at the same time…</div>}
+        {syncResult && !syncing && <SyncReport result={syncResult} />}
+        {loading && <DashboardSkeleton kpis={3} label="Loading overview…" />}
 
         {!loading && data && !hasData && (
           <div className="ws-empty ws-empty-cta">
@@ -130,7 +129,7 @@ export default function Overview({ token }: { token: string }) {
                   label={`${k.label} (combined)`}
                   value={data.totals.combined[k.key] ?? 0}
                   delta={data.deltas.combined[k.key]}
-                  series={k.key === 'views' ? data.daily.map((d) => d.instagram_views + d.youtube_views + d.linkedin_views) : []}
+                  series={k.key === 'views' ? data.daily.map((d) => ALL_PLATFORMS.reduce((a, p) => a + (d[`${p}_views`] ?? 0), 0)) : []}
                 />
               ))}
             </section>
@@ -207,7 +206,7 @@ export default function Overview({ token }: { token: string }) {
                 </table>
               </div>
               <p className="trends-foot">
-                Net followers = Instagram follower change, YouTube subscribers gained minus lost, and LinkedIn followers gained.
+                Net followers = Instagram follower change, YouTube subscribers gained minus lost, LinkedIn followers gained, and Facebook follows minus unfollows. Facebook interactions are its post engagements.
                 {shown.map((p) => {
                   const stored = data.coverage[`${p}_days`];
                   return stored < data.range.days ? ` ${PLATFORM_NAME[p]}: ${stored} of ${data.range.days} days stored.` : '';

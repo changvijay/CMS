@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { fetchInstagramComments, fetchYoutubeComments, type CommentAnalysis, type Platform } from '../../services/api';
 import { isPermissionMessage } from '../../utils/errors';
 import { useLive } from './useLive';
+import { SectionSkeleton } from '../Skeleton';
 
 function Analysis({ a }: { a: CommentAnalysis }) {
   if (a.total === 0) return <p className="trends-empty-inline">No comments to analyse yet.</p>;
@@ -31,7 +32,7 @@ function Loaded({ platform, token, accountId, id }: { platform: Platform; token:
     async () => (platform === 'instagram' ? (await fetchInstagramComments(token, id, accountId)).analysis : (await fetchYoutubeComments(token, id, accountId)).analysis),
     `${platform}:${accountId}:${id}`
   );
-  if (state.loading) return <div className="spinner" />;
+  if (state.loading) return <SectionSkeleton variant="text" rows={4} label="Reading comments…" />;
   // A saved token without the comments permission isn't a failure worth a red banner.
   if (state.error && isPermissionMessage(state.error)) return <p className="trends-empty-inline">Comment insights aren’t available for this channel.</p>;
   if (state.error) return <div className="error-banner"><span>{state.error}</span></div>;

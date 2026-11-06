@@ -1,0 +1,67 @@
+/* Skeleton loaders: grey placeholders shaped like the content that is coming, with a soft shimmer.
+   Self-contained (no workspace.css), because they also show before a page's own styles have loaded. */
+
+.sk {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #e6e8ec 0%, #f4f5f7 45%, #e6e8ec 90%);
+  background-size: 220% 100%;
+  animation: sk-shimmer 1.4s ease-in-out infinite;
+}
+.sk-circle { border-radius: 50%; }
+
+@keyframes sk-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -120% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk { animation: none; }
+}
+
+/* Screen readers hear "Loading…" once; the grey shapes themselves are hidden from them. */
+.sk-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.sk-page { max-width: 1200px; width: 100%; margin: 0 auto; padding: 24px 24px 64px; flex: 1; }
+.sk-stack { display: flex; flex-direction: column; gap: 10px; }
+.sk-row { display: flex; align-items: center; gap: 12px; }
+
+.sk-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.06);
+}
+.sk-section { margin-bottom: 16px; }
+
+.sk-profile { display: flex; align-items: center; gap: 20px; margin-bottom: 16px; }
+.sk-profile-main { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+.sk-profile-stats { display: flex; gap: 28px; }
+
+.sk-toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+
+.sk-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.sk-kpi { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; }
+
+.sk-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+
+/* A chart: bars of different heights rising from a baseline. */
+.sk-chart { display: flex; align-items: flex-end; gap: 6px; height: 200px; padding-top: 12px; border-bottom: 1px solid #eceef2; }
+.sk-chart .sk { flex: 1; border-radius: 4px 4px 0 0; }
+
+.sk-table { display: flex; flex-direction: column; }
+.sk-table .sk-row { padding: 12px 0; border-bottom: 1px solid #f0f1f4; }
+.sk-table .sk-row:last-child { border-bottom: 0; }
+
+.sk-bars { display: flex; flex-direction: column; gap: 12px; padding-top: 6px; }
+.sk-bars .sk-row > .sk:first-child { width: 110px; flex-shrink: 0; }
+
+.sk-inline { padding: 8px 0; }
+
+@media (max-width: 640px) {
+  .sk-page { padding: 16px 16px 48px; }
+  .sk-profile-stats { display: none; }
+  .sk-chart { height: 150px; }
+}

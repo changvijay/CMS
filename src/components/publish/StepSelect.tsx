@@ -5,6 +5,7 @@ import { getPublishAccounts, getPublishConfig, getPublishPlatforms, type Publish
 import { PLATFORM_BLURB, PLATFORM_LABEL, PLATFORM_ORDER } from './platforms';
 import { PlatformIcon } from './PlatformIcon';
 import type { Platform, PublishAccount } from './types';
+import { SectionSkeleton } from '../Skeleton';
 
 export function StepPlatforms({ token, selected, onChange, beforeLeave }: { token: string; selected: Platform[]; onChange: (p: Platform[]) => void; beforeLeave: () => Promise<string | null> }) {
   const [available, setAvailable] = useState<{ platform: Platform; accounts: number }[] | null>(null);
@@ -21,7 +22,7 @@ export function StepPlatforms({ token, selected, onChange, beforeLeave }: { toke
   }, [token]);
 
   if (error) return <div className="error-banner"><span>{error}</span></div>;
-  if (!available) return <div className="trends-loading"><div className="spinner" /></div>;
+  if (!available) return <SectionSkeleton variant="list" rows={3} />;
 
   const have = new Set(available.map((a) => a.platform));
   const missing = PLATFORM_ORDER.filter((p) => !have.has(p));
@@ -94,7 +95,7 @@ export function StepAccounts({ token, platforms, selected, onChange, onLoaded, b
   }, [token, key]);
 
   if (error) return <div className="error-banner"><span>{error}</span></div>;
-  if (!accounts) return <div className="trends-loading"><div className="spinner" /><p className="pf-hint">Checking each account's connection…</p></div>;
+  if (!accounts) return <><p className="pf-hint">Checking each account's connection…</p><SectionSkeleton variant="list" rows={3} /></>;
 
   const toggle = (p: Platform, id: string) => {
     const cur = selected[p] ?? [];

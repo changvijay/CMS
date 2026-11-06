@@ -23,6 +23,8 @@ import { DataTab } from './DataTab';
 import { ResearchTab } from './ResearchTab';
 import { StrategyTab } from './StrategyTab';
 import '../../assets/css/workspace.css';
+import { DashboardSkeleton } from '../Skeleton';
+import { SyncReport } from './SyncReport';
 
 const TABS = [
   { key: 'overview', label: 'Overview', path: '' },
@@ -128,7 +130,7 @@ function Workspace({ token, platform, tab }: { token: string; platform: Platform
     if (tab === 'research') return <ResearchTab platform={platform} {...live} media={media} />;
     if (tab === 'strategy' && platform === 'youtube') return <StrategyTab platform={platform} media={media} {...live} />;
 
-    if (loading) return <div className="trends-loading"><div className="spinner large" /></div>;
+    if (loading) return <DashboardSkeleton />;
     if (!history || !hasData) {
       return (
         <div className="ws-empty ws-empty-cta">
@@ -190,18 +192,7 @@ function Workspace({ token, platform, tab }: { token: string; platform: Platform
         </section>
 
         {error && <div className="error-banner" role="alert"><span>{error}</span></div>}
-        {syncResult?.errors.map((e) => (
-          <div key={`${e.platform}-${e.account_id}`} className="error-banner" role="alert">
-            <span>
-              Could not update {e.platform} account {e.account_id} (error {e.code}{e.reason ? ` · ${e.reason}` : ''}): {e.message}
-            </span>
-          </div>
-        ))}
-        {syncResult && syncResult.results.length > 0 && (
-          <div className="ws-notice" role="status">
-            Updated: {syncResult.results.map((r) => `${r.days_synced} days and ${r.media_snapshots} ${platform === 'youtube' ? 'videos' : 'posts'}`).join(', ')}.
-          </div>
-        )}
+        {syncResult && !syncing && <SyncReport result={syncResult} />}
         {history && hasData && history.coverage.days_with_data < history.range.days && ['overview', 'data'].includes(tab) && (
           <div className="ws-notice">
             Showing {history.coverage.days_with_data} of {history.range.days} days. The rest {history.source === 'live' ? `are not available from ${name}` : 'are not stored yet'}

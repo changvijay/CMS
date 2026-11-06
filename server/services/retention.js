@@ -17,8 +17,8 @@ export function isStoredRange(since, until, today = istDateString()) {
   return since >= retentionStart(today) && until < today;
 }
 
-const DAILY_TABLES = ['ig_daily_metrics', 'yt_daily_metrics', 'li_daily_metrics'];
-const ACCOUNT_TABLES = { instagram: 'instagram_accounts', youtube: 'Youtube_accounts', linkedin: 'linkedin_accounts' };
+const DAILY_TABLES = ['ig_daily_metrics', 'yt_daily_metrics', 'li_daily_metrics', 'fb_daily_metrics'];
+const ACCOUNT_TABLES = { instagram: 'instagram_accounts', youtube: 'Youtube_accounts', linkedin: 'linkedin_accounts', facebook: 'facebook_pages' };
 
 /**
  * Deletes insights older than the retention window.

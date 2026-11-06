@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import os from 'node:os';
 import { pool, isDbReady } from '../db.js';
 import { createTtlCache } from '../utils/ttlCache.js';
 
@@ -20,6 +21,23 @@ export function linkedinConfig() {
     redirectUri: process.env.LINKEDIN_REDIRECT_URI || null,
   };
 }
+
+/** Which copy of the site is acting, for stored errors: "cloud-run:cms" or "local:<computer>". */
+export function serverLabel() {
+  return process.env.K_SERVICE ? `cloud-run:${process.env.K_SERVICE}` : `local:${os.hostname()}`;
+}
+
+/**
+ * True when this server's LinkedIn app issued the account's tokens (or we don't know: rows saved before this was tracked).
+ * LinkedIn only accepts a refresh token from the app that issued it. When two copies of the site share one database
+ * but use different LinkedIn apps, the other copy's tokens must be left alone: trying to renew them fails with
+ * "refresh token is invalid, expired or revoked", and flagging them would force a reconnect on both copies.
+ */
+export function tokenOwnedHere(account) {
+  return !account.client_id || String(account.client_id) === String(linkedinConfig().clientId);
+}
+
+export const FOREIGN_APP_MESSAGE = 'This LinkedIn connection was made through a different LinkedIn app (another copy of this site using the same database), so only that copy can renew it.';
 
 export function isLinkedInConfigured() {
   const { clientId, clientSecret } = linkedinConfig();
@@ -154,11 +172,12 @@ export async function saveTokens(accountId, data, now = Date.now()) {
         last_refresh_error = NULL,
         last_refresh_failed_at = NULL,
         token_invalid_at = NULL,
+        client_id = $7,
         updated_at = NOW()
       WHERE id = $1
          OR (refresh_token IS NOT NULL AND refresh_token = (SELECT refresh_token FROM linkedin_accounts WHERE id = $1))
       RETURNING *`,
-    [accountId, data.access_token, accessExpiresAt, data.refresh_token || null, refreshExpiresAt, data.scope || null]
+    [accountId, data.access_token, accessExpiresAt, data.refresh_token || null, refreshExpiresAt, data.scope || null, linkedinConfig().clientId]
   );
   return rows;
 }
@@ -173,18 +192,20 @@ export function refreshDue(account, now = Date.now()) {
   return !failedAt || now - failedAt >= RETRY_FAILED_AFTER_HOURS * 60 * 60 * 1000;
 }
 
-/** True when the refresh token can still be used (LinkedIn only issues one to some apps; it lasts a year). */
-export const canRefresh = (account, now = Date.now()) => Boolean(account.refresh_token)
+/** True when the refresh token can still be used here (LinkedIn only issues one to some apps; it lasts a year). */
+export const canRefresh = (account, now = Date.now()) => Boolean(account.refresh_token) && tokenOwnedHere(account)
   && (!account.refresh_token_expires_at || new Date(account.refresh_token_expires_at).getTime() > now);
 
 /** Renews now, whatever the dates say. Records the error on failure and throws it. */
 export async function forceRefresh(account) {
+  // Another LinkedIn app's refresh token always fails here; trying would only record a misleading error.
+  if (!tokenOwnedHere(account)) throw Object.assign(new Error(FOREIGN_APP_MESSAGE), { reason: 'foreign_app' });
   try {
     const data = await refreshWithToken(account.refresh_token);
     const rows = await saveTokens(account.id, data);
     return rows.find((r) => String(r.id) === String(account.id)) || rows[0];
   } catch (err) {
-    await pool.query('UPDATE linkedin_accounts SET last_refresh_error = $2, last_refresh_failed_at = NOW(), updated_at = NOW() WHERE id = $1', [account.id, err.message]).catch(() => {});
+    await pool.query('UPDATE linkedin_accounts SET last_refresh_error = $2, last_refresh_failed_at = NOW(), updated_at = NOW() WHERE id = $1', [account.id, `[${serverLabel()}] ${err.message}`]).catch(() => {});
     throw err;
   }
 }
@@ -219,6 +240,7 @@ export async function ensureWorkingToken(account) {
   }
   const first = await verifyLinkedInToken(current);
   if (first.ok || first.status !== 401) return { account: current, ok: first.ok || first.status !== 401, message: first.ok ? null : first.message };
+  if (!tokenOwnedHere(current)) return { account: current, ok: false, foreign: true, message: `${first.message} ${FOREIGN_APP_MESSAGE}` };
   if (!canRefresh(current)) return { account: current, ok: false, message: `${first.message} LinkedIn did not give this app a refresh token, so please reconnect.` };
   try {
     current = await forceRefresh(current);
@@ -252,7 +274,7 @@ async function markInvalid(account, message) {
   await pool.query(
     `UPDATE linkedin_accounts SET token_invalid_at = NOW(), last_refresh_error = $2, updated_at = NOW()
       WHERE id = $1 OR access_token = $3`,
-    [account.id, message, account.access_token]
+    [account.id, `[${serverLabel()}] ${message}`, account.access_token]
   ).catch(() => {});
 }
 
@@ -270,7 +292,8 @@ export async function getWorkingLinkedInToken(account) {
   const check = await ensureWorkingToken(account);
   if (!check.ok || tokenState(check.account) === 'expired') {
     const message = check.message || 'LinkedIn access expired.';
-    await markInvalid(check.account, message);
+    // Only the copy whose LinkedIn app owns the token may flag it; otherwise the owner would be locked out too.
+    if (!check.foreign) await markInvalid(check.account, message);
     throw reconnectError(message);
   }
   const fresh = check.account;
@@ -300,6 +323,7 @@ export async function refreshAllLinkedInTokens() {
   for (const account of rows) {
     if (done.has(account.access_token)) continue; // pages from one login share one token
     done.add(account.access_token);
+    if (!tokenOwnedHere(account)) continue; // another copy of the site (another LinkedIn app) renews its own tokens
     try {
       const fresh = await getWorkingLinkedInToken(account);
       if (fresh.access_token !== account.access_token) console.log(`LinkedIn token renewed for linkedin#${account.id}`);

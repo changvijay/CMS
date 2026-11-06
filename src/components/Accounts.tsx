@@ -27,6 +27,7 @@ import OAuthLogPanel from './OAuthLogPanel';
 import { oauthLog, oauthReplayOnReturn } from '../services/oauthDebug';
 import '../assets/css/workspace.css';
 import { invalidateLiveCache, storedDataKeys } from './workspace/useLive';
+import { SectionSkeleton } from './Skeleton';
 
 type Kind = 'instagram' | 'facebook' | 'youtube' | 'linkedin';
 type Tone = 'ok' | 'warn' | 'bad';
@@ -146,7 +147,7 @@ function SectionShell({ title, sub, head, error, notice, setupMissing, loading, 
       {error && <div className="error-banner"><span>{error}</span></div>}
       {notice && <div className="ws-notice ok" role="status">{notice}</div>}
       {setupMissing && <div className="ws-notice">{setupMissing}</div>}
-      {loading ? <div className="trends-loading"><div className="spinner" /></div> : empty}
+      {loading ? <SectionSkeleton variant="list" rows={2} label="Loading accounts…" /> : empty}
       {children}
     </section>
   );

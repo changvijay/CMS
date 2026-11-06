@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"vite\" \"node server/index.js\"",
+    "dev": "concurrently \"vite\" \"node --watch-path=server --watch-preserve-output server/index.js\"",
     "dev:client": "vite",
-    "dev:server": "node server/index.js",
+    "dev:server": "node --watch-path=server --watch-preserve-output server/index.js",
     "dev:tunnel": "cloudflared tunnel --url http://localhost:5173",
     "build": "tsc -b && vite build",
     "start": "node server/index.js",

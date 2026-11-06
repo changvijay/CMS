@@ -112,6 +112,8 @@ export async function getYoutubeAccounts(token: string, tableName = 'Youtube_acc
 // ---------------------------------------------------------------------------
 
 export type Platform = 'instagram' | 'youtube' | 'linkedin';
+/** Platforms on the combined Overview. Facebook is read live and has no stored history or platform workspace. */
+export type OverviewPlatform = Platform | 'facebook';
 /** Platforms whose accounts are added by pasting a token (LinkedIn uses its own Connect button). */
 export type ManualPlatform = 'instagram' | 'youtube';
 
@@ -180,8 +182,9 @@ export interface StoredMedia {
 }
 
 export interface SyncResult {
-  results: { platform: Platform; account_id: string | number; days_synced: number; media_snapshots: number; stories?: number }[];
-  errors: { platform: Platform; account_id: string | number; code: number; reason?: string; message: string }[];
+  results: { platform: OverviewPlatform; account_id: string | number; name?: string | null; days_synced: number; media_snapshots: number; stories?: number; reels?: number; live?: boolean }[];
+  /** `auth`: the account is logged out or its access stopped working; reconnecting fixes it. */
+  errors: { platform: OverviewPlatform; account_id: string | number | null; name?: string | null; code: number; reason?: string; message: string; auth?: boolean }[];
 }
 
 export async function fetchHistory(
@@ -218,7 +221,7 @@ export async function fetchStoredMedia(
 }
 
 /** Runs a sync. Returns per-account results AND errors; only throws when the server gives no per-account detail. */
-export async function syncNow(token: string, platform?: Platform, accountId?: string | number): Promise<SyncResult> {
+export async function syncNow(token: string, platform?: OverviewPlatform, accountId?: string | number): Promise<SyncResult> {
   const response = await fetch(`${API_BASE}/sync`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -475,7 +478,7 @@ export interface HashtagResult {
 }
 
 export interface AccountCard {
-  platform: Platform;
+  platform: OverviewPlatform;
   id: string | number;
   name: string;
   days_with_data: number;
@@ -490,11 +493,11 @@ export interface OverviewResponse {
   /** Accounts whose live numbers could not be fetched; the rest of the page still shows. */
   errors?: SyncResult['errors'];
   range: { since: string; until: string; days: number; previous_since: string; previous_until: string };
-  accounts: { instagram: number; youtube: number; linkedin: number };
-  coverage: { instagram_days: number; youtube_days: number; linkedin_days: number };
-  totals: Record<Platform | 'combined', Record<string, number>>;
-  deltas: Record<Platform | 'combined', Record<string, MetricDelta>>;
-  daily: { date: string; instagram_views: number; youtube_views: number; linkedin_views: number }[];
+  accounts: Record<OverviewPlatform, number>;
+  coverage: Record<`${OverviewPlatform}_days`, number>;
+  totals: Record<OverviewPlatform | 'combined', Record<string, number>>;
+  deltas: Record<OverviewPlatform | 'combined', Record<string, MetricDelta>>;
+  daily: ({ date: string } & Record<`${OverviewPlatform}_views`, number>)[];
   account_cards: AccountCard[];
   leaderboard: {
     platform: Platform;
@@ -1013,3 +1016,114 @@ export interface FacebookTokenResult {
 /** Adds Pages with a Page or User access token pasted by hand (e.g. from Graph API Explorer). */
 export const addFacebookPageToken = (token: string, pageToken: string) =>
   publishJson<FacebookTokenResult>(token, 'POST', 'facebook-pages/token', { token: pageToken });
+
+// ---------------------------------------------------------------------------
+// Facebook Page insights (live from the Graph API)
+// ---------------------------------------------------------------------------
+
+export type FacebookMetric =
+  | 'views' | 'reach' | 'engagements' | 'reactions' | 'follows' | 'unfollows' | 'followers_total' | 'page_visits' | 'actions'
+  | 'new_conversations' | 'video_views' | 'video_views_organic' | 'video_views_paid' | 'video_autoplayed' | 'video_click_to_play'
+  | 'video_complete_30s' | 'video_repeat_views' | 'watch_minutes';
+
+export interface FacebookPageProfile {
+  id: string;
+  page_id: string;
+  name: string;
+  username: string | null;
+  about: string | null;
+  category: string | null;
+  link: string;
+  website: string | null;
+  followers: number | null;
+  likes: number | null;
+  talking_about: number | null;
+  checkins: number | null;
+  rating_count: number | null;
+  rating: number | null;
+  verified: boolean | null;
+  picture_url: string | null;
+  cover_url: string | null;
+}
+
+export type FacebookDailyRow = { date: string } & Partial<Record<FacebookMetric, number | null>>;
+
+export interface FacebookDaily {
+  account_id: string;
+  /** `stored`: read from the saved days (preset ranges). `live`: fetched from Facebook for this request. */
+  source: 'stored' | 'live';
+  last_synced_at: string | null;
+  range: { since: string; until: string; days: number; previous_since: string; previous_until: string };
+  fetched_at: string;
+  /** Which Graph metric name answered for each of our metrics (missing = unavailable). */
+  metrics: Partial<Record<FacebookMetric, string>>;
+  unavailable: { metric: FacebookMetric; code: number; message: string }[];
+  totals: Partial<Record<FacebookMetric, number>>;
+  deltas: Partial<Record<FacebookMetric, MetricDelta>>;
+  breakdowns: {
+    reactions: Record<string, number> | null;
+    views_by_audience: { followers: number; non_followers: number } | null;
+    views_by_source: { organic: number; ads: number } | null;
+  };
+  daily: FacebookDailyRow[];
+}
+
+export interface FacebookPost {
+  id: string;
+  message: string | null;
+  created_time: string;
+  permalink: string | null;
+  picture: string | null;
+  type: string | null;
+  views: number | null;
+  reach: number | null;
+  clicks: number;
+  reactions: number;
+  reactions_by_type: Record<string, number> | null;
+  comments: number;
+  shares: number;
+  interactions: number;
+  video_views: number | null;
+  avg_watch_seconds: number | null;
+  engagement_rate: number | null;
+}
+
+export interface FacebookReel {
+  id: string;
+  description: string | null;
+  created_time: string;
+  permalink: string | null;
+  picture: string | null;
+  length_seconds: number | null;
+  plays: number | null;
+  initial_plays: number | null;
+  replays: number | null;
+  avg_watch_seconds: number | null;
+  watch_minutes: number | null;
+  followers_gained: number | null;
+  reactions: number;
+  comments: number;
+  shares: number;
+}
+
+export interface FacebookAudience {
+  country: { label: string; value: number }[];
+  city: { label: string; value: number }[];
+  unavailable?: boolean;
+  reason?: string;
+}
+
+const fbQuery = (accountId: string, extra: Record<string, string> = {}) => new URLSearchParams({ accountId, ...extra }).toString();
+
+export const fetchFacebookProfile = (token: string, accountId: string) =>
+  publishJson<FacebookPageProfile>(token, 'GET', `facebook/insights/profile?${fbQuery(accountId)}`);
+/** `live`: fetch from Facebook instead of the saved days (custom ranges). */
+const fbRange = (accountId: string, since: string, until: string, live: boolean) => fbQuery(accountId, live ? { since, until, live: '1' } : { since, until });
+export const fetchFacebookDaily = (token: string, accountId: string, since: string, until: string, live = false) =>
+  publishJson<FacebookDaily>(token, 'GET', `facebook/insights/daily?${fbRange(accountId, since, until, live)}`);
+export const fetchFacebookPosts = (token: string, accountId: string, since: string, until: string, live = false) =>
+  publishJson<{ posts: FacebookPost[]; insights?: boolean; unavailable?: boolean; reason?: string; source?: 'stored' | 'live' }>(token, 'GET', `facebook/insights/posts?${fbRange(accountId, since, until, live)}`);
+export const fetchFacebookReels = (token: string, accountId: string, since: string, until: string, live = false) =>
+  publishJson<{ reels: FacebookReel[]; unavailable?: boolean; reason?: string; source?: 'stored' | 'live' }>(token, 'GET', `facebook/insights/reels?${fbRange(accountId, since, until, live)}`);
+export const fetchFacebookAudience = (token: string, accountId: string) =>
+  publishJson<FacebookAudience>(token, 'GET', `facebook/insights/audience?${fbQuery(accountId)}`);

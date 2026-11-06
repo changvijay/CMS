@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Login } from './components/Login';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
@@ -9,9 +10,11 @@ const Accounts = lazy(() => import('./components/Accounts'));
 const Profile = lazy(() => import('./components/Profile'));
 const Automation = lazy(() => import('./components/Automation'));
 const PublishWizard = lazy(() => import('./components/publish/PublishWizard'));
+const FacebookPage = lazy(() => import('./components/workspace/FacebookPage'));
 import { getCurrentUser, type User } from './services/api';
 import { clearLiveCache } from './components/workspace/useLive';
 import './App.css';
+import { PageSkeleton } from './components/Skeleton';
 
 /** Old /trends/:platform links now live inside the platform workspace. */
 function TrendsRedirect() {
@@ -24,6 +27,7 @@ function MainApp() {
   const [user, setUser] = useState<User | null>(null);
   const [loadingSession, setLoadingSession] = useState<boolean>(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     async function verifySession() {
@@ -67,9 +71,8 @@ function MainApp() {
 
   if (loadingSession) {
     return (
-      <div className="session-loader">
-        <div className="spinner large"></div>
-        <p>Loading your dashboard…</p>
+      <div className="app-root">
+        <PageSkeleton />
       </div>
     );
   }
@@ -86,12 +89,14 @@ function MainApp() {
   return (
     <div className="app-root">
       <Navbar user={user} onLogout={handleLogout} />
+      {/* A crash in one page shows an error there instead of a blank screen; moving to another page clears it. */}
+      <ErrorBoundary resetKey={location.pathname}>
       <Routes>
         <Route path="/" element={<Navigate to="/overview" replace />} />
         <Route
           path="/overview"
           element={
-            <Suspense fallback={<div className="session-loader"><div className="spinner large"></div></div>}>
+            <Suspense fallback={<PageSkeleton />}>
               <Overview token={token} />
             </Suspense>
           }
@@ -99,7 +104,7 @@ function MainApp() {
         <Route
           path="/accounts"
           element={
-            <Suspense fallback={<div className="session-loader"><div className="spinner large"></div></div>}>
+            <Suspense fallback={<PageSkeleton />}>
               <Accounts token={token} />
             </Suspense>
           }
@@ -107,7 +112,7 @@ function MainApp() {
         <Route
           path="/automation"
           element={
-            <Suspense fallback={<div className="session-loader"><div className="spinner large"></div></div>}>
+            <Suspense fallback={<PageSkeleton />}>
               <Automation token={token} />
             </Suspense>
           }
@@ -117,7 +122,7 @@ function MainApp() {
             key={path}
             path={path}
             element={
-              <Suspense fallback={<div className="session-loader"><div className="spinner large"></div></div>}>
+              <Suspense fallback={<PageSkeleton />}>
                 <PublishWizard token={token} />
               </Suspense>
             }
@@ -126,8 +131,16 @@ function MainApp() {
         <Route
           path="/profile"
           element={
-            <Suspense fallback={<div className="session-loader"><div className="spinner large"></div></div>}>
+            <Suspense fallback={<PageSkeleton />}>
               <Profile user={user} token={token} onLogout={handleLogout} />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/facebook/:tab?"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <FacebookPage token={token} />
             </Suspense>
           }
         />
@@ -136,7 +149,7 @@ function MainApp() {
         <Route
           path="/:platform/:tab?"
           element={
-            <Suspense fallback={<div className="session-loader"><div className="spinner large"></div></div>}>
+            <Suspense fallback={<PageSkeleton />}>
               <PlatformPage token={token} />
             </Suspense>
           }
@@ -144,6 +157,7 @@ function MainApp() {
         <Route path="/login" element={<Navigate to="/overview" replace />} />
         <Route path="*" element={<Navigate to="/overview" replace />} />
       </Routes>
+      </ErrorBoundary>
       <Footer />
     </div>
   );
@@ -152,7 +166,9 @@ function MainApp() {
 export default function App() {
   return (
     <BrowserRouter>
-      <MainApp />
+      <ErrorBoundary>
+        <MainApp />
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

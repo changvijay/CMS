@@ -1,9 +1,9 @@
 import cron from 'node-cron';
-import { getAllInstagramAccounts, getAllLinkedInAccounts, getAllYoutubeAccounts, isDbReady } from '../db.js';
+import { getAllFacebookPages, getAllInstagramAccounts, getAllLinkedInAccounts, getAllYoutubeAccounts, isDbReady } from '../db.js';
 import { refreshAllLinkedInTokens } from '../services/linkedinAuth.js';
 import { refreshAllInstagramTokens } from '../services/instagramAuth.js';
 import { runRetentionJob } from '../services/retention.js';
-import { syncInstagramAccount, syncInstagramStories, syncLinkedInAccount, syncYoutubeAccount } from '../services/syncService.js';
+import { syncFacebookPage, syncInstagramAccount, syncInstagramStories, syncLinkedInAccount, syncYoutubeAccount } from '../services/syncService.js';
 
 export async function runSnapshotJob() {
   if (!isDbReady()) {
@@ -32,6 +32,14 @@ export async function runSnapshotJob() {
       console.log(`Snapshot linkedin#${account.id}: ${r.days_synced} days, ${r.media_snapshots} posts`);
     } catch (err) {
       console.warn(`Snapshot linkedin#${account.id} failed: ${err.message}`);
+    }
+  }
+  for (const page of await getAllFacebookPages()) {
+    try {
+      const r = await syncFacebookPage(page, { days: 7 });
+      console.log(`Snapshot facebook#${page.id}: ${r.days_synced} days, ${r.media_snapshots} posts, ${r.reels} reels`);
+    } catch (err) {
+      console.warn(`Snapshot facebook#${page.id} failed: ${err.message}`);
     }
   }
 }

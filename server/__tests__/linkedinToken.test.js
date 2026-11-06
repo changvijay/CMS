@@ -103,4 +103,33 @@ describe('getWorkingLinkedInToken', () => {
     expect(a.token_invalid_at).toBeNull();
     expect(query.mock.calls.some(([sql]) => sql.includes('SET token_invalid_at = NULL'))).toBe(true);
   });
+  it('works with a token from another LinkedIn app, but never renews or flags it', async () => {
+    const foreign = account({ client_id: 'other-app' });
+    expect((await getWorkingLinkedInToken(foreign)).access_token).toBe('old');
+
+    clearLinkedInTokenChecks();
+    validTokens.delete('old');
+    await expect(getWorkingLinkedInToken(foreign)).rejects.toMatchObject({ reason: 'reconnect_required' });
+    // No refresh with the other app's refresh token, and no flag that would lock out the copy that owns it.
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes('accessToken'))).toBe(false);
+    expect(query.mock.calls.some(([sql]) => sql.includes('SET token_invalid_at = NOW()'))).toBe(false);
+  });
+
+  it('renews its own app\'s tokens and records which app issued the new one', async () => {
+    validTokens.delete('old');
+    const a = await getWorkingLinkedInToken(account({ client_id: 'id' }));
+    expect(a.access_token).toBe('new');
+    const save = query.mock.calls.find(([sql]) => sql.includes('RETURNING *'));
+    expect(save[0]).toContain('client_id = $7');
+    expect(save[1][6]).toBe('id');
+  });
+
+  it('labels stored errors with the server that hit them', async () => {
+    validTokens.delete('old');
+    validTokens.add('refresh-fails');
+    await expect(getWorkingLinkedInToken(account())).rejects.toMatchObject({ reason: 'reconnect_required' });
+    const flag = query.mock.calls.find(([sql]) => sql.includes('SET token_invalid_at = NOW()'));
+    expect(flag[1][1]).toMatch(/^\[(local|cloud-run):/);
+  });
 });
+

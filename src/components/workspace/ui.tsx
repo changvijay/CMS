@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import type { ApiErrorDetails, ReportResult } from '../../services/api';
 import type { LiveState } from './useLive';
 import { isPermissionError } from '../../utils/errors';
+import { SectionSkeleton } from '../Skeleton';
 
 export function ErrorLine({ error, label }: { error: ApiErrorDetails; label: string }) {
   // The saved Google token simply doesn't cover this report: that is not a failure worth a red banner.
@@ -17,8 +18,8 @@ export function ErrorLine({ error, label }: { error: ApiErrorDetails; label: str
 }
 
 /** Spinner / error / content for a live request. */
-export function LiveBlock<T>({ state, children }: { state: LiveState<T>; children: (data: T) => ReactNode }) {
-  if (state.loading) return <div className="trends-loading"><div className="spinner" /></div>;
+export function LiveBlock<T>({ state, children, skeleton }: { state: LiveState<T>; children: (data: T) => ReactNode; skeleton?: ReactNode }) {
+  if (state.loading) return <>{skeleton ?? <SectionSkeleton variant="chart" />}</>;
   if (state.error) return <div className="error-banner"><span>{state.error}</span></div>;
   if (!state.data) return null;
   return <>{children(state.data)}</>;
