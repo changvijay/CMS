@@ -334,6 +334,8 @@ ALTER TABLE instagram_accounts ADD COLUMN IF NOT EXISTS last_refresh_failed_at T
 
 -- LinkedIn: wait before retrying a failed token renewal
 ALTER TABLE linkedin_accounts ADD COLUMN IF NOT EXISTS last_refresh_failed_at TIMESTAMPTZ;
+-- Set when LinkedIn rejects the token and renewing with the refresh token fails too: the user must reconnect
+ALTER TABLE linkedin_accounts ADD COLUMN IF NOT EXISTS token_invalid_at TIMESTAMPTZ;
 ALTER TABLE instagram_accounts ADD COLUMN IF NOT EXISTS profile_picture_url TEXT;
 
 -- Step-by-step log of Connect Instagram / Connect Facebook attempts, shown on the Accounts page.

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, NavLink, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   fetchHistory,
@@ -7,12 +7,11 @@ import {
   getLinkedInAccounts,
   getYoutubeAccounts,
   syncNow,
-  type HistoryResponse,
   type Platform,
-  type StoredMedia,
   type SyncResult,
 } from '../../services/api';
 import { errorMessage } from '../../utils/errors';
+import { ANALYTICS_MAX_AGE, STORED_MAX_AGE, invalidateLiveCache, storedDataKeys, useLive } from './useLive';
 import { timeAgo } from '../../utils/dates';
 import { ProfileHeader } from './ProfileHeader';
 import { RangePicker } from './RangePicker';
@@ -46,6 +45,14 @@ const PLATFORMS: Platform[] = ['instagram', 'youtube', 'linkedin'];
 // Strategy and Research are built around Instagram and YouTube data; LinkedIn gets the other four.
 const LINKEDIN_TABS = new Set<TabKey>(['overview', 'content', 'audience', 'data']);
 const tabsFor = (platform: Platform) => TABS.filter((t) => platform !== 'linkedin' || LINKEDIN_TABS.has(t.key));
+const ACCOUNTS_MAX_AGE = 60 * 1000;
+const NO_MEDIA: never[] = [];
+
+async function loadAccountOptions(token: string, platform: Platform): Promise<AccountOption[]> {
+  if (platform === 'instagram') return (await getInstagramAccounts(token)).map((a) => ({ id: a.id, name: a.page_name }));
+  if (platform === 'linkedin') return (await getLinkedInAccounts(token)).accounts.map((a) => ({ id: a.id, name: a.name }));
+  return (await getYoutubeAccounts(token)).map((a) => ({ id: a.id, name: a.channel_name }));
+}
 
 export default function PlatformPage({ token }: { token: string }) {
   const { platform, tab } = useParams();
@@ -56,86 +63,54 @@ export default function PlatformPage({ token }: { token: string }) {
 }
 
 function Workspace({ token, platform, tab }: { token: string; platform: Platform; tab: TabKey }) {
-  const [accounts, setAccounts] = useState<AccountOption[] | null>(null);
-  const [accountId, setAccountId] = useState('');
   const [range, setRange] = useState<RangeValue>(() => presetRange(30));
-  const [history, setHistory] = useState<HistoryResponse | null>(null);
-  const [media, setMedia] = useState<StoredMedia[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
-  const [tick, setTick] = useState(0);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const requestedAccount = searchParams.get('account');
+  // A picked account applies until the ?account= link changes.
+  const [choice, setChoice] = useState<{ requested: string | null; id: string }>({ requested: requestedAccount, id: '' });
+
+  const accountsState = useLive(() => loadAccountOptions(token, platform), `accounts:${platform}`, true, { maxAge: ACCOUNTS_MAX_AGE });
+  const accounts = accountsState.data;
+  const chosenId = choice.requested === requestedAccount ? choice.id : '';
+  const accountId = useMemo(() => {
+    if (!accounts?.length) return '';
+    if (accounts.some((a) => String(a.id) === chosenId)) return chosenId;
+    const requested = accounts.find((a) => String(a.id) === requestedAccount);
+    return String((requested ?? accounts[0]).id);
+  }, [accounts, chosenId, requestedAccount]);
+  const setAccountId = (id: string) => setChoice({ requested: requestedAccount, id });
 
   const rangeValid = range.since <= range.until;
+  // A custom range is fetched live from the platform; presets read the stored last 30 days (older presets go live on the server).
+  const live = range.preset === 'custom';
+  const historyKey = `history:${platform}:${accountId}:${range.since}:${range.until}:${live ? 'live' : 'stored'}`;
+  const historyState = useLive(
+    () => fetchHistory(token, platform, { accountId, since: range.since, until: range.until, live }),
+    historyKey,
+    Boolean(accountId) && rangeValid,
+    { maxAge: live ? ANALYTICS_MAX_AGE : STORED_MAX_AGE }
+  );
+  const mediaState = useLive(() => fetchStoredMedia(token, platform, accountId), `media:${platform}:${accountId}`, Boolean(accountId), { maxAge: STORED_MAX_AGE });
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const list =
-          platform === 'instagram'
-            ? (await getInstagramAccounts(token)).map((a) => ({ id: a.id, name: a.page_name }))
-            : platform === 'linkedin'
-              ? (await getLinkedInAccounts(token)).accounts.map((a) => ({ id: a.id, name: a.name }))
-              : (await getYoutubeAccounts(token)).map((a) => ({ id: a.id, name: a.channel_name }));
-        if (cancelled) return;
-        setAccounts(list);
-        const requested = list.find((a) => String(a.id) === requestedAccount);
-        setAccountId(String((requested ?? list[0])?.id ?? ''));
-        if (!list.length) setLoading(false);
-      } catch (err) {
-        if (cancelled) return;
-        setAccounts([]);
-        setError(errorMessage(err, 'Failed to load accounts'));
-        setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [platform, token, requestedAccount]);
-
-  useEffect(() => {
-    if (!accountId || !rangeValid) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [h, m] = await Promise.all([
-          fetchHistory(token, platform, { accountId, since: range.since, until: range.until }),
-          fetchStoredMedia(token, platform, accountId),
-        ]);
-        if (cancelled) return;
-        setHistory(h);
-        setMedia(m);
-      } catch (err) {
-        if (cancelled) return;
-        setHistory(null);
-        setMedia([]);
-        setError(errorMessage(err, 'Failed to load stored data'));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [token, platform, accountId, range.since, range.until, rangeValid, tick]);
+  // While a new range loads, the previous range's numbers are not shown as if they were the new ones.
+  const history = historyState.data && historyState.data.range.since === range.since && historyState.data.range.until === range.until ? historyState.data : null;
+  const media = mediaState.data ?? NO_MEDIA;
+  const loading = !accountsState.data && accountsState.loading ? true : Boolean(accountId) && rangeValid && !history && historyState.loading;
+  const error = syncError ?? accountsState.error ?? historyState.error ?? mediaState.error;
 
   const handleSync = useCallback(async () => {
     setSyncing(true);
     setSyncResult(null);
-    setError(null);
+    setSyncError(null);
     try {
       const result = await syncNow(token, platform, accountId || undefined);
       setSyncResult(result);
-      if (result.results.length) setTick((t) => t + 1);
+      if (result.results.length) invalidateLiveCache(...storedDataKeys(platform));
     } catch (err) {
-      setError(errorMessage(err, 'Update failed'));
+      setSyncError(errorMessage(err, 'Update failed'));
     } finally {
       setSyncing(false);
     }
@@ -157,10 +132,12 @@ function Workspace({ token, platform, tab }: { token: string; platform: Platform
     if (!history || !hasData) {
       return (
         <div className="ws-empty ws-empty-cta">
-          <h3>No data stored yet for this period</h3>
+          <h3>{history?.source === 'live' ? `${name} has no numbers for this period` : 'No data stored yet for this period'}</h3>
           <p>
-            Press <b>Update data</b> to copy your latest {name} numbers into your dashboard. It takes a few seconds, and after that
-            it refreshes automatically every night.
+            {history?.source === 'live'
+              ? 'Try a more recent range.'
+              : <>Press <b>Update data</b> to copy your latest {name} numbers into your dashboard. It takes a few seconds, and after that
+                it refreshes automatically every night.</>}
           </p>
           <button className="btn btn-primary" onClick={handleSync} disabled={syncing}>{syncing ? 'Updating…' : 'Update data'}</button>
         </div>
@@ -206,7 +183,8 @@ function Workspace({ token, platform, tab }: { token: string; platform: Platform
           )}
           <RangePicker value={range} onChange={setRange} />
           <div className="ws-toolbar-right">
-            {history?.last_synced_at && <span className="ws-updated">Data updated {timeAgo(history.last_synced_at)}</span>}
+            {history?.source === 'live' && history.fetched_at && <span className="ws-updated">Live from {name}, fetched {timeAgo(history.fetched_at)}</span>}
+            {history?.source !== 'live' && history?.last_synced_at && <span className="ws-updated">Data updated {timeAgo(history.last_synced_at)}</span>}
             <button className="btn btn-primary" onClick={handleSync} disabled={syncing || !accountId}>{syncing ? 'Updating…' : 'Update data'}</button>
           </div>
         </section>
@@ -226,7 +204,7 @@ function Workspace({ token, platform, tab }: { token: string; platform: Platform
         )}
         {history && hasData && history.coverage.days_with_data < history.range.days && ['overview', 'data'].includes(tab) && (
           <div className="ws-notice">
-            Showing {history.coverage.days_with_data} of {history.range.days} days. The rest are not stored yet
+            Showing {history.coverage.days_with_data} of {history.range.days} days. The rest {history.source === 'live' ? `are not available from ${name}` : 'are not stored yet'}
             {platform === 'instagram'
               ? ' (Instagram only provides about 30 days of daily history).'
               : platform === 'linkedin'

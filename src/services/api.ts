@@ -126,8 +126,13 @@ export interface MetricDelta {
   change_pct: number | null;
 }
 
+/** `stored`: read from the database (last 30 days). `live`: fetched from the platform for this request. */
+export type DataSource = 'stored' | 'live';
+
 export interface HistoryResponse {
   platform: Platform;
+  source?: DataSource;
+  fetched_at?: string | null;
   account: { id: string | number; name: string };
   range: { since: string; until: string; days: number; previous_since: string; previous_until: string };
   coverage: { days_with_data: number; previous_days_with_data: number };
@@ -182,17 +187,18 @@ export interface SyncResult {
 export async function fetchHistory(
   token: string,
   platform: Platform,
-  opts: { accountId?: string | number; since?: string; until?: string } = {}
+  opts: { accountId?: string | number; since?: string; until?: string; live?: boolean } = {}
 ): Promise<HistoryResponse> {
   const params = new URLSearchParams();
   if (opts.accountId) params.append('accountId', String(opts.accountId));
   if (opts.since) params.append('since', opts.since);
   if (opts.until) params.append('until', opts.until);
+  if (opts.live) params.append('live', '1');
   const response = await fetch(`${API_BASE}/history/${platform}?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(`History error ${response.status}: ${data.error || 'Failed to load stored history'}`);
+  if (!response.ok) throw new Error(`History error ${response.status}: ${data.error || 'Failed to load history'}`);
   return data;
 }
 
@@ -281,6 +287,7 @@ export interface LinkedInAccount {
   id: string | number;
   name: string;
   organization_urn: string;
+  account_type?: 'organization' | 'person';
   vanity_name: string | null;
   status: 'ok' | 'refresh' | 'expired';
   access_token_expires_at: string;
@@ -479,6 +486,9 @@ export interface AccountCard {
 }
 
 export interface OverviewResponse {
+  source?: DataSource;
+  /** Accounts whose live numbers could not be fetched; the rest of the page still shows. */
+  errors?: SyncResult['errors'];
   range: { since: string; until: string; days: number; previous_since: string; previous_until: string };
   accounts: { instagram: number; youtube: number; linkedin: number };
   coverage: { instagram_days: number; youtube_days: number; linkedin_days: number };
@@ -990,3 +1000,16 @@ export function sendOAuthStep(token: string, platform: 'instagram' | 'facebook',
 export interface FacebookPage { id: string; page_id: string; name: string; picture_url: string | null; ig_user_id: string | null; created_at: string }
 export const getFacebookPages = (token: string) => publishJson<{ configured: boolean; pages: FacebookPage[] }>(token, 'GET', 'facebook-pages');
 export const deleteFacebookPage = (token: string, id: string) => publishJson<void>(token, 'DELETE', `facebook-pages/${id}`);
+
+export interface FacebookTokenResult {
+  kind: 'page' | 'user';
+  pages: { page_id: string; name: string; ig_user_id: string | null }[];
+  /** null = never expires */
+  expires_at: string | null;
+  made_long_lived: boolean;
+  /** The token was made by another Meta app (e.g. Graph API Explorer's): fine for posting, not for webhooks. */
+  other_app: boolean;
+}
+/** Adds Pages with a Page or User access token pasted by hand (e.g. from Graph API Explorer). */
+export const addFacebookPageToken = (token: string, pageToken: string) =>
+  publishJson<FacebookTokenResult>(token, 'POST', 'facebook-pages/token', { token: pageToken });

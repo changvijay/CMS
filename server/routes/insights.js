@@ -3,10 +3,39 @@ import { pool, isDbReady, getInstagramAccountsByUserId, getLinkedInAccountsByUse
 import { pickAccount } from '../utils/accounts.js';
 import { buildBestTimeMatrix, computeDeltas, engagementRate, sumMetrics } from '../services/analytics.js';
 import { REPORT_GROUPS, fetchYoutubeBreakdowns, fetchYoutubeChannel } from '../services/youtubeReports.js';
-import { loadAccountCards } from '../services/accountCards.js';
+import { buildAccountCards } from '../services/accountCards.js';
+import { loadDaily } from '../services/dailyInsights.js';
+import { loadPrevious, wantsLive } from './history.js';
 import { addDays, daysBetween, resolveRange } from '../utils/dates.js';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const v = (x) => (x === null || x === undefined ? 0 : Number(x));
+
+/** What each platform contributes to the combined numbers. LinkedIn impressions count as views. */
+const COMBINED = {
+  instagram: (r) => ({ views: v(r.views), interactions: v(r.total_interactions), net_followers: v(r.follower_change) }),
+  youtube: (r) => ({ views: v(r.views), interactions: v(r.likes) + v(r.comments) + v(r.shares), net_followers: v(r.subs_gained) - v(r.subs_lost) }),
+  linkedin: (r) => ({
+    views: v(r.impressions),
+    interactions: v(r.likes) + v(r.comments) + v(r.shares) + v(r.clicks),
+    net_followers: v(r.organic_follower_gain) + v(r.paid_follower_gain),
+  }),
+};
+
+/** Daily rows of several accounts -> one row per date with the combined numbers, oldest first. */
+export function combineByDate(platform, rows) {
+  const byDate = new Map();
+  for (const r of rows) {
+    const m = COMBINED[platform](r);
+    const cur = byDate.get(r.metric_date) || { date: r.metric_date, views: 0, interactions: 0, net_followers: 0 };
+    for (const k of ['views', 'interactions', 'net_followers']) cur[k] += m[k];
+    byDate.set(r.metric_date, cur);
+  }
+  return [...byDate.values()].sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+const MEDIA_LEADERBOARD_COLUMNS = 'platform, account_id, media_id, title, media_type, permalink, thumbnail_url, published_at, reach, views, likes, comments, saves, shares, total_interactions';
 
 export function createInsightsRouter(authenticateToken) {
   const router = express.Router();
@@ -98,56 +127,38 @@ export function createInsightsRouter(authenticateToken) {
       const igIds = igAccounts.map((a) => Number(a.id));
       const ytIds = ytAccounts.map((a) => Number(a.id));
       const liIds = liAccounts.map((a) => Number(a.id));
+      const accountsByPlatform = { instagram: igAccounts, youtube: ytAccounts, linkedin: liAccounts };
+      const live = wantsLive(req.query.live);
 
-      const igQuery = (from, to) => pool.query(
-        `SELECT to_char(metric_date, 'YYYY-MM-DD') AS date,
-                COALESCE(SUM(views),0)::bigint AS views, COALESCE(SUM(reach),0)::bigint AS reach,
-                COALESCE(SUM(total_interactions),0)::bigint AS interactions,
-                COALESCE(SUM(follower_change),0)::bigint AS net_followers
-           FROM ig_daily_metrics WHERE account_id = ANY($1) AND metric_date BETWEEN $2 AND $3
-          GROUP BY metric_date ORDER BY metric_date`, [igIds, from, to]);
-      const ytQuery = (from, to) => pool.query(
-        `SELECT to_char(metric_date, 'YYYY-MM-DD') AS date,
-                COALESCE(SUM(views),0)::bigint AS views, COALESCE(SUM(minutes_watched),0)::bigint AS minutes_watched,
-                COALESCE(SUM(likes + comments + shares),0)::bigint AS interactions,
-                COALESCE(SUM(subs_gained - subs_lost),0)::bigint AS net_followers
-           FROM yt_daily_metrics WHERE account_id = ANY($1) AND metric_date BETWEEN $2 AND $3
-          GROUP BY metric_date ORDER BY metric_date`, [ytIds, from, to]);
-      // LinkedIn impressions count as "views" in the combined numbers.
-      const liQuery = (from, to) => pool.query(
-        `SELECT to_char(metric_date, 'YYYY-MM-DD') AS date,
-                COALESCE(SUM(impressions),0)::bigint AS views,
-                COALESCE(SUM(COALESCE(likes,0) + COALESCE(comments,0) + COALESCE(shares,0) + COALESCE(clicks,0)),0)::bigint AS interactions,
-                COALESCE(SUM(COALESCE(organic_follower_gain,0) + COALESCE(paid_follower_gain,0)),0)::bigint AS net_followers
-           FROM li_daily_metrics WHERE account_id = ANY($1) AND metric_date BETWEEN $2 AND $3
-          GROUP BY metric_date ORDER BY metric_date`, [liIds, from, to]);
-
-      const accountCardsPromise = loadAccountCards(pool, { igAccounts, ytAccounts, liAccounts, since, until, prevSince, prevUntil });
-      const [ig, igPrev, yt, ytPrev, li, liPrev, media] = await Promise.all([
-        igQuery(since, until), igQuery(prevSince, prevUntil), ytQuery(since, until), ytQuery(prevSince, prevUntil),
-        liQuery(since, until), liQuery(prevSince, prevUntil),
+      const platforms = Object.keys(accountsByPlatform);
+      const [currentSets, previousSets, media] = await Promise.all([
+        Promise.all(platforms.map((p) => loadDaily(p, accountsByPlatform[p], since, until, { live }))),
+        Promise.all(platforms.map((p) => loadPrevious(p, accountsByPlatform[p], prevSince, prevUntil))),
         pool.query(
-          `SELECT DISTINCT ON (platform, account_id, media_id) *
+          `SELECT DISTINCT ON (platform, account_id, media_id) ${MEDIA_LEADERBOARD_COLUMNS}
              FROM media_snapshots
             WHERE (platform = 'instagram' AND account_id = ANY($1)) OR (platform = 'youtube' AND account_id = ANY($2))
                OR (platform = 'linkedin' AND account_id = ANY($3))
             ORDER BY platform, account_id, media_id, captured_on DESC`, [igIds, ytIds, liIds]),
       ]);
+      const current = Object.fromEntries(platforms.map((p, i) => [p, currentSets[i].rows]));
+      const previousRows = Object.fromEntries(platforms.map((p, i) => [p, previousSets[i]]));
+      const fetchErrors = currentSets.flatMap((set) => set.errors);
+      const source = currentSets.some((set) => set.source === 'live') ? 'live' : 'stored';
 
       const keys = ['views', 'interactions', 'net_followers'];
-      const num = (rows) => rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, k === 'date' ? v : Number(v)])));
-      const igRows = num(ig.rows);
-      const ytRows = num(yt.rows);
-      const liRows = num(li.rows);
+      const igRows = combineByDate('instagram', current.instagram);
+      const ytRows = combineByDate('youtube', current.youtube);
+      const liRows = combineByDate('linkedin', current.linkedin);
       const totals = {
         instagram: sumMetrics(igRows, keys),
         youtube: sumMetrics(ytRows, keys),
         linkedin: sumMetrics(liRows, keys),
       };
       const previous = {
-        instagram: sumMetrics(num(igPrev.rows), keys),
-        youtube: sumMetrics(num(ytPrev.rows), keys),
-        linkedin: sumMetrics(num(liPrev.rows), keys),
+        instagram: sumMetrics(combineByDate('instagram', previousRows.instagram), keys),
+        youtube: sumMetrics(combineByDate('youtube', previousRows.youtube), keys),
+        linkedin: sumMetrics(combineByDate('linkedin', previousRows.linkedin), keys),
       };
       const combined = Object.fromEntries(keys.map((k) => [k, totals.instagram[k] + totals.youtube[k] + totals.linkedin[k]]));
       const combinedPrev = Object.fromEntries(keys.map((k) => [k, previous.instagram[k] + previous.youtube[k] + previous.linkedin[k]]));
@@ -181,7 +192,10 @@ export function createInsightsRouter(authenticateToken) {
         insights.push(`${lead} drives ${Math.round((leadViews / combined.views) * 100)}% of views.`);
       }
       const dayTotals = new Map();
-      for (const d of daily) dayTotals.set(new Date(`${d.date}T00:00:00Z`).getUTCDay(), (dayTotals.get(new Date(`${d.date}T00:00:00Z`).getUTCDay()) || 0) + d.instagram_views + d.youtube_views + d.linkedin_views);
+      for (const d of daily) {
+        const weekday = new Date(`${d.date}T00:00:00Z`).getUTCDay();
+        dayTotals.set(weekday, (dayTotals.get(weekday) || 0) + d.instagram_views + d.youtube_views + d.linkedin_views);
+      }
       if (dayTotals.size) {
         const [bestDay] = [...dayTotals.entries()].sort((a, b) => b[1] - a[1])[0];
         insights.push(`${WEEKDAYS[bestDay]} is your strongest day for views.`);
@@ -189,6 +203,8 @@ export function createInsightsRouter(authenticateToken) {
       if (leaderboard[0]) insights.push(`Highest engagement rate: "${(leaderboard[0].title || 'Untitled').slice(0, 60)}" on ${leaderboard[0].platform} (${leaderboard[0].engagement_rate}%).`);
 
       return res.json({
+        source,
+        errors: fetchErrors,
         range: { since, until, days: span, previous_since: prevSince, previous_until: prevUntil },
         accounts: { instagram: igAccounts.length, youtube: ytAccounts.length, linkedin: liAccounts.length },
         coverage: { instagram_days: igRows.length, youtube_days: ytRows.length, linkedin_days: liRows.length },
@@ -200,11 +216,12 @@ export function createInsightsRouter(authenticateToken) {
           combined: computeDeltas(combined, combinedPrev),
         },
         daily,
-        account_cards: await accountCardsPromise,
+        account_cards: buildAccountCards(accountsByPlatform, current, previousRows),
         leaderboard,
         insights,
       });
     } catch (error) {
+      if (error.status === 400) return res.status(400).json({ error: error.message });
       console.error('Overview error:', error);
       return res.status(500).json({ error: 'Failed to build overview.' });
     }

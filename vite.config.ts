@@ -9,6 +9,8 @@ export default defineConfig(({ mode }) => {
 
   return {
   plugins: [react()],
+  // Agent worktrees under .claude/ hold copies of the repo; their tests are not this checkout's.
+  test: { exclude: ['**/node_modules/**', '**/dist/**', '.claude/**'] },
   server: {
     port: 5173,
     allowedHosts,

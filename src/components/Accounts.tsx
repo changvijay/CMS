@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import {
   createAccount,
   deleteAccount,
+  addFacebookPageToken,
   deleteFacebookPage,
   deleteLinkedInAccount,
   getConnectUrl,
@@ -19,11 +20,13 @@ import {
   type ManualPlatform,
   type PublishConfig,
   type YoutubeAccount,
+  type FacebookTokenResult,
 } from '../services/api';
 import { PlatformIcon } from './publish/PlatformIcon';
 import OAuthLogPanel from './OAuthLogPanel';
 import { oauthLog, oauthReplayOnReturn } from '../services/oauthDebug';
 import '../assets/css/workspace.css';
+import { invalidateLiveCache, storedDataKeys } from './workspace/useLive';
 
 type Kind = 'instagram' | 'facebook' | 'youtube' | 'linkedin';
 type Tone = 'ok' | 'warn' | 'bad';
@@ -73,14 +76,16 @@ function useSection<T>(token: string, kind: Kind, load: () => Promise<T>) {
     }
   };
 
-  const run = async (fn: () => Promise<unknown>, success: string) => {
+  const run = async <R,>(fn: () => Promise<R>, success: string | ((result: R) => string)) => {
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
-      await fn();
-      setNotice(success);
+      const result = await fn();
+      setNotice(typeof success === 'function' ? success(result) : success);
       setTick((t) => t + 1);
+      // Account lists and stored numbers elsewhere in the app are now out of date.
+      invalidateLiveCache('accounts:', 'automation-accounts', ...storedDataKeys());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Request failed');
     } finally {
@@ -174,6 +179,38 @@ function ManualAdd({ platform, busy, onAdd }: { platform: ManualPlatform; busy: 
           <small>{ig ? 'Renewed automatically every week once saved.' : 'Exchanged for an access token on each request. Connect YouTube is easier and allows uploads.'}</small>
         </label>
         <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save account'}</button>
+      </form>
+    </details>
+  );
+}
+
+/** What happened after pasting a Facebook token, in one sentence. */
+function facebookTokenNotice(r: FacebookTokenResult): string {
+  const names = r.pages.map((p) => p.name).join(', ');
+  const expiry = r.expires_at
+    ? ` This token expires on ${new Date(r.expires_at).toLocaleString()}: paste a long-lived one before then (Access Token Debugger → Extend Access Token, then me/accounts).`
+    : ' Page access doesn’t expire.';
+  const app = r.other_app ? ' It was made by another Meta app, so posting works but webhooks won’t until you connect through this app.' : '';
+  return `Added ${r.pages.length === 1 ? 'Page' : 'Pages'}: ${names}.${expiry}${app}`;
+}
+
+/** Adding Pages with a token from Graph API Explorer, for when the Connect button can't be used. */
+function FacebookTokenAdd({ busy, onAdd }: { busy: boolean; onAdd: (pageToken: string) => void }) {
+  const [value, setValue] = useState('');
+  return (
+    <details className="account-manual">
+      <summary>Add with a token instead</summary>
+      <form className="account-form" onSubmit={(e) => { e.preventDefault(); onAdd(value.trim()); setValue(''); }}>
+        <label><span>Page or User access token</span>
+          <input required type="password" autoComplete="off" value={value} onChange={(e) => setValue(e.target.value)} />
+          <small>
+            From <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noreferrer">Graph API Explorer</a>: Get User Access Token
+            with pages_show_list, pages_read_engagement, pages_manage_posts and pages_read_user_content (plus instagram_basic and
+            instagram_content_publish for Instagram). A User token adds every Page you manage; a Page token adds that Page.
+            Extend it to long-lived first so the Page access never expires.
+          </small>
+        </label>
+        <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Checking with Facebook…' : 'Add Pages'}</button>
       </form>
     </details>
   );
@@ -281,6 +318,7 @@ function FacebookSection({ token, configured }: { token: string; configured: boo
           />
         ))}
       </ul>
+      <FacebookTokenAdd busy={s.busy} onAdd={(t) => s.run(() => addFacebookPageToken(token, t), facebookTokenNotice)} />
     </SectionShell>
   );
 }
@@ -321,7 +359,11 @@ function YoutubeSection({ token, configured }: { token: string; configured: bool
               note={a.token?.status === 'expired' && a.token.message ? a.token.message : null}
               actions={(
                 <>
-                  {st.needsReconnect && connectBtn('Reconnect')}
+                  {/* Signs in again and updates this same channel (matched by channel or uploads playlist), keeping its stored data. */}
+                  <button className={`btn ${st.needsReconnect ? 'btn-primary' : 'btn-secondary'}`} disabled={s.busy || !configured}
+                    title="Sign in with Google again to refresh this connection. Your stored data is kept." onClick={() => s.connect()}>
+                    {s.busy ? 'Opening Google…' : 'Reconnect'}
+                  </button>
                   <TokenUpdate label="New refresh token" busy={s.busy} onSave={(t) => s.run(() => updateAccountToken(token, 'youtube', a.id, t), 'Token updated.')} />
                   <button className="btn btn-secondary btn-danger" disabled={s.busy}
                     onClick={() => window.confirm(`Remove ${a.channel_name}? Its stored history will be deleted too.`) && s.run(() => deleteAccount(token, 'youtube', a.id), 'Channel removed.')}>
@@ -339,7 +381,7 @@ function YoutubeSection({ token, configured }: { token: string; configured: bool
 }
 
 function linkedInStatus(a: LinkedInAccount): { label: string; tone: Tone } {
-  if (a.status === 'expired') return { label: 'Expired, automatic renewal failed: please reconnect', tone: 'bad' };
+  if (a.status === 'expired') return { label: 'LinkedIn stopped accepting this connection: press Reconnect', tone: 'bad' };
   if (a.auto_refresh && !a.last_refresh_error) return { label: 'Connected · renews automatically', tone: 'ok' };
   if (a.last_refresh_error) return { label: 'Connected · last renewal failed, will retry', tone: 'warn' };
   return { label: `Connected until ${new Date(a.access_token_expires_at).toLocaleDateString()} (LinkedIn gave no refresh token: reconnect before then)`, tone: 'ok' };
@@ -350,6 +392,14 @@ function LinkedInSection({ token }: { token: string }) {
   const accounts = s.data?.accounts ?? [];
   const configured = s.data?.configured ?? true;
   const connectBtn = (label: string) => <ConnectButton kind="linkedin" label={s.busy ? 'Opening LinkedIn…' : label} onClick={() => s.connect('linkedin')} disabled={s.busy || !configured} />;
+  // Signs in again and updates the same row (its id and stored history stay), so there is no need to disconnect first.
+  const reconnectBtn = (a: LinkedInAccount) => (
+    <button className={`btn ${a.status === 'expired' ? 'btn-primary' : 'btn-secondary'}`} disabled={s.busy || !configured}
+      title="Sign in to LinkedIn again to refresh this connection. Your stored data is kept."
+      onClick={() => s.connect(a.account_type === 'person' ? 'linkedin_person' : 'linkedin')}>
+      {s.busy ? 'Opening LinkedIn…' : 'Reconnect'}
+    </button>
+  );
   return (
     <SectionShell
       title="LinkedIn company pages" sub="Page analytics and posting."
@@ -373,7 +423,7 @@ function LinkedInSection({ token }: { token: string }) {
               status={<Status tone={st.tone} title={a.last_refresh_error ?? undefined}>{st.label}</Status>}
               actions={(
                 <>
-                  {a.status === 'expired' && connectBtn('Reconnect')}
+                  {reconnectBtn(a)}
                   <button className="btn btn-secondary btn-danger" disabled={s.busy}
                     onClick={() => window.confirm(`Disconnect the ${a.name} company page?`) && s.run(() => deleteLinkedInAccount(token, a.id), 'Company page disconnected.')}>
                     Disconnect

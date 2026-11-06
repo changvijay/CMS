@@ -1,7 +1,8 @@
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Area, AreaChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { fetchOverview, syncNow, type OverviewResponse, type SyncResult } from '../services/api';
+import { fetchOverview, syncNow, type SyncResult } from '../services/api';
+import { STORED_MAX_AGE, invalidateLiveCache, storedDataKeys, useLive } from './workspace/useLive';
 import { KpiCard } from './charts/KpiCard';
 import { AccountCards } from './workspace/AccountCards';
 import { formatCompact, formatShortDate } from './charts/viz';
@@ -21,46 +22,27 @@ const KPI = [
 
 export default function Overview({ token }: { token: string }) {
   const [days, setDays] = useState(30);
-  const [data, setData] = useState<OverviewResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
-  const [tick, setTick] = useState(0);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      const { since, until } = lastDaysRange(days);
-      try {
-        const result = await fetchOverview(token, since, until);
-        if (!cancelled) setData(result);
-      } catch (err) {
-        if (!cancelled) {
-          setData(null);
-          setError(err instanceof Error ? err.message : 'Failed to load overview');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [token, days, tick]);
+  const { since, until } = lastDaysRange(days);
+  const state = useLive(() => fetchOverview(token, since, until), `overview:${since}:${until}`, true, { maxAge: STORED_MAX_AGE });
+  // While another range loads, the old range's numbers are not shown as the new ones.
+  const data = state.data && state.data.range.since === since && state.data.range.until === until ? state.data : null;
+  const loading = !data && state.loading;
+  const error = syncError ?? state.error;
 
   const handleSync = useCallback(async () => {
     setSyncing(true);
     setSyncResult(null);
-    setError(null);
+    setSyncError(null);
     try {
       const result = await syncNow(token);
       setSyncResult(result);
-      if (result.results.length) setTick((t) => t + 1);
+      if (result.results.length) invalidateLiveCache(...storedDataKeys());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sync failed');
+      setSyncError(err instanceof Error ? err.message : 'Sync failed');
     } finally {
       setSyncing(false);
     }
@@ -113,6 +95,11 @@ export default function Overview({ token }: { token: string }) {
         </section>
 
         {error && <div className="error-banner"><span>{error}</span></div>}
+        {data?.errors?.map((e) => (
+          <div key={`live-${e.platform}-${e.account_id}`} className="error-banner">
+            <span>Could not fetch live {e.platform} numbers for account {e.account_id} (error {e.code}): {e.message}</span>
+          </div>
+        ))}
         {syncResult?.errors.map((e) => (
           <div key={`${e.platform}-${e.account_id}`} className="error-banner">
             <span>Could not update {e.platform} account {e.account_id} (error {e.code}{e.reason ? ` · ${e.reason}` : ''}): {e.message}</span>

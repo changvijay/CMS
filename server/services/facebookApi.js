@@ -161,3 +161,74 @@ export async function grantedScopes(token) {
   if (r.error) return { error: r.error };
   return { data: (r.data.data || []).filter((p) => p.status === 'granted').map((p) => p.permission) };
 }
+
+/** expires_at / scopes / app of a token. A token may inspect itself, so this works for tokens of any app. Never throws. */
+export async function tokenInfo(token) {
+  const r = await fbGet('debug_token', token, { input_token: token });
+  const d = r.data?.data || {};
+  const exp = Number(d.expires_at || 0);
+  return {
+    expiresAt: exp > 0 ? new Date(exp * 1000).toISOString() : null, // 0 = never expires
+    scopes: Array.isArray(d.scopes) ? d.scopes : null,
+    appId: d.app_id ? String(d.app_id) : null,
+  };
+}
+
+/** One Page, read with its own Page token. The Instagram link is optional (needs instagram_basic). */
+async function pageFromPageToken(token) {
+  const page = await must(fbGet('me', token, { fields: 'id,name,picture{url}' }));
+  const ig = await fbGet('me', token, { fields: 'instagram_business_account' });
+  return {
+    page_id: String(page.id),
+    name: page.name,
+    access_token: token,
+    picture_url: page.picture?.data?.url || null,
+    ig_user_id: ig.data?.instagram_business_account?.id ? String(ig.data.instagram_business_account.id) : null,
+  };
+}
+
+const badToken = (message) => Object.assign(new Error(message), { status: 400 });
+
+/**
+ * A token pasted by hand (e.g. from Graph API Explorer), for when the Connect button can't be used.
+ * A Page token gives that Page; a User token gives every Page it manages (like Connect Facebook).
+ * A User token from this app is first made long-lived, so its Page tokens don't expire.
+ * Returns { kind, pages, expiresAt, scopes, appId, exchanged }.
+ */
+export async function pagesFromPastedToken(rawToken) {
+  const token = String(rawToken || '').trim();
+  if (!/^[A-Za-z0-9_\-|.]{20,}$/.test(token)) throw badToken('Paste a Facebook Page or User access token.');
+
+  const me = await fbGet('me', token, { fields: 'id,name', metadata: 1 });
+  if (me.error) throw badToken(`Facebook did not accept this token: ${me.error.message}`);
+  const info = await tokenInfo(token);
+
+  let type = me.data?.metadata?.type;
+  if (!type) type = (await fbGet('me/accounts', token, { limit: 1 })).error ? 'page' : 'user';
+
+  if (type === 'page') {
+    return { kind: 'page', pages: [await pageFromPageToken(token)], expiresAt: info.expiresAt, scopes: info.scopes, appId: info.appId, exchanged: false };
+  }
+  if (type !== 'user') throw badToken('That is not a Page or User access token.');
+
+  // Only works for tokens of this app; a token from another app (e.g. Graph API Explorer's) is used as it is.
+  let userToken = token;
+  let exchanged = false;
+  const { appId, appSecret } = facebookConfig();
+  if (appId && appSecret && info.appId === String(appId)) {
+    const long = await fbGet('oauth/access_token', null, { grant_type: 'fb_exchange_token', client_id: appId, client_secret: appSecret, fb_exchange_token: token });
+    if (long.data?.access_token) {
+      userToken = long.data.access_token;
+      exchanged = true;
+    }
+  }
+  let pages;
+  try {
+    pages = await fetchManagedPages(userToken);
+  } catch (err) {
+    throw badToken(`Could not list your Pages with this token: ${err.message}`);
+  }
+  if (!pages.length) throw badToken('This token can’t see any Page. In Graph API Explorer, tick pages_show_list and allow your Page, then generate the token again.');
+  const pageInfo = await tokenInfo(pages[0].access_token);
+  return { kind: 'user', pages, expiresAt: pageInfo.expiresAt, scopes: info.scopes, appId: info.appId, exchanged };
+}

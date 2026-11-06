@@ -225,7 +225,7 @@ function YoutubeStrategyBody({ videos }: { videos: YoutubeVideoAnalytics[] }) {
 }
 
 function YoutubeStrategy({ token, accountId, since, until }: { token: string; accountId: string; since: string; until: string }) {
-  const state = useLive(() => fetchYoutubeVideos(token, { accountId, since, until }), `strategy-vids:${accountId}:${since}:${until}`, true, { maxAge: ANALYTICS_MAX_AGE });
+  const state = useLive(() => fetchYoutubeVideos(token, { accountId, since, until }), `vids:${accountId}:${since}:${until}`, true, { maxAge: ANALYTICS_MAX_AGE });
   return <LiveBlock state={state}>{(videos) => <YoutubeStrategyBody videos={videos} />}</LiveBlock>;
 }
 

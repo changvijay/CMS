@@ -19,9 +19,11 @@ export function createGoogleRouter(authenticateToken, jwtSecret) {
     const redirectUri = resolveRedirectUri(String(req.query.origin || ''), process.env.GOOGLE_REDIRECT_URI, CALLBACK_PATH);
     if (!redirectUri) return res.status(400).json({ error: 'Missing or invalid origin.' });
     const state = jwt.sign({ uid: req.user.userId, ru: redirectUri, back: safeReturnPath(req.query.returnTo), purpose: 'google' }, jwtSecret, { expiresIn: '10m' });
+    // No include_granted_scopes: it makes Google add every scope this account ever gave the same OAuth client
+    // (e.g. drive.file from another app), and Google refuses YouTube scopes mixed with those ("cannot be requested together").
     const params = new URLSearchParams({
       client_id: clientId, redirect_uri: redirectUri, response_type: 'code', scope: YOUTUBE_SCOPES.join(' '),
-      access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true', state,
+      access_type: 'offline', prompt: 'consent', state,
     });
     return res.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` });
   });

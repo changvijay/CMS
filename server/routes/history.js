@@ -12,6 +12,7 @@ import {
   linearForecast,
   bestWeekday,
 } from '../services/analytics.js';
+import { invalidateLiveInsights, loadDaily } from '../services/dailyInsights.js';
 import { addDays, daysBetween, isDateString, istDateString } from '../utils/dates.js';
 
 const TABLES = {
@@ -30,12 +31,19 @@ export function normalizeMediaRow(row) {
   return out;
 }
 
-async function loadDaily(platform, accountId, since, until) {
-  const { rows } = await pool.query(
-    `SELECT * FROM ${TABLES[platform].table} WHERE account_id = $1 AND metric_date BETWEEN $2 AND $3 ORDER BY metric_date`,
-    [accountId, since, until]
-  );
-  return rows.map((r) => ({ ...r, metric_date: r.metric_date instanceof Date ? istDateString(r.metric_date) : String(r.metric_date).slice(0, 10) }));
+/** True for ?live=1 / ?live=true: the user picked a custom range and wants numbers straight from the platform. */
+export const wantsLive = (value) => value === '1' || value === 'true';
+
+/**
+ * The comparison period. Stored when it is inside the retention window, otherwise fetched live and kept for hours
+ * (past days don't change). If the platform can't provide it, the comparison is simply left out.
+ */
+export async function loadPrevious(platform, accounts, since, until, opts = {}) {
+  try {
+    return (await loadDaily(platform, accounts, since, until, { ...opts, past: true })).rows;
+  } catch {
+    return [];
+  }
 }
 
 export function createHistoryRouter(authenticateToken) {
@@ -58,37 +66,47 @@ export function createHistoryRouter(authenticateToken) {
       const prevUntil = addDays(since, -1);
       const prevSince = addDays(prevUntil, -(span - 1));
 
-      const [daily, previous] = await Promise.all([
-        loadDaily(platform, account.id, since, until),
-        loadDaily(platform, account.id, prevSince, prevUntil),
+      const [current, previous] = await Promise.all([
+        loadDaily(platform, [account], since, until, { live: wantsLive(req.query.live) }),
+        loadPrevious(platform, [account], prevSince, prevUntil),
       ]);
+      if (current.errors.length) {
+        const e = current.errors[0];
+        const status = Number.isInteger(e.code) && e.code >= 400 && e.code < 600 ? e.code : 502;
+        return res.status(status).json({ error: e.message, error_details: { code: e.code, message: e.message, reason: e.reason } });
+      }
+      const daily = current.rows;
 
       const metrics = METRICS[platform];
       const primary = PRIMARY_METRIC[platform];
-      const points = daily.map((r) => ({ date: r.metric_date, value: Number(r[primary] ?? 0) }));
+      const points = daily.map((r) => ({ date: r.metric_date, value: r[primary] ?? 0 }));
       const values = points.map((p) => p.value);
+      const ma7 = movingAverage(values, 7);
 
       return res.json({
         platform,
+        source: current.source,
         account: { id: account.id, name: account.page_name || account.channel_name },
         range: { since, until, days: span, previous_since: prevSince, previous_until: prevUntil },
         coverage: { days_with_data: daily.length, previous_days_with_data: previous.length },
         primary_metric: primary,
         daily: daily.map((r, i) => ({
           date: r.metric_date,
-          ...Object.fromEntries(metrics.map((m) => [m, r[m] === null ? null : Number(r[m])])),
-          [`${primary}_ma7`]: movingAverage(values, 7)[i],
+          ...Object.fromEntries(metrics.map((m) => [m, r[m] ?? null])),
+          [`${primary}_ma7`]: ma7[i],
         })),
         totals: sumMetrics(daily, metrics),
         deltas: computeDeltas(sumMetrics(daily, metrics), sumMetrics(previous, metrics)),
         anomalies: detectAnomalies(points),
         forecast: linearForecast(values, 7),
         best_weekday: bestWeekday(points),
-        last_synced_at: daily.length ? daily[daily.length - 1].synced_at : null,
+        last_synced_at: current.source === 'stored' && daily.length ? daily[daily.length - 1].synced_at : null,
+        fetched_at: current.source === 'live' ? new Date().toISOString() : null,
       });
     } catch (error) {
+      if (error.status === 400) return res.status(400).json({ error: error.message });
       console.error('History error:', error);
-      return res.status(500).json({ error: 'Failed to load stored history.' });
+      return res.status(500).json({ error: 'Failed to load history.' });
     }
   });
 
@@ -100,17 +118,20 @@ export function createHistoryRouter(authenticateToken) {
       const account = await pickAccount(platform, req.user.userId, req.query.accountId);
       if (!account) return res.status(404).json({ error: `No ${platform} account found for user.` });
       const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
-      // Latest snapshot per media item
+      // Latest snapshot per media item, newest posts first
       const { rows } = await pool.query(
-        `SELECT DISTINCT ON (media_id) *
-           FROM media_snapshots
-          WHERE platform = $1 AND account_id = $2
-          ORDER BY media_id, captured_on DESC`,
-        [platform, account.id]
+        `SELECT * FROM (
+           SELECT DISTINCT ON (media_id) *
+             FROM media_snapshots
+            WHERE platform = $1 AND account_id = $2
+            ORDER BY media_id, captured_on DESC
+         ) latest
+         ORDER BY published_at DESC NULLS LAST
+         LIMIT $3`,
+        [platform, account.id, limit]
       );
       const media = rows.map(normalizeMediaRow);
-      media.sort((a, b) => new Date(b.published_at || 0) - new Date(a.published_at || 0));
-      return res.json({ platform, account_id: account.id, media: media.slice(0, limit) });
+      return res.json({ platform, account_id: account.id, media });
     } catch (error) {
       console.error('Media history error:', error);
       return res.status(500).json({ error: 'Failed to load stored media.' });
@@ -128,6 +149,7 @@ export function createHistoryRouter(authenticateToken) {
     const run = async (p, account, fn) => {
       try {
         results.push(await fn(account));
+        invalidateLiveInsights(p, account.id);
       } catch (err) {
         errors.push({ platform: p, account_id: account.id, code: err.status || 500, reason: err.reason, message: err.message });
       }
@@ -136,19 +158,19 @@ export function createHistoryRouter(authenticateToken) {
       if (!platform || platform === 'instagram') {
         for (const a of await getInstagramAccountsByUserId(req.user.userId)) {
           if (req.body?.accountId && String(a.id) !== String(req.body.accountId)) continue;
-          await run('instagram', a, (acc) => syncInstagramAccount(acc, { days: 30, mediaLimit }));
+          await run('instagram', a, (acc) => syncInstagramAccount(acc, { mediaLimit }));
         }
       }
       if (!platform || platform === 'youtube') {
         for (const a of await getYoutubeAccountsByUserId(req.user.userId)) {
           if (req.body?.accountId && String(a.id) !== String(req.body.accountId)) continue;
-          await run('youtube', a, (acc) => syncYoutubeAccount(acc, { days: 90, mediaLimit }));
+          await run('youtube', a, (acc) => syncYoutubeAccount(acc, { mediaLimit }));
         }
       }
       if (!platform || platform === 'linkedin') {
         for (const a of await getLinkedInAccountsByUserId(req.user.userId)) {
           if (req.body?.accountId && String(a.id) !== String(req.body.accountId)) continue;
-          await run('linkedin', a, (acc) => syncLinkedInAccount(acc, { days: 90, mediaLimit }));
+          await run('linkedin', a, (acc) => syncLinkedInAccount(acc, { mediaLimit }));
         }
       }
       return res.status(errors.length && !results.length ? 502 : 200).json({ results, errors });

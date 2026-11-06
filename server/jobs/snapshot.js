@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { getAllInstagramAccounts, getAllLinkedInAccounts, getAllYoutubeAccounts, isDbReady } from '../db.js';
 import { refreshAllLinkedInTokens } from '../services/linkedinAuth.js';
 import { refreshAllInstagramTokens } from '../services/instagramAuth.js';
+import { runRetentionJob } from '../services/retention.js';
 import { syncInstagramAccount, syncInstagramStories, syncLinkedInAccount, syncYoutubeAccount } from '../services/syncService.js';
 
 export async function runSnapshotJob() {
@@ -51,9 +52,15 @@ export async function runStoriesJob() {
 /** Runs daily at 02:30 IST, after both platforms have finalised the previous day. */
 export function startSnapshotSchedule() {
   if (process.env.DISABLE_SNAPSHOT_CRON === 'true') return;
+  // Old insights are removed after the nightly snapshot, so the database only holds the retention window.
   cron.schedule('30 2 * * *', () => {
-    runSnapshotJob().catch((err) => console.error('Snapshot job crashed:', err));
+    runSnapshotJob()
+      .catch((err) => console.error('Snapshot job crashed:', err))
+      .then(() => runRetentionJob())
+      .catch((err) => console.error('Retention job crashed:', err));
   }, { timezone: 'Asia/Kolkata' });
+  // Once shortly after boot as well, so a server that was down at night still cleans up (the DB connects asynchronously).
+  setTimeout(() => runRetentionJob().catch((err) => console.error('Retention job crashed:', err)), 60 * 1000).unref();
   // LinkedIn tokens are topped up well before they expire, so nobody has to reconnect.
   cron.schedule('0 3 * * *', () => {
     refreshAllLinkedInTokens().catch((err) => console.error('LinkedIn refresh job crashed:', err));

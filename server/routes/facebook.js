@@ -1,11 +1,35 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import { pool, isDbReady } from '../db.js';
-import { buildFacebookAuthUrl, exchangeFacebookCode, facebookConfig, fetchManagedPages, isFacebookConfigured, logFacebookTokenDiagnostics } from '../services/facebookApi.js';
+import { buildFacebookAuthUrl, exchangeFacebookCode, facebookConfig, fetchManagedPages, isFacebookConfigured, logFacebookTokenDiagnostics, pagesFromPastedToken } from '../services/facebookApi.js';
 import { flowLogger, mask, newFlowId, requestInfo } from '../utils/oauthLog.js';
 import { resolveRedirectUri, safeReturnPath, withParams } from '../utils/oauth.js';
 
 const CALLBACK_PATH = '/api/facebook/callback';
+
+/**
+ * Saves Pages for a user (Connect Facebook and pasted tokens share this). One row per Page: saving again updates it.
+ * Also fills the linked Instagram account's professional id, so webhooks and publishing can match it.
+ */
+export async function savePages(userId, pages, scope, { log = null, keepMissing = false } = {}) {
+  // A pasted token may lack instagram_basic or report no scopes: then keep what Connect Facebook stored before.
+  const ig = keepMissing ? 'COALESCE(EXCLUDED.ig_user_id, facebook_pages.ig_user_id)' : 'EXCLUDED.ig_user_id';
+  const sc = keepMissing ? 'COALESCE(EXCLUDED.scope, facebook_pages.scope)' : 'EXCLUDED.scope';
+  for (const p of pages) {
+    await pool.query(
+      `INSERT INTO facebook_pages (user_id, page_id, name, picture_url, page_access_token, ig_user_id, scope)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (user_id, page_id) DO UPDATE SET name = EXCLUDED.name, picture_url = EXCLUDED.picture_url,
+         page_access_token = EXCLUDED.page_access_token, ig_user_id = ${ig}, scope = ${sc}, updated_at = NOW()`,
+      [userId, p.page_id, p.name, p.picture_url, p.access_token, p.ig_user_id, scope]
+    );
+    log?.step('callback.db_page_saved', { page_id: p.page_id, name: p.name, ig_user_id: p.ig_user_id, page_access_token: mask(p.access_token) });
+    if (p.ig_user_id) {
+      const linked = await pool.query('UPDATE instagram_accounts SET ig_user_id = $2 WHERE user_id = $1 AND ig_user_id IS NULL AND page_id = $2', [userId, p.ig_user_id]);
+      log?.step('callback.db_link_instagram', { ig_user_id: p.ig_user_id, instagramRowsUpdated: linked.rowCount });
+    }
+  }
+}
 
 export function createFacebookRouter(authenticateToken, jwtSecret) {
   const router = express.Router();
@@ -66,21 +90,7 @@ export function createFacebookRouter(authenticateToken, jwtSecret) {
       if (!pages.length) log.step('callback.no_pages', { hint: 'me/accounts returned nothing: no Page was ticked in the dialog, the user is not a Page admin, or pages_show_list was not granted. Check diag.debug_token granular_scopes above.' });
       if (!pages.length) return finish({ facebook: 'error', message: 'This Facebook login does not manage any Page, or no Page was ticked when connecting.' });
 
-      for (const p of pages) {
-        await pool.query(
-          `INSERT INTO facebook_pages (user_id, page_id, name, picture_url, page_access_token, ig_user_id, scope)
-           VALUES ($1,$2,$3,$4,$5,$6,$7)
-           ON CONFLICT (user_id, page_id) DO UPDATE SET name = EXCLUDED.name, picture_url = EXCLUDED.picture_url,
-             page_access_token = EXCLUDED.page_access_token, ig_user_id = EXCLUDED.ig_user_id, scope = EXCLUDED.scope, updated_at = NOW()`,
-          [payload.uid, p.page_id, p.name, p.picture_url, p.access_token, p.ig_user_id, facebookConfig().scopes.join(',')]
-        );
-        log.step('callback.db_page_saved', { page_id: p.page_id, name: p.name, ig_user_id: p.ig_user_id, page_access_token: mask(p.access_token) });
-        // Fill the Instagram account's professional id from the page link, so webhooks and publishing can match it.
-        if (p.ig_user_id) {
-          const linked = await pool.query('UPDATE instagram_accounts SET ig_user_id = $2 WHERE user_id = $1 AND ig_user_id IS NULL AND page_id = $2', [payload.uid, p.ig_user_id]);
-          log.step('callback.db_link_instagram', { ig_user_id: p.ig_user_id, instagramRowsUpdated: linked.rowCount });
-        }
-      }
+      await savePages(payload.uid, pages, facebookConfig().scopes.join(','), { log });
       return finish({ facebook: 'connected', name: pages.map((p) => p.name).join(', ') });
     } catch (err) {
       console.error('Facebook callback failed:', err.message);
@@ -98,6 +108,26 @@ export function createFacebookRouter(authenticateToken, jwtSecret) {
     } catch (err) {
       console.error('Error loading Facebook pages:', err.message);
       return res.status(500).json({ error: 'Failed to load Facebook pages.' });
+    }
+  });
+
+  // Adding Pages with a token pasted by hand (e.g. from Graph API Explorer), for when Facebook Login can't be used.
+  router.post('/facebook-pages/token', authenticateToken, async (req, res) => {
+    if (!isDbReady()) return res.status(503).json({ error: 'Database is not connected.' });
+    try {
+      const result = await pagesFromPastedToken(req.body?.token);
+      await savePages(req.user.userId, result.pages, result.scopes ? result.scopes.join(',') : null, { keepMissing: true });
+      return res.status(201).json({
+        kind: result.kind,
+        pages: result.pages.map((p) => ({ page_id: p.page_id, name: p.name, ig_user_id: p.ig_user_id })),
+        expires_at: result.expiresAt,
+        made_long_lived: result.exchanged,
+        other_app: Boolean(result.appId && facebookConfig().appId && result.appId !== String(facebookConfig().appId)),
+      });
+    } catch (err) {
+      if (err.status === 400) return res.status(400).json({ error: err.message });
+      console.error('Saving a pasted Facebook token failed:', err.message);
+      return res.status(502).json({ error: `Facebook could not be reached: ${err.message}` });
     }
   });
 

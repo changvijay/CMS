@@ -1,4 +1,6 @@
+import crypto from 'node:crypto';
 import { pool, isDbReady } from '../db.js';
+import { createTtlCache } from '../utils/ttlCache.js';
 
 const AUTH_URL = 'https://www.linkedin.com/oauth/v2/authorization';
 const TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken';
@@ -72,6 +74,13 @@ export function apiVersion(now = new Date()) {
   return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
+/** "message (CODE)" from a LinkedIn error body, so stored errors say why LinkedIn refused. */
+function linkedinErrorMessage(data, fallback) {
+  const code = data?.code || data?.serviceErrorCode;
+  const message = data?.message || data?.error_description || fallback;
+  return code && !String(message).includes(String(code)) ? `${message} (${code})` : message;
+}
+
 /** GET on LinkedIn's versioned REST API. Use this for all company-page data calls. */
 export async function linkedinGet(accessToken, path) {
   const response = await fetch(`${REST_URL}${path}`, {
@@ -83,7 +92,7 @@ export async function linkedinGet(accessToken, path) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw Object.assign(new Error(data.message || `LinkedIn API request failed (${response.status})`), { status: response.status });
+    throw Object.assign(new Error(linkedinErrorMessage(data, `LinkedIn API request failed (${response.status})`)), { status: response.status, reason: data.code });
   }
   return data;
 }
@@ -107,7 +116,7 @@ export async function fetchAdminPages(accessToken) {
 export async function fetchMember(accessToken) {
   const response = await fetch('https://api.linkedin.com/v2/userinfo', { headers: { Authorization: `Bearer ${accessToken}` } });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok || !data.sub) throw Object.assign(new Error(data.message || `LinkedIn profile request failed (${response.status})`), { status: response.status });
+  if (!response.ok || !data.sub) throw Object.assign(new Error(linkedinErrorMessage(data, `LinkedIn profile request failed (${response.status})`)), { status: response.status, reason: data.code });
   return data;
 }
 
@@ -144,6 +153,7 @@ export async function saveTokens(accountId, data, now = Date.now()) {
         scope = COALESCE($6, scope),
         last_refresh_error = NULL,
         last_refresh_failed_at = NULL,
+        token_invalid_at = NULL,
         updated_at = NOW()
       WHERE id = $1
          OR (refresh_token IS NOT NULL AND refresh_token = (SELECT refresh_token FROM linkedin_accounts WHERE id = $1))
@@ -219,6 +229,59 @@ export async function ensureWorkingToken(account) {
   return { account: current, ok: second.ok, message: second.ok ? null : second.message };
 }
 
+// A token LinkedIn accepted is trusted for a while, so pages don't pay an extra LinkedIn call on every request.
+const VERIFIED_TTL_MS = 10 * 60 * 1000;
+// After LinkedIn refused a token and its refresh, wait before asking again (the user has to reconnect anyway).
+const INVALID_RETRY_MS = 30 * 60 * 1000;
+const verified = createTtlCache({ maxEntries: 200 });
+const fingerprint = (token) => crypto.createHash('sha256').update(String(token || '')).digest('hex').slice(0, 16);
+const verifiedKey = (account) => `${account.id}:${fingerprint(account.access_token)}`;
+
+export const RECONNECT_MESSAGE = 'LinkedIn stopped accepting this connection. Press Reconnect on the Accounts page.';
+
+export function clearLinkedInTokenChecks() {
+  verified.invalidate();
+}
+
+const reconnectError = (detail) => Object.assign(new Error(detail ? `${RECONNECT_MESSAGE} (${detail})` : RECONNECT_MESSAGE), {
+  status: 401, reason: 'reconnect_required',
+});
+
+/** Flags every row that uses this access token (one login can hold several company pages). */
+async function markInvalid(account, message) {
+  await pool.query(
+    `UPDATE linkedin_accounts SET token_invalid_at = NOW(), last_refresh_error = $2, updated_at = NOW()
+      WHERE id = $1 OR access_token = $3`,
+    [account.id, message, account.access_token]
+  ).catch(() => {});
+}
+
+/**
+ * The account row with an access token LinkedIn accepts right now.
+ * Renews when the date says so, and also when LinkedIn rejects the token early (revoked, invalidated):
+ * then the refresh token is used straight away. Only when that fails too is the account flagged and a
+ * `reconnect_required` 401 thrown. Use this for every LinkedIn call.
+ */
+export async function getWorkingLinkedInToken(account) {
+  if (verified.get(verifiedKey(account))) return account;
+  const invalidAt = account.token_invalid_at ? new Date(account.token_invalid_at).getTime() : null;
+  if (invalidAt && Date.now() - invalidAt < INVALID_RETRY_MS) throw reconnectError(account.last_refresh_error);
+
+  const check = await ensureWorkingToken(account);
+  if (!check.ok || tokenState(check.account) === 'expired') {
+    const message = check.message || 'LinkedIn access expired.';
+    await markInvalid(check.account, message);
+    throw reconnectError(message);
+  }
+  const fresh = check.account;
+  if (fresh.token_invalid_at) {
+    await pool.query('UPDATE linkedin_accounts SET token_invalid_at = NULL WHERE id = $1', [fresh.id]).catch(() => {});
+    fresh.token_invalid_at = null;
+  }
+  verified.set(verifiedKey(fresh), true, VERIFIED_TTL_MS);
+  return fresh;
+}
+
 /** Use this from any LinkedIn data call: always hands back a working access token. */
 export async function getLinkedInAccessToken(userId, accountId) {
   const { rows } = await pool.query(
@@ -226,26 +289,22 @@ export async function getLinkedInAccessToken(userId, accountId) {
     [userId, accountId ?? null]
   );
   if (!rows.length) throw Object.assign(new Error('No LinkedIn account connected.'), { status: 404 });
-  const account = await refreshIfNeeded(rows[0]);
-  if (tokenState(account) === 'expired') {
-    throw Object.assign(new Error('LinkedIn access expired. Please connect LinkedIn again.'), { status: 401 });
-  }
-  return account.access_token;
+  return (await getWorkingLinkedInToken(rows[0])).access_token;
 }
 
-/** Nightly job: keeps every connected account's token alive. */
+/** Nightly job: renews tokens close to expiry, and repairs (or flags) tokens LinkedIn stopped accepting early. */
 export async function refreshAllLinkedInTokens() {
   if (!isDbReady() || !isLinkedInConfigured()) return;
   const { rows } = await pool.query('SELECT * FROM linkedin_accounts ORDER BY id');
   const done = new Set();
   for (const account of rows) {
-    if (!refreshDue(account) || done.has(account.refresh_token)) continue;
-    done.add(account.refresh_token);
+    if (done.has(account.access_token)) continue; // pages from one login share one token
+    done.add(account.access_token);
     try {
-      await refreshIfNeeded(account);
-      console.log(`LinkedIn token refreshed for linkedin#${account.id}`);
+      const fresh = await getWorkingLinkedInToken(account);
+      if (fresh.access_token !== account.access_token) console.log(`LinkedIn token renewed for linkedin#${account.id}`);
     } catch (err) {
-      console.warn(`LinkedIn refresh failed for linkedin#${account.id}: ${err.message}`);
+      console.warn(`LinkedIn token for linkedin#${account.id} needs a reconnect: ${err.message}`);
     }
   }
 }

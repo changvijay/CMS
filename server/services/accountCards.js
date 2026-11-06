@@ -55,52 +55,53 @@ export function buildAccountCard({ platform, account, current, previous, series 
   };
 }
 
-const AGG = {
-  instagram: {
-    table: 'ig_daily_metrics',
-    select: `COUNT(*)::int AS days, SUM(reach) AS reach, SUM(views) AS views, SUM(total_interactions) AS interactions,
-             SUM(follower_change) AS net_followers, SUM(profile_links_taps) AS link_taps,
-             SUM(likes) AS likes, SUM(comments) AS comments, SUM(saves) AS saves, SUM(shares) AS shares`,
-  },
-  youtube: {
-    table: 'yt_daily_metrics',
-    select: `COUNT(*)::int AS days, SUM(views) AS views, SUM(minutes_watched) AS minutes_watched,
-             SUM(subs_gained) AS subs_gained, SUM(subs_lost) AS subs_lost, SUM(likes) AS likes, SUM(comments) AS comments, SUM(shares) AS shares,
-             SUM(avg_view_percentage * views) / NULLIF(SUM(views) FILTER (WHERE avg_view_percentage IS NOT NULL), 0) AS avg_view_percentage`,
-  },
-  linkedin: {
-    table: 'li_daily_metrics',
-    seriesColumn: 'impressions',
-    select: `COUNT(*)::int AS days, SUM(impressions) AS impressions, SUM(clicks) AS clicks, SUM(likes) AS likes,
-             SUM(comments) AS comments, SUM(shares) AS shares, SUM(page_views) AS page_views,
-             SUM(COALESCE(organic_follower_gain, 0) + COALESCE(paid_follower_gain, 0)) AS net_followers`,
-  },
-};
+const sum = (rows, key) => rows.reduce((acc, r) => acc + n(r[key]), 0);
 
-/** One card per connected account, instagram accounts first. Accounts with no stored data still get a card. */
-export async function loadAccountCards(pool, { igAccounts, ytAccounts, liAccounts = [], since, until, prevSince, prevUntil }) {
+/** The aggregated numbers one card needs, from that account's daily rows (stored or live). */
+export function aggregateCardRow(platform, rows) {
+  const base = { days: rows.length };
+  if (platform === 'instagram') {
+    return {
+      ...base, reach: sum(rows, 'reach'), views: sum(rows, 'views'), interactions: sum(rows, 'total_interactions'),
+      net_followers: sum(rows, 'follower_change'), link_taps: sum(rows, 'profile_links_taps'),
+      likes: sum(rows, 'likes'), comments: sum(rows, 'comments'), saves: sum(rows, 'saves'), shares: sum(rows, 'shares'),
+    };
+  }
+  if (platform === 'linkedin') {
+    return {
+      ...base, impressions: sum(rows, 'impressions'), clicks: sum(rows, 'clicks'), likes: sum(rows, 'likes'),
+      comments: sum(rows, 'comments'), shares: sum(rows, 'shares'), page_views: sum(rows, 'page_views'),
+      net_followers: sum(rows, 'organic_follower_gain') + sum(rows, 'paid_follower_gain'),
+    };
+  }
+  // Average view percentage is weighted by views, counting only days that report it.
+  const weighted = rows.filter((r) => r.avg_view_percentage !== null && r.avg_view_percentage !== undefined);
+  const weightedViews = sum(weighted, 'views');
+  return {
+    ...base, views: sum(rows, 'views'), minutes_watched: sum(rows, 'minutes_watched'), subs_gained: sum(rows, 'subs_gained'),
+    subs_lost: sum(rows, 'subs_lost'), likes: sum(rows, 'likes'), comments: sum(rows, 'comments'), shares: sum(rows, 'shares'),
+    avg_view_percentage: weightedViews > 0 ? weighted.reduce((acc, r) => acc + n(r.avg_view_percentage) * n(r.views), 0) / weightedViews : null,
+  };
+}
+
+const SERIES_COLUMN = { instagram: 'views', youtube: 'views', linkedin: 'impressions' };
+
+/**
+ * One card per connected account, in the order given. Accounts with no data still get a card.
+ * `rows` / `previousRows` map platform -> daily rows carrying `account_id`.
+ */
+export function buildAccountCards(accountsByPlatform, rows, previousRows) {
   const cards = [];
-  for (const [platform, accounts] of [['instagram', igAccounts], ['youtube', ytAccounts], ['linkedin', liAccounts]]) {
-    if (!accounts.length) continue;
-    const { table, select, seriesColumn = 'views' } = AGG[platform];
-    const ids = accounts.map((a) => Number(a.id));
-    const aggregate = (from, to) => pool.query(
-      `SELECT account_id, ${select} FROM ${table} WHERE account_id = ANY($1) AND metric_date BETWEEN $2 AND $3 GROUP BY account_id`, [ids, from, to]);
-    const [cur, prev, series] = await Promise.all([
-      aggregate(since, until),
-      aggregate(prevSince, prevUntil),
-      pool.query(`SELECT account_id, COALESCE(${seriesColumn}, 0) AS views FROM ${table} WHERE account_id = ANY($1) AND metric_date BETWEEN $2 AND $3 ORDER BY metric_date`, [ids, since, until]),
-    ]);
-    const by = (rows) => new Map(rows.map((r) => [String(r.account_id), r]));
-    const curMap = by(cur.rows);
-    const prevMap = by(prev.rows);
+  for (const [platform, accounts] of Object.entries(accountsByPlatform)) {
+    const forAccount = (list, id) => (list?.[platform] || []).filter((r) => String(r.account_id) === String(id));
     for (const account of accounts) {
+      const current = forAccount(rows, account.id);
       cards.push(buildAccountCard({
         platform,
         account,
-        current: curMap.get(String(account.id)),
-        previous: prevMap.get(String(account.id)),
-        series: series.rows.filter((r) => String(r.account_id) === String(account.id)),
+        current: current.length ? aggregateCardRow(platform, current) : undefined,
+        previous: aggregateCardRow(platform, forAccount(previousRows, account.id)),
+        series: current.map((r) => ({ views: r[SERIES_COLUMN[platform]] ?? 0 })),
       }));
     }
   }

@@ -1,10 +1,11 @@
 import { pool } from '../db.js';
-import { getGoogleAccessTokenFromRefreshToken } from './googleAuth.js';
+import { getGoogleAccessTokenFromRefreshToken, noteYoutubeResponse } from './googleAuth.js';
 import { MEDIA_FIELDS, fetchMediaInsights, igGet, mediaLabel } from './instagramApi.js';
 import { isoDurationToSeconds } from '../utils/duration.js';
-import { refreshIfNeeded, tokenState } from './linkedinAuth.js';
+import { getWorkingLinkedInToken } from './linkedinAuth.js';
 import { fetchDailyStats, fetchPostSnapshots } from './linkedinApi.js';
 import { addDays, dateRange, istDateString, istDayWindowSeconds } from '../utils/dates.js';
+import { INSIGHTS_RETENTION_DAYS } from './retention.js';
 
 const IG_DAILY_METRICS = 'reach,views,likes,comments,saves,shares,replies,reposts,total_interactions,accounts_engaged,profile_links_taps';
 const IG_DAILY_FALLBACK = 'reach,views,likes,comments,saves,shares,total_interactions,accounts_engaged';
@@ -13,6 +14,7 @@ const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
 async function getJson(url, init) {
   const res = await fetch(url, init);
+  noteYoutubeResponse(res.status, init?.headers);
   return res.json();
 }
 
@@ -88,55 +90,87 @@ async function fetchIgStoriesSnapshots(account) {
     snapshotRow({ ...item, media_product_type: 'STORY' }, await fetchMediaInsights(account, { ...item, media_product_type: 'STORY' })));
 }
 
+export const IG_DAILY_COLUMNS = ['reach', 'views', 'likes', 'comments', 'saves', 'shares', 'total_interactions', 'accounts_engaged',
+  'profile_links_taps', 'follower_change', 'replies', 'reposts'];
+export const YT_DAILY_COLUMNS = ['views', 'likes', 'comments', 'shares', 'minutes_watched', 'subs_gained', 'subs_lost', 'engaged_views',
+  'avg_view_duration', 'avg_view_percentage', 'playlist_adds', 'playlist_removes', 'dislikes', 'card_impressions', 'card_clicks', 'premium_views'];
+
+/**
+ * Upserts daily rows in one statement. `keepExisting` keeps a stored value when the new one is null
+ * (LinkedIn sometimes omits a part of the day on a later read).
+ */
+export async function upsertDaily(table, columns, accountId, rows, { keepExisting = false } = {}) {
+  if (!rows.length) return;
+  const width = columns.length + 2;
+  const values = [];
+  const tuples = rows.map((r, i) => {
+    values.push(accountId, r.metric_date, ...columns.map((c) => r[c] ?? null));
+    return `(${Array.from({ length: width }, (_, j) => `$${i * width + j + 1}`).join(',')},NOW())`;
+  });
+  const set = columns.map((c) => (keepExisting ? `${c} = COALESCE(EXCLUDED.${c}, ${table}.${c})` : `${c} = EXCLUDED.${c}`));
+  await pool.query(
+    `INSERT INTO ${table} (account_id, metric_date, ${columns.join(', ')}, synced_at) VALUES ${tuples.join(',')}
+     ON CONFLICT (account_id, metric_date) DO UPDATE SET ${set.join(', ')}, synced_at = NOW()`,
+    values
+  );
+}
+
 const SNAPSHOT_COLUMNS = ['title', 'media_type', 'permalink', 'thumbnail_url', 'published_at', 'reach', 'views', 'likes', 'comments',
   'saves', 'shares', 'reposts', 'total_interactions', 'profile_visits', 'follows', 'replies', 'link_clicks', 'skip_rate',
   'avg_watch_seconds', 'total_watch_seconds', 'duration_seconds', 'extra'];
 
 async function upsertMediaSnapshots(platform, accountId, capturedOn, rows) {
+  if (!rows.length) return;
   const cols = ['platform', 'account_id', 'media_id', 'captured_on', ...SNAPSHOT_COLUMNS];
-  const placeholders = cols.map((_, i) => `$${i + 1}`).join(',');
   const updates = SNAPSHOT_COLUMNS.map((c) => `${c}=EXCLUDED.${c}`).join(', ');
-  for (const r of rows) {
-    const values = SNAPSHOT_COLUMNS.map((c) => (c === 'extra' ? JSON.stringify(r.extra ?? null) : r[c] ?? null));
+  // One statement per 50 rows instead of one per row. A media id twice in one statement is refused by Postgres, so keep the last.
+  const unique = [...new Map(rows.map((r) => [r.media_id, r])).values()];
+  for (let i = 0; i < unique.length; i += 50) {
+    const values = [];
+    const tuples = unique.slice(i, i + 50).map((r, k) => {
+      values.push(platform, accountId, r.media_id, capturedOn,
+        ...SNAPSHOT_COLUMNS.map((c) => (c === 'extra' ? JSON.stringify(r.extra ?? null) : r[c] ?? null)));
+      return `(${cols.map((_, j) => `$${k * cols.length + j + 1}`).join(',')})`;
+    });
     await pool.query(
-      `INSERT INTO media_snapshots (${cols.join(',')}) VALUES (${placeholders})
+      `INSERT INTO media_snapshots (${cols.join(',')}) VALUES ${tuples.join(',')}
        ON CONFLICT (platform, account_id, media_id, captured_on) DO UPDATE SET ${updates}`,
-      [platform, accountId, r.media_id, capturedOn, ...values]
+      values
     );
   }
 }
 
-export async function syncInstagramAccount(account, { days = 30, mediaLimit = 40 } = {}) {
-  const today = istDateString();
-  const start = addDays(today, -Math.min(days, 30)); // Graph API caps daily history at ~30 days
-  const end = addDays(today, -1); // today is incomplete; sync through yesterday
-  const followerByDay = await fetchIgFollowerChange(account, start, today).catch(() => ({}));
+/** Daily Instagram account rows for [start, end], shaped like ig_daily_metrics rows. */
+export async function fetchIgDailyRows(account, start, end) {
+  // follower_count reports the day that ends at end_time, so ask for one day past the range
+  const followerByDay = await fetchIgFollowerChange(account, start, addDays(end, 1)).catch(() => ({}));
+  const days = await inBatches(dateRange(start, end), 5, async (day) => ({ day, m: await fetchIgDay(account, day) }));
+  return days
+    .filter(({ m }) => m)
+    .map(({ day, m }) => ({
+      metric_date: day,
+      reach: m.reach ?? null, views: m.views ?? null, likes: m.likes ?? null, comments: m.comments ?? null,
+      saves: m.saves ?? null, shares: m.shares ?? null, total_interactions: m.total_interactions ?? null,
+      accounts_engaged: m.accounts_engaged ?? null, profile_links_taps: m.profile_links_taps ?? null,
+      follower_change: followerByDay[day] ?? null, replies: m.replies ?? null, reposts: m.reposts ?? null,
+    }));
+}
 
-  let daysSynced = 0;
-  for (const day of dateRange(start, end)) {
-    const m = await fetchIgDay(account, day);
-    if (!m) continue;
-    await pool.query(
-      `INSERT INTO ig_daily_metrics
-         (account_id, metric_date, reach, views, likes, comments, saves, shares, total_interactions,
-          accounts_engaged, profile_links_taps, follower_change, replies, reposts, synced_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW())
-       ON CONFLICT (account_id, metric_date) DO UPDATE SET
-         reach=EXCLUDED.reach, views=EXCLUDED.views, likes=EXCLUDED.likes, comments=EXCLUDED.comments,
-         saves=EXCLUDED.saves, shares=EXCLUDED.shares, total_interactions=EXCLUDED.total_interactions,
-         accounts_engaged=EXCLUDED.accounts_engaged, profile_links_taps=EXCLUDED.profile_links_taps,
-         follower_change=EXCLUDED.follower_change, replies=EXCLUDED.replies, reposts=EXCLUDED.reposts, synced_at=NOW()`,
-      [account.id, day, m.reach ?? null, m.views ?? null, m.likes ?? null, m.comments ?? null, m.saves ?? null,
-        m.shares ?? null, m.total_interactions ?? null, m.accounts_engaged ?? null, m.profile_links_taps ?? null,
-        followerByDay[day] ?? null, m.replies ?? null, m.reposts ?? null]
-    );
-    daysSynced += 1;
-  }
+/** The days a sync stores: the last `days` complete days, never more than the retention window. */
+function syncWindow(days, maxDays = INSIGHTS_RETENTION_DAYS) {
+  const today = istDateString();
+  return { today, start: addDays(today, -Math.min(days, maxDays)), end: addDays(today, -1) }; // today is incomplete
+}
+
+export async function syncInstagramAccount(account, { days = INSIGHTS_RETENTION_DAYS, mediaLimit = 40 } = {}) {
+  const { today, start, end } = syncWindow(days, Math.min(INSIGHTS_RETENTION_DAYS, 30)); // Graph API caps daily history at ~30 days
+  const rows = await fetchIgDailyRows(account, start, end);
+  await upsertDaily('ig_daily_metrics', IG_DAILY_COLUMNS, account.id, rows);
 
   const media = await fetchIgMediaSnapshots(account, Math.min(mediaLimit, 100));
   const stories = await fetchIgStoriesSnapshots(account);
   await upsertMediaSnapshots('instagram', account.id, today, [...media, ...stories]);
-  return { platform: 'instagram', account_id: account.id, days_synced: daysSynced, media_snapshots: media.length, stories: stories.length };
+  return { platform: 'instagram', account_id: account.id, days_synced: rows.length, media_snapshots: media.length, stories: stories.length };
 }
 
 /** Captures only the stories that are live right now (they vanish after 24 hours). */
@@ -165,42 +199,38 @@ async function fetchYtDailyReport(headers, start, end) {
   return null;
 }
 
-export async function syncYoutubeAccount(account, { days = 90, mediaLimit = 50 } = {}) {
+const YT_REPORT_TO_COLUMN = {
+  views: 'views', likes: 'likes', comments: 'comments', shares: 'shares', estimatedMinutesWatched: 'minutes_watched',
+  subscribersGained: 'subs_gained', subscribersLost: 'subs_lost', engagedViews: 'engaged_views', averageViewDuration: 'avg_view_duration',
+  averageViewPercentage: 'avg_view_percentage', videosAddedToPlaylists: 'playlist_adds', videosRemovedFromPlaylists: 'playlist_removes',
+  dislikes: 'dislikes', cardImpressions: 'card_impressions', cardClicks: 'card_clicks', redViews: 'premium_views',
+};
+
+async function youtubeHeaders(account) {
   const accessToken = await getGoogleAccessTokenFromRefreshToken((account.access_token || '').trim());
-  const headers = { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' };
+  return { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' };
+}
 
-  const today = istDateString();
-  const end = addDays(today, -1);
-  const start = addDays(today, -days);
+/** Daily YouTube channel rows for [start, end], shaped like yt_daily_metrics rows. */
+export async function fetchYtDailyRows(account, start, end, headers) {
+  const report = await fetchYtDailyReport(headers || (await youtubeHeaders(account)), start, end);
+  const cols = (report?.columnHeaders || []).map((c) => c.name);
+  return (report?.rows || []).map((row) => {
+    const out = { metric_date: row[cols.indexOf('day')] };
+    for (const column of YT_DAILY_COLUMNS) out[column] = null;
+    cols.forEach((name, i) => {
+      if (YT_REPORT_TO_COLUMN[name]) out[YT_REPORT_TO_COLUMN[name]] = row[i];
+    });
+    return out;
+  });
+}
 
-  const report = await fetchYtDailyReport(headers, start, end);
-  const cols = (report.columnHeaders || []).map((c) => c.name);
-  const idx = (name) => cols.indexOf(name);
-  const at = (row, name) => (idx(name) === -1 ? null : row[idx(name)]);
-  let daysSynced = 0;
-  for (const row of report.rows || []) {
-    await pool.query(
-      `INSERT INTO yt_daily_metrics
-         (account_id, metric_date, views, likes, comments, shares, minutes_watched, subs_gained, subs_lost,
-          engaged_views, avg_view_duration, avg_view_percentage, playlist_adds, playlist_removes, dislikes,
-          card_impressions, card_clicks, premium_views, synced_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,NOW())
-       ON CONFLICT (account_id, metric_date) DO UPDATE SET
-         views=EXCLUDED.views, likes=EXCLUDED.likes, comments=EXCLUDED.comments, shares=EXCLUDED.shares,
-         minutes_watched=EXCLUDED.minutes_watched, subs_gained=EXCLUDED.subs_gained, subs_lost=EXCLUDED.subs_lost,
-         engaged_views=EXCLUDED.engaged_views, avg_view_duration=EXCLUDED.avg_view_duration,
-         avg_view_percentage=EXCLUDED.avg_view_percentage, playlist_adds=EXCLUDED.playlist_adds,
-         playlist_removes=EXCLUDED.playlist_removes, dislikes=EXCLUDED.dislikes,
-         card_impressions=EXCLUDED.card_impressions, card_clicks=EXCLUDED.card_clicks,
-         premium_views=EXCLUDED.premium_views, synced_at=NOW()`,
-      [account.id, row[idx('day')], at(row, 'views'), at(row, 'likes'), at(row, 'comments'), at(row, 'shares'),
-        at(row, 'estimatedMinutesWatched'), at(row, 'subscribersGained'), at(row, 'subscribersLost'),
-        at(row, 'engagedViews'), at(row, 'averageViewDuration'), at(row, 'averageViewPercentage'),
-        at(row, 'videosAddedToPlaylists'), at(row, 'videosRemovedFromPlaylists'), at(row, 'dislikes'),
-        at(row, 'cardImpressions'), at(row, 'cardClicks'), at(row, 'redViews')]
-    );
-    daysSynced += 1;
-  }
+export async function syncYoutubeAccount(account, { days = INSIGHTS_RETENTION_DAYS, mediaLimit = 50 } = {}) {
+  const headers = await youtubeHeaders(account);
+  const { today, start, end } = syncWindow(days);
+  const daily = await fetchYtDailyRows(account, start, end, headers);
+  await upsertDaily('yt_daily_metrics', YT_DAILY_COLUMNS, account.id, daily);
+  const daysSynced = daily.length;
 
   // Latest uploads, paged 50 at a time up to mediaLimit
   const ids = [];
@@ -254,40 +284,31 @@ export async function syncYoutubeAccount(account, { days = 90, mediaLimit = 50 }
 // LinkedIn company pages
 // ---------------------------------------------------------------------------
 
-const LI_DAILY_COLUMNS = ['impressions', 'unique_impressions', 'clicks', 'likes', 'comments', 'shares', 'page_views',
+export const LI_DAILY_COLUMNS = ['impressions', 'unique_impressions', 'clicks', 'likes', 'comments', 'shares', 'page_views',
   'unique_page_views', 'desktop_page_views', 'mobile_page_views', 'organic_follower_gain', 'paid_follower_gain'];
 
-/** A working access token for a linkedin_accounts row, refreshing it first when it is close to expiring. */
+/** A working access token for a linkedin_accounts row: renewed when close to expiry or when LinkedIn rejects it early. */
 export async function linkedInTokenFor(account) {
-  const fresh = await refreshIfNeeded(account);
-  if (tokenState(fresh) === 'expired') {
-    throw Object.assign(new Error('LinkedIn access expired. Reconnect LinkedIn on the Accounts page.'), { status: 401, reason: 'token_expired' });
-  }
-  return fresh.access_token;
+  return (await getWorkingLinkedInToken(account)).access_token;
 }
 
-export async function syncLinkedInAccount(account, { days = 90, mediaLimit = 50 } = {}) {
+/** Daily LinkedIn page rows for [start, end], shaped like li_daily_metrics rows. */
+export async function fetchLiDailyRows(account, start, end, accessToken) {
+  const token = accessToken || (await linkedInTokenFor(account));
+  const daily = await fetchDailyStats(token, account.page_id, start, end);
+  return Object.entries(daily)
+    .filter(([date]) => date >= start && date <= end)
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([date, m]) => ({ metric_date: date, ...Object.fromEntries(LI_DAILY_COLUMNS.map((c) => [c, m[c] ?? null])) }));
+}
+
+export async function syncLinkedInAccount(account, { days = INSIGHTS_RETENTION_DAYS, mediaLimit = 50 } = {}) {
   const accessToken = await linkedInTokenFor(account);
-  const orgId = account.page_id;
-  const today = istDateString();
-  const end = addDays(today, -1);
-  const start = addDays(today, -Math.min(days, 360)); // LinkedIn keeps 12 months of daily statistics
+  const { today, start, end } = syncWindow(days);
+  const daily = await fetchLiDailyRows(account, start, end, accessToken);
+  await upsertDaily('li_daily_metrics', LI_DAILY_COLUMNS, account.id, daily, { keepExisting: true });
 
-  const daily = await fetchDailyStats(accessToken, orgId, start, end);
-  let daysSynced = 0;
-  for (const [date, m] of Object.entries(daily)) {
-    if (date < start || date > end) continue;
-    await pool.query(
-      `INSERT INTO li_daily_metrics (account_id, metric_date, ${LI_DAILY_COLUMNS.join(', ')}, synced_at)
-       VALUES ($1, $2, ${LI_DAILY_COLUMNS.map((_, i) => `$${i + 3}`).join(', ')}, NOW())
-       ON CONFLICT (account_id, metric_date) DO UPDATE SET
-         ${LI_DAILY_COLUMNS.map((c) => `${c} = COALESCE(EXCLUDED.${c}, li_daily_metrics.${c})`).join(', ')}, synced_at = NOW()`,
-      [account.id, date, ...LI_DAILY_COLUMNS.map((c) => m[c] ?? null)]
-    );
-    daysSynced += 1;
-  }
-
-  const posts = await fetchPostSnapshots(accessToken, orgId, Math.min(mediaLimit, 100));
+  const posts = await fetchPostSnapshots(accessToken, account.page_id, Math.min(mediaLimit, 100));
   await upsertMediaSnapshots('linkedin', account.id, today, posts);
-  return { platform: 'linkedin', account_id: account.id, days_synced: daysSynced, media_snapshots: posts.length };
+  return { platform: 'linkedin', account_id: account.id, days_synced: daily.length, media_snapshots: posts.length };
 }

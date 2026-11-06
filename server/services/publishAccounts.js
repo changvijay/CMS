@@ -3,7 +3,7 @@ import { refreshInstagramToken } from './instagramAuth.js';
 import { canUpload, getGoogleAccessTokenFromRefreshToken } from './googleAuth.js';
 import { fbGet } from './facebookApi.js';
 import { igGet } from './instagramApi.js';
-import { ensureWorkingToken, refreshIfNeeded, tokenState } from './linkedinAuth.js';
+import { getWorkingLinkedInToken } from './linkedinAuth.js';
 
 /**
  * The accounts a user can publish to, per platform, with a live token check.
@@ -65,9 +65,12 @@ async function checkFacebook(row) {
 async function checkLinkedIn(row) {
   const kind = row.account_type === 'person' ? 'linkedin_person' : 'linkedin';
   // Renews when due, checks the token with a real call, and on a 401 renews once more before giving up.
-  const check = await ensureWorkingToken(row);
-  const fresh = check.account;
-  if (!check.ok || tokenState(fresh) === 'expired') return bad('expired', check.message || 'LinkedIn access expired.', { reconnect: kind });
+  let fresh;
+  try {
+    fresh = await getWorkingLinkedInToken(row);
+  } catch (err) {
+    return bad('expired', err.message, { reconnect: kind });
+  }
   const need = row.account_type === 'person' ? 'w_member_social' : 'w_organization_social';
   if (fresh.scope && !String(fresh.scope).split(/[\s,]+/).includes(need)) {
     return bad('missing_scope', `Posting permission (${need}) was not granted. Reconnect LinkedIn to allow it.`, { reconnect: kind });
@@ -77,7 +80,7 @@ async function checkLinkedIn(row) {
 
 async function checkYoutube(row) {
   try {
-    await getGoogleAccessTokenFromRefreshToken(row.access_token);
+    await getGoogleAccessTokenFromRefreshToken(row.access_token, { fresh: true });
   } catch (err) {
     return bad('expired', err.message, { reconnect: 'youtube' });
   }
@@ -126,9 +129,12 @@ export async function loadCredentials(platform, userId, accountId) {
   }
   if (platform === 'facebook') return { page: row };
   if (platform === 'linkedin') {
-    const fresh = await refreshIfNeeded(row).catch(() => row);
-    if (tokenState(fresh) === 'expired') throw Object.assign(new Error('LinkedIn access expired. Please connect LinkedIn again.'), { code: 401 });
-    return { account: fresh, accessToken: fresh.access_token };
+    try {
+      const fresh = await getWorkingLinkedInToken(row);
+      return { account: fresh, accessToken: fresh.access_token };
+    } catch (err) {
+      throw Object.assign(err, { code: 401 });
+    }
   }
   return { account: row, accessToken: await getGoogleAccessTokenFromRefreshToken(row.access_token) };
 }

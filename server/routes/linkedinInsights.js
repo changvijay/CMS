@@ -16,11 +16,10 @@ async function part(fn) {
   try {
     return await fn();
   } catch (err) {
-    const denied = err.status === 403 || err.status === 401;
-    return {
-      unavailable: true,
-      reason: denied ? 'Not available on your LinkedIn access level yet.' : err.message,
-    };
+    // 401 means the connection itself is broken (reconnect); 403 means this API isn't granted to the app.
+    const reason = err.status === 401 ? 'LinkedIn connection needs reconnecting (Accounts page).'
+      : err.status === 403 ? 'Not available on your LinkedIn access level yet.' : err.message;
+    return { unavailable: true, reason };
   }
 }
 

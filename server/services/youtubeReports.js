@@ -1,4 +1,4 @@
-import { getGoogleAccessTokenFromRefreshToken } from './googleAuth.js';
+import { getGoogleAccessTokenFromRefreshToken, noteYoutubeResponse } from './googleAuth.js';
 import { analyzeComments } from './textAnalysis.js';
 import { isoDurationToSeconds } from '../utils/duration.js';
 
@@ -25,6 +25,7 @@ export async function ytHeaders(account) {
 export async function runReport(headers, params) {
   try {
     const res = await fetch(`${ANALYTICS}?${new URLSearchParams({ ids: 'channel==MINE', ...params }).toString()}`, { headers });
+    noteYoutubeResponse(res.status, headers);
     const json = await res.json();
     if (!res.ok || json.error) return { error: apiErrorFrom(json, res.status) };
     return { rows: reportToRows(json) };
@@ -36,6 +37,7 @@ export async function runReport(headers, params) {
 async function dataGet(headers, path, params) {
   try {
     const res = await fetch(`${DATA}/${path}?${new URLSearchParams(params).toString()}`, { headers });
+    noteYoutubeResponse(res.status, headers);
     const json = await res.json();
     if (!res.ok || json.error) return { error: apiErrorFrom(json, res.status) };
     return { data: json };

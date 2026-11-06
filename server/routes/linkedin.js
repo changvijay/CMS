@@ -4,14 +4,13 @@ import { pool, isDbReady } from '../db.js';
 import { safeReturnPath, withParams } from '../utils/oauth.js';
 import {
   buildAuthUrl,
-  ensureWorkingToken,
   exchangeCode,
   fetchAdminPages,
   fetchMember,
   PERSON_SCOPES,
   isLinkedInConfigured,
   linkedinConfig,
-  refreshIfNeeded,
+  getWorkingLinkedInToken,
   tokenExpiry,
   tokenState,
 } from '../services/linkedinAuth.js';
@@ -38,7 +37,7 @@ function publicAccount(row) {
     organization_urn: row.member_id,
     account_type: row.account_type || 'organization',
     vanity_name: row.vanity_name,
-    status: row.forced_expired ? 'expired' : tokenState(row),
+    status: row.forced_expired || row.token_invalid_at ? 'expired' : tokenState(row),
     access_token_expires_at: row.access_token_expires_at,
     refresh_token_expires_at: row.refresh_token_expires_at,
     auto_refresh: Boolean(row.refresh_token),
@@ -93,7 +92,7 @@ export function createLinkedInRouter(authenticateToken, jwtSecret) {
              access_token = EXCLUDED.access_token, access_token_expires_at = EXCLUDED.access_token_expires_at,
              refresh_token = COALESCE(EXCLUDED.refresh_token, linkedin_accounts.refresh_token),
              refresh_token_expires_at = COALESCE(EXCLUDED.refresh_token_expires_at, linkedin_accounts.refresh_token_expires_at),
-             scope = EXCLUDED.scope, account_type = 'person', last_refresh_error = NULL, last_refresh_failed_at = NULL, last_refresh_failed_at = NULL, updated_at = NOW()`,
+             scope = EXCLUDED.scope, account_type = 'person', last_refresh_error = NULL, last_refresh_failed_at = NULL, token_invalid_at = NULL, updated_at = NOW()`,
           [payload.uid, `urn:li:person:${me.sub}`, me.name || 'LinkedIn profile', me.email || null, me.picture || null,
             tokens.access_token, personExpires, tokens.refresh_token || null, personRefreshExpires, tokens.scope || PERSON_SCOPES.join(' ')]
         );
@@ -120,7 +119,7 @@ export function createLinkedInRouter(authenticateToken, jwtSecret) {
              refresh_token = COALESCE(EXCLUDED.refresh_token, linkedin_accounts.refresh_token),
              refresh_token_expires_at = COALESCE(EXCLUDED.refresh_token_expires_at, linkedin_accounts.refresh_token_expires_at),
              scope = EXCLUDED.scope,
-             last_refresh_error = NULL, last_refresh_failed_at = NULL,
+             last_refresh_error = NULL, last_refresh_failed_at = NULL, token_invalid_at = NULL,
              updated_at = NOW()`,
           [payload.uid, page.urn, page.name, page.vanityName, tokens.access_token, accessExpiresAt,
             tokens.refresh_token || null, refreshExpiresAt, tokens.scope || null]
@@ -142,15 +141,18 @@ export function createLinkedInRouter(authenticateToken, jwtSecret) {
     if (!isDbReady()) return res.status(503).json({ error: 'Database is not connected.' });
     try {
       const { rows } = await pool.query('SELECT * FROM linkedin_accounts WHERE user_id = $1 ORDER BY created_at DESC', [req.user.userId]);
-      // Opening the page is a good moment to top up any token that is close to expiring.
+      // Opening the page checks each token for real (cached for a few minutes): one LinkedIn revoked early is renewed
+      // with the refresh token, or shown as expired with a Reconnect button. Pages from one login share a token, so one check each.
+      const checks = new Map();
       const fresh = await Promise.all(rows.map(async (r) => {
-        const row = await refreshIfNeeded(r).catch(() => r);
-        // Expired only when renewing failed and LinkedIn really rejects the token.
-        if (row.last_refresh_error && tokenState(row) !== 'expired') {
-          const check = await ensureWorkingToken(row);
-          return check.ok ? check.account : { ...check.account, forced_expired: true, last_refresh_error: check.message };
+        if (!checks.has(r.access_token)) checks.set(r.access_token, getWorkingLinkedInToken(r).then((a) => ({ ok: true, token: a.access_token }), (err) => ({ ok: false, message: err.message })));
+        const check = await checks.get(r.access_token);
+        if (!check.ok) return { ...r, forced_expired: true, last_refresh_error: check.message };
+        if (check.token !== r.access_token) {
+          const { rows: updated } = await pool.query('SELECT * FROM linkedin_accounts WHERE id = $1', [r.id]);
+          return updated[0] || r;
         }
-        return row;
+        return r;
       }));
       return res.json({ configured: isLinkedInConfigured(), accounts: fresh.map(publicAccount) });
     } catch (err) {

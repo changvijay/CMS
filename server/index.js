@@ -22,6 +22,8 @@ import { startPublishSchedule } from './jobs/publishQueue.js';
 import { tokenStatus } from './services/instagramAuth.js';
 import { checkToken as checkInstagramToken } from './services/instagramMessaging.js';
 import { startSnapshotSchedule } from './jobs/snapshot.js';
+import { catchAsyncErrors, jsonErrorHandler } from './utils/asyncErrors.js';
+import { createRateLimiter } from './utils/rateLimit.js';
 import swaggerJsdoc from 'swagger-jsdoc';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -144,8 +146,9 @@ function authenticateToken(req, res, next) {
     return res.status(401).json({ error: 'Access token required. Please login.' });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
+  jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }, (err, decoded) => {
+    // OAuth `state` values are signed with the same secret; only real session tokens carry a numeric userId and no purpose.
+    if (err || decoded?.purpose || !/^\d+$/.test(String(decoded?.userId ?? ''))) {
       return res.status(403).json({ error: 'Invalid or expired session token.' });
     }
     req.user = decoded;
@@ -178,18 +181,30 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Throttles password guessing: per address+name, and per name alone (the forwarded address can be spoofed).
+const loginByClient = createRateLimiter({ limit: 10, windowMs: 15 * 60 * 1000 });
+const loginByName = createRateLimiter({ limit: 30, windowMs: 15 * 60 * 1000 });
+
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password } = req.body || {};
 
-    if (!username || !password) {
+    if (typeof username !== 'string' || typeof password !== 'string' || !username.trim() || !password) {
       return res.status(400).json({ error: 'Username/Email and Password are required.' });
+    }
+
+    const name = username.trim().toLowerCase();
+    const limits = [loginByClient.hit(`${req.ip}|${name}`), loginByName.hit(name)];
+    const blocked = limits.find((l) => !l.allowed);
+    if (blocked) {
+      res.setHeader('Retry-After', String(blocked.retryAfterSeconds));
+      return res.status(429).json({ error: 'Too many sign-in attempts. Please wait a few minutes and try again.' });
     }
 
     const user = await findUserByUsernameOrEmail(username.trim());
 
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials. User not found. try again' });
+      return res.status(401).json({ error: 'Invalid username or password.' });
     }
 
     if (!user.is_active) {
@@ -210,6 +225,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid username or password.' });
     }
+    loginByClient.reset(`${req.ip}|${name}`);
 
     // Upgrade unhashed password to bcrypt hash in database
     if (isPlaintextMatch) {
@@ -282,12 +298,13 @@ app.get('/api/youtube-accounts', authenticateToken, async (req, res) => {
   try {
     const tableName = req.query.tableName || 'Youtube_accounts';
     const rows = await getDataFromTable(tableName, req.user.userId);
-    // Google refresh tokens don't expire on a schedule, so a real exchange is the only honest status check.
+    // Google refresh tokens can be revoked at any time (or expire after 7 days for apps in Testing),
+    // so the Accounts page asks Google for real instead of trusting a cached access token.
     const accounts = await Promise.all(rows.map(async ({ access_token, ...safe }) => {
       let status = 'ok';
       let message = null;
       try {
-        await getGoogleAccessTokenFromRefreshToken(access_token);
+        await getGoogleAccessTokenFromRefreshToken(access_token, { fresh: true });
       } catch (err) {
         status = 'expired';
         message = err.message;
@@ -417,7 +434,7 @@ app.get('/api/instagram/dashboard-summary', authenticateToken, async (req, res) 
     const tokenEncoded = encodeURIComponent(account.access_token);
 
     const isTopPerformers = req.query.topPerformers === 'true';
-    const limit = isTopPerformers ? 50 : (parseInt(req.query.limit, 10) || 7);
+    const limit = isTopPerformers ? 50 : Math.min(Math.max(parseInt(req.query.limit, 10) || 7, 1), 100);
     const mediaUrl = `https://graph.instagram.com/v24.0/me/media?fields=id,caption,media_type,media_product_type,media_url,thumbnail_url,timestamp,permalink,like_count,comments_count,shortcode,is_comment_enabled&limit=${limit}&access_token=${tokenEncoded}`;
     const trendUrl = `https://graph.instagram.com/v24.0/${account.page_id}/insights?metric=follower_count&period=day&since=${sinceSec}&until=${untilSec}&access_token=${tokenEncoded}`;
     const onlineUrl = `https://graph.instagram.com/v24.0/${account.page_id}/insights?metric=online_followers&period=lifetime&access_token=${tokenEncoded}`;
@@ -498,7 +515,7 @@ app.get('/api/instagram/media', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'No connected Instagram account found for this user.' });
     }
 
-    const limit = req.query.limit || 7;
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 7, 1), 100);
     const tokenEncoded = encodeURIComponent(account.access_token);
     const url = `https://graph.instagram.com/v24.0/me/media?fields=id,caption,media_type,media_product_type,media_url,thumbnail_url,timestamp,permalink,like_count,comments_count,shortcode,is_comment_enabled&limit=${limit}&access_token=${tokenEncoded}`;
 
@@ -680,9 +697,10 @@ app.get('/api/youtube/dashboard-summary', authenticateToken, async (req, res) =>
     }
 
     const { sinceSec, untilSec } = getIstWindowTimestamps(req.query.since, req.query.until);
-    const startDateStr = req.query.since || new Date(sinceSec * 1000).toISOString().split('T')[0];
-    const endDateStr = req.query.until || new Date(untilSec * 1000).toISOString().split('T')[0];
-    const limit = parseInt(req.query.limit, 10) || 7;
+    const isoDay = (value, sec) => (/^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? value : new Date(sec * 1000).toISOString().split('T')[0]);
+    const startDateStr = isoDay(req.query.since, sinceSec);
+    const endDateStr = isoDay(req.query.until, untilSec);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 7, 1), 50);
 
     // Check if token is present (not empty, not dummy placeholder '******')
     const rawToken = account.access_token ? account.access_token.trim() : '';
@@ -857,6 +875,9 @@ app.get('*', (req, res, next) => {
     }
   });
 });
+
+catchAsyncErrors(app);
+app.use(jsonErrorHandler);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Express server running on port ${PORT}`);
