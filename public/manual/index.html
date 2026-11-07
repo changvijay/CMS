@@ -3,140 +3,251 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>User Manual — CMS Analytics Studio</title>
-  <meta name="description" content="Step-by-step user manual for CMS Analytics Studio with labelled screenshots: analytics, Social Post publishing, Instagram auto-replies and connected accounts." />
+  <title>User manual · CMS Analytics Studio</title>
+  <meta name="description" content="Step by step user manual for CMS Analytics Studio with labelled screenshots: analytics, Social Post publishing, Instagram auto replies and connected accounts." />
+  <meta property="og:title" content="CMS Analytics Studio user manual" />
+  <meta property="og:description" content="Every screen of CMS Analytics Studio, explained with labelled screenshots." />
+  <meta property="og:image" content="/manual/images/04-overview-top.png" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --ink: #0f172a; --ink-2: #334155; --muted: #64748b; --line: #e2e8f0;
-      --bg: #ffffff; --bg-soft: #f8fafc; --accent: #4f46e5; --accent-ink: #4338ca; --accent-soft: #eef2ff;
-      --label: #e11d48; --grad: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
-      --header: 64px; --side: 290px;
+      --s-25: 2px; --s-50: 4px; --s-75: 8px; --s-100: 12px; --s-200: 16px; --s-300: 24px;
+      --s-400: 32px; --s-500: 40px; --s-600: 48px; --s-700: 64px; --s-800: 80px; --s-900: 96px;
+      --r-md: 6px; --r-lg: 8px; --r-xl: 12px; --r-2xl: 16px; --r-3xl: 24px; --r-full: 9999px;
+      --ink: #0a0a0a; --ink-2: #404040; --muted: #737373; --line: #e5e5e5;
+      --base: #ffffff; --soft: #fafafa; --accent: #4f46e5; --accent-hover: #4338ca; --accent-soft: #eef2ff;
+      --label: #e11d48; --label-soft: #fff1f2;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --shadow: 0 1px 2px rgba(10, 10, 10, .04), 0 12px 32px rgba(10, 10, 10, .08);
+      --side: 288px; --bar: 64px;
     }
+    /* Text styles */
+    .heading-1 { font-size: 60px; line-height: 60px; font-weight: 600; }
+    .heading-4 { font-size: 30px; line-height: 36px; font-weight: 600; }
+    .heading-5 { font-size: 24px; line-height: 32px; font-weight: 600; }
+    .heading-6 { font-size: 20px; line-height: 28px; font-weight: 600; }
+    .title-2 { font-size: 18px; line-height: 28px; font-weight: 500; }
+    .title-3 { font-size: 16px; line-height: 24px; font-weight: 500; }
+    .title-4 { font-size: 14px; line-height: 20px; font-weight: 500; }
+    .body-3 { font-size: 16px; line-height: 24px; font-weight: 400; }
+    .body-6 { font-size: 14px; line-height: 20px; font-weight: 400; }
+    .button-sm { font-size: 14px; line-height: 20px; font-weight: 600; }
+    .caption-1 { font-size: 14px; line-height: 20px; font-weight: 500; }
+    .caption-2 { font-size: 14px; line-height: 20px; font-weight: 400; }
+    .caption-3 { font-size: 12px; line-height: 16px; font-weight: 600; }
+
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; scroll-padding-top: calc(var(--header) + 16px); }
-    body { margin: 0; font-family: Inter, system-ui, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+    html { scroll-behavior: smooth; scroll-padding-top: var(--s-900); }
+    body { margin: 0; font-family: Geist, system-ui, sans-serif; color: var(--ink); background: var(--soft); -webkit-font-smoothing: antialiased; }
+    h1, h2, h3 { margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+    p { text-wrap: pretty; }
+    em, i { font-style: normal; font-weight: 500; }
     a { color: var(--accent); }
-    h1, h2, h3 { font-family: Outfit, Inter, sans-serif; letter-spacing: -0.01em; line-height: 1.2; }
+    .ph { width: 16px; height: 16px; flex: none; }
+    .skip { position: absolute; left: var(--s-200); top: -100px; z-index: 100; background: var(--ink); color: #fff; padding: var(--s-75) var(--s-100); border-radius: var(--r-lg); text-decoration: none; }
+    .skip:focus { top: var(--s-200); }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-md); }
 
-    .topbar { position: fixed; inset: 0 0 auto; height: var(--header); z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 20px; background: rgba(255,255,255,.9); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
-    .brand { display: flex; align-items: center; gap: 10px; font-family: Outfit, sans-serif; font-weight: 700; font-size: 17px; color: var(--ink); text-decoration: none; }
-    .brand-mark { width: 32px; height: 32px; border-radius: 9px; background: var(--grad); display: grid; place-items: center; color: #fff; }
-    .brand small { font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: var(--accent-ink); background: var(--accent-soft); padding: 2px 8px; border-radius: 999px; }
-    .top-actions { display: flex; gap: 8px; align-items: center; }
-    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; font-weight: 600; font-size: 14px; text-decoration: none; border: 1px solid var(--line); color: var(--ink); background: #fff; white-space: nowrap; cursor: pointer; font-family: inherit; }
-    .btn:hover { border-color: #cbd5e1; }
+    .btn { display: inline-flex; align-items: center; gap: var(--s-75); padding: var(--s-75) var(--s-100); border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--base); color: var(--ink); text-decoration: none; cursor: pointer; white-space: nowrap; font-family: inherit;
+      transition: transform 300ms var(--ease), background-color 300ms var(--ease), border-color 300ms var(--ease); }
+    .btn:hover { transform: translateY(-1px); background: var(--soft); border-color: #d4d4d4; }
+    .btn:active { transform: scale(0.98); }
     .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .btn-primary:hover { background: var(--accent-ink); }
-    .toc-toggle { display: none; }
+    .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
-    .sidebar { position: fixed; top: var(--header); bottom: 0; left: 0; width: var(--side); overflow-y: auto; padding: 20px 16px 40px; border-right: 1px solid var(--line); background: var(--bg-soft); }
-    .search { position: relative; margin-bottom: 14px; }
-    .search input { width: 100%; padding: 10px 12px 10px 36px; border: 1px solid var(--line); border-radius: 10px; font: inherit; font-size: 14px; background: #fff; }
-    .search input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
-    .search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); }
-    .toc { list-style: none; margin: 0; padding: 0; font-size: 14px; }
-    .toc > li { margin: 2px 0; }
-    .toc a { display: block; padding: 6px 10px; border-radius: 8px; color: var(--ink-2); text-decoration: none; }
-    .toc > li > a { font-weight: 600; color: var(--ink); }
-    .toc a:hover { background: #fff; color: var(--accent); }
-    .toc a.active { background: var(--accent-soft); color: var(--accent-ink); }
-    .toc ul { list-style: none; margin: 0 0 6px; padding: 0 0 0 12px; border-left: 1px solid var(--line); margin-left: 12px; }
-    .toc ul a { font-size: 13px; padding: 4px 10px; }
+    /* Floating bar */
+    .bar { position: fixed; top: var(--s-200); left: var(--s-200); right: var(--s-200); z-index: 50; height: var(--bar); display: flex; align-items: center; justify-content: space-between; gap: var(--s-200);
+      padding: var(--s-75) var(--s-75) var(--s-75) var(--s-200); border-radius: var(--r-2xl); border: 1px solid rgba(229, 229, 229, .8);
+      background: rgba(255, 255, 255, .72); backdrop-filter: saturate(180%) blur(16px); -webkit-backdrop-filter: saturate(180%) blur(16px); box-shadow: var(--shadow); }
+    .bar-left { display: flex; align-items: center; gap: var(--s-100); min-width: 0; }
+    .brand { display: flex; align-items: center; gap: var(--s-75); color: var(--ink); text-decoration: none; white-space: nowrap; }
+    .brand-mark { width: 32px; height: 32px; border-radius: var(--r-lg); background: var(--accent); color: #fff; display: grid; place-items: center; }
+    .brand-mark .ph { width: 18px; height: 18px; }
+    .pill { padding: var(--s-25) var(--s-75); border-radius: var(--r-full); background: var(--accent-soft); color: var(--accent-hover); }
+    .bar-actions { display: flex; gap: var(--s-75); }
+    .toc-btn { display: none; width: 40px; height: 40px; border: 0; background: transparent; border-radius: var(--r-lg); position: relative; cursor: pointer; }
+    .toc-btn span { position: absolute; left: var(--s-100); width: 16px; height: 2px; border-radius: var(--r-full); background: var(--ink); transition: transform 500ms var(--ease); }
+    .toc-btn span:nth-child(1) { transform: translateY(-4px); }
+    .toc-btn span:nth-child(2) { transform: translateY(4px); }
+    .toc-open .toc-btn span:nth-child(1) { transform: rotate(45deg); }
+    .toc-open .toc-btn span:nth-child(2) { transform: rotate(-45deg); }
+
+    /* Sidebar */
+    .sidebar { position: fixed; top: calc(var(--bar) + var(--s-400)); bottom: var(--s-200); left: var(--s-200); width: var(--side); z-index: 40; display: flex; flex-direction: column;
+      border-radius: var(--r-2xl); border: 1px solid var(--line); background: var(--base); padding: var(--s-75); }
+    .search { position: relative; flex: none; }
+    .search input { width: 100%; padding: var(--s-75) var(--s-100) var(--s-75) var(--s-500); border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--soft); font: inherit; font-size: 14px; line-height: 20px; color: var(--ink);
+      transition: border-color 300ms var(--ease), background-color 300ms var(--ease); }
+    .search input:focus { background: var(--base); border-color: var(--accent); outline: none; }
+    .search .ph { position: absolute; left: var(--s-100); top: 50%; transform: translateY(-50%); color: var(--muted); }
+    .toc-scroll { overflow-y: auto; margin-top: var(--s-75); flex: 1; }
+    .toc { list-style: none; margin: 0; padding: 0; }
+    .toc a { display: block; padding: var(--s-75) var(--s-100); border-radius: var(--r-lg); color: var(--ink-2); text-decoration: none; transition: background-color 300ms var(--ease), color 300ms var(--ease); }
+    .toc > li > a { color: var(--ink); font-weight: 500; }
+    .toc a:hover { background: var(--soft); }
+    .toc a[aria-current="true"] { background: var(--accent-soft); color: var(--accent-hover); }
+    .toc ul { list-style: none; margin: 0 0 var(--s-75); padding: 0 0 0 var(--s-200); }
+    .toc ul a { padding: var(--s-50) var(--s-100); color: var(--muted); }
     .toc li.hidden { display: none; }
-    .no-results { display: none; padding: 10px; color: var(--muted); font-size: 14px; }
+    .empty { display: none; padding: var(--s-300) var(--s-100); text-align: center; color: var(--muted); }
+    .empty .ph { width: 24px; height: 24px; margin-bottom: var(--s-75); }
+    .empty strong { display: block; color: var(--ink); margin-bottom: var(--s-50); }
 
-    main { margin-left: var(--side); padding: calc(var(--header) + 40px) 48px 80px; }
-    .content { max-width: 920px; margin: 0 auto; }
-    .hero { padding: 36px; border-radius: 20px; background: var(--grad); color: #fff; margin-bottom: 40px; }
-    .hero h1 { margin: 0 0 10px; font-size: clamp(28px, 4vw, 40px); }
-    .hero p { margin: 0 0 8px; opacity: .95; font-size: 17px; }
-    .hero a { color: #fff; font-weight: 600; }
-    .hero .hero-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
-    .hero .btn { border-color: rgba(255,255,255,.55); background: transparent; color: #fff; }
-    .hero .btn-primary { background: #fff; color: var(--accent-ink); border-color: #fff; }
-    .intro > p { color: var(--ink-2); }
+    /* Content */
+    main { margin-left: calc(var(--side) + var(--s-400)); padding: calc(var(--bar) + var(--s-600)) var(--s-400) var(--s-800); }
+    .content { max-width: 880px; margin: 0 auto; }
+    .hero { padding: var(--s-600) var(--s-400); border-radius: var(--r-3xl); background: var(--base); border: 1px solid var(--line); margin-bottom: var(--s-400); }
+    .hero h1 { max-width: 680px; margin-bottom: var(--s-200); background: linear-gradient(90deg, #000000, #666666); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero p { max-width: 680px; margin: 0 0 var(--s-300); color: var(--ink-2); }
+    .hero-actions { display: flex; gap: var(--s-75); flex-wrap: wrap; }
+    .legend-hint { display: flex; gap: var(--s-100); align-items: center; margin-top: var(--s-300); padding: var(--s-100) var(--s-200); border-radius: var(--r-xl); background: var(--label-soft); border: 1px solid #fecdd3; color: var(--ink-2); }
 
-    blockquote { margin: 20px 0; padding: 14px 18px; border-left: 4px solid var(--accent); background: var(--accent-soft); border-radius: 0 12px 12px 0; color: var(--ink-2); }
-    blockquote p { margin: 0; }
-
-    .doc-section { padding-top: 12px; margin-bottom: 40px; border-top: 1px solid var(--line); }
-    .doc-section:first-of-type { border-top: 0; }
+    .doc-section { background: var(--base); border: 1px solid var(--line); border-radius: var(--r-3xl); padding: var(--s-400) var(--s-400) var(--s-300); margin-bottom: var(--s-300); }
     .doc-section.hidden { display: none; }
-    .doc-section h2 { font-size: 30px; margin: 28px 0 14px; }
-    .doc-section h3 { font-size: 20px; margin: 30px 0 10px; }
-    .doc-section p, .doc-section li { color: var(--ink-2); }
-    code { font-family: 'JetBrains Mono', Consolas, monospace; font-size: .9em; background: #f1f5f9; padding: 1px 6px; border-radius: 6px; color: var(--accent-ink); }
+    .doc-section h2 { font-size: 30px; line-height: 36px; font-weight: 600; margin: 0 0 var(--s-200); }
+    .doc-section h3 { font-size: 20px; line-height: 28px; font-weight: 600; margin: var(--s-400) 0 var(--s-100); }
+    .doc-section p, .doc-section li { font-size: 16px; line-height: 24px; color: var(--ink-2); }
+    .doc-section p { margin: 0 0 var(--s-200); }
+    .doc-section ol, .doc-section ul { padding-left: var(--s-300); margin: 0 0 var(--s-200); }
+    .doc-section strong { color: var(--ink); font-weight: 600; }
+    code { font-family: ui-monospace, Menlo, monospace; font-size: 14px; background: var(--soft); border: 1px solid var(--line); padding: 0 var(--s-50); border-radius: var(--r-md); color: var(--accent-hover); }
+    blockquote { margin: 0 0 var(--s-200); padding: var(--s-100) var(--s-200); border-radius: var(--r-xl); border: 1px solid #c7d2fe; background: var(--accent-soft); }
+    blockquote p { margin: 0 !important; }
 
-    figure { margin: 22px 0 10px; }
-    .zoom { display: block; width: 100%; padding: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #fff; cursor: zoom-in; box-shadow: 0 1px 2px rgba(15,23,42,.05), 0 10px 30px -14px rgba(15,23,42,.25); }
-    .zoom img { display: block; width: 100%; height: auto; }
-    figcaption { text-align: center; color: var(--muted); font-size: 14px; font-style: italic; margin-top: 10px; }
+    figure { margin: var(--s-300) 0 var(--s-200); }
+    .zoom { position: relative; display: block; width: 100%; padding: var(--s-75); border-radius: var(--r-2xl); border: 1px solid var(--line); background: var(--soft); cursor: zoom-in;
+      transition: transform 500ms var(--ease), box-shadow 500ms var(--ease); }
+    .zoom:hover { box-shadow: var(--shadow); }
+    .zoom img { display: block; width: 100%; height: auto; border-radius: var(--r-lg); background: #f4f4f5; }
+    .zoom .hint { position: absolute; right: var(--s-200); bottom: var(--s-200); display: inline-flex; align-items: center; gap: var(--s-50); padding: var(--s-50) var(--s-75); border-radius: var(--r-md); background: rgba(10,10,10,.72); color: #fff; opacity: 0; transition: opacity 300ms var(--ease); font-size: 12px; line-height: 16px; font-weight: 500; }
+    .zoom:hover .hint, .zoom:focus-visible .hint { opacity: 1; }
+    figcaption { margin-top: var(--s-100); text-align: center; color: var(--muted); font-size: 14px; line-height: 20px; }
 
-    .table-wrap { overflow-x: auto; margin: 14px 0 22px; border: 1px solid var(--line); border-radius: 12px; }
-    table { width: 100%; border-collapse: collapse; font-size: 15px; }
-    th { text-align: left; background: var(--bg-soft); font-weight: 600; color: var(--ink); padding: 10px 14px; border-bottom: 1px solid var(--line); }
-    td { padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-2); }
+    .table-wrap { overflow-x: auto; margin: 0 0 var(--s-300); border-radius: var(--r-xl); border: 1px solid var(--line); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 20px; }
+    th { text-align: left; font-weight: 500; color: var(--muted); background: var(--soft); padding: var(--s-100) var(--s-200); border-bottom: 1px solid var(--line); }
+    td { padding: var(--s-100) var(--s-200); border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-2); }
     tr:last-child td { border-bottom: 0; }
-    table.legend th:first-child, table.legend td:first-child { width: 52px; text-align: center; }
-    table.legend td:nth-child(2) { font-weight: 600; color: var(--ink); white-space: nowrap; }
-    table.legend tbody tr:hover { background: #fff1f2; }
-    .num { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 999px; background: var(--label); color: #fff; font-weight: 700; font-size: 13px; line-height: 1; font-style: normal; }
-    .num.sm { min-width: 20px; height: 20px; font-size: 11px; vertical-align: 1px; }
+    tbody tr { transition: background-color 300ms var(--ease); }
+    table.legend tbody tr:hover { background: var(--label-soft); }
+    table.legend th:first-child, table.legend td:first-child { width: 56px; text-align: center; }
+    table.legend td:nth-child(2) { color: var(--ink); font-weight: 500; white-space: nowrap; }
+    .num { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 var(--s-75); border-radius: var(--r-full); background: var(--label); color: #fff; font-size: 12px; line-height: 16px; font-weight: 600; }
+    .num.sm { min-width: 20px; height: 20px; padding: 0 var(--s-50); vertical-align: 2px; }
 
-    .lightbox { position: fixed; inset: 0; z-index: 100; background: rgba(15, 23, 42, .88); display: none; align-items: flex-start; justify-content: center; overflow: auto; padding: 56px 20px 20px; cursor: zoom-out; }
-    .lightbox.open { display: flex; }
-    .lightbox img { max-width: min(1440px, 100%); height: auto; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
-    .lightbox .close { position: fixed; top: 14px; right: 18px; background: #fff; border: 0; border-radius: 999px; width: 38px; height: 38px; font-size: 22px; cursor: pointer; }
+    .lightbox { position: fixed; inset: 0; z-index: 100; display: flex; align-items: flex-start; justify-content: center; overflow: auto; padding: var(--s-800) var(--s-300) var(--s-300);
+      background: rgba(10, 10, 10, .88); opacity: 0; pointer-events: none; transition: opacity 300ms var(--ease); cursor: zoom-out; }
+    .lightbox.open { opacity: 1; pointer-events: auto; }
+    .lightbox img { max-width: min(1440px, 100%); height: auto; border-radius: var(--r-xl); transform: translateY(var(--s-300)); transition: transform 500ms var(--ease); }
+    .lightbox.open img { transform: none; }
+    .lightbox .close { position: fixed; top: var(--s-200); right: var(--s-200); }
 
-    .to-top { position: fixed; right: 20px; bottom: 20px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: #fff; box-shadow: 0 6px 20px -6px rgba(15,23,42,.3); cursor: pointer; display: none; place-items: center; z-index: 30; }
-    .to-top.show { display: grid; }
-    .page-foot { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .to-top { position: fixed; right: var(--s-300); bottom: var(--s-300); z-index: 30; opacity: 0; transform: translateY(var(--s-200)); pointer-events: none; transition: opacity 300ms var(--ease), transform 500ms var(--ease); }
+    .to-top.show { opacity: 1; transform: none; pointer-events: auto; }
+    .page-foot { display: flex; justify-content: space-between; gap: var(--s-200); flex-wrap: wrap; padding: var(--s-300) var(--s-75); color: var(--muted); }
 
-    @media (max-width: 1000px) {
-      .toc-toggle { display: inline-flex; }
-      .sidebar { transform: translateX(-100%); transition: transform .25s; z-index: 35; width: min(320px, 88vw); }
-      body.toc-open .sidebar { box-shadow: 10px 0 30px -10px rgba(15,23,42,.3); }
-      body.toc-open .sidebar { transform: none; }
-      main { margin-left: 0; padding: calc(var(--header) + 24px) 16px 64px; }
-      .top-actions .hide-sm { display: none; }
-      .hero { padding: 24px; }
-      table.legend td:nth-child(2) { white-space: normal; }
+    .reveal { opacity: 0; transform: translateY(var(--s-400)); transition: opacity 700ms var(--ease), transform 700ms var(--ease); }
+    .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .reveal, .lightbox img, .to-top { transform: none !important; }
+      .reveal { opacity: 1; }
+      .btn:hover { transform: none; }
     }
-    @media (max-width: 520px) { .brand small { display: none; } .brand span.name { font-size: 15px; } }
+
+    @media (max-width: 1024px) {
+      .toc-btn { display: block; }
+      .sidebar { top: calc(var(--bar) + var(--s-400)); right: var(--s-200); width: auto; max-width: 400px; box-shadow: var(--shadow);
+        opacity: 0; transform: translateY(calc(var(--s-200) * -1)); pointer-events: none; transition: opacity 300ms var(--ease), transform 500ms var(--ease); }
+      .toc-open .sidebar { opacity: 1; transform: none; pointer-events: auto; }
+      main { margin-left: 0; padding: calc(var(--bar) + var(--s-600)) var(--s-200) var(--s-700); }
+      .bar .hide-md { display: none; }
+    }
+    @media (max-width: 640px) {
+      .heading-1 { font-size: 36px; line-height: 40px; }
+      .hero { padding: var(--s-400) var(--s-300); }
+      .doc-section { padding: var(--s-300) var(--s-200) var(--s-200); border-radius: var(--r-2xl); }
+      .doc-section h2 { font-size: 24px; line-height: 32px; }
+      .bar .pill, .bar .hide-sm { display: none; }
+      .brand span.name { font-size: 14px; }
+      table.legend td:nth-child(2) { white-space: normal; }
+      .zoom { padding: var(--s-50); border-radius: var(--r-xl); }
+    }
     @media print {
-      .topbar, .sidebar, .to-top { display: none; }
+      .bar, .sidebar, .to-top, .skip { display: none !important; }
       main { margin: 0; padding: 0; }
-      .doc-section { break-before: page; }
-      .zoom { box-shadow: none; }
+      body { background: #fff; }
+      .doc-section { border: 0; break-before: page; }
+      .reveal { opacity: 1; transform: none; }
     }
   </style>
 </head>
 <body>
-  <header class="topbar">
-    <div style="display:flex;align-items:center;gap:10px">
-      <button class="btn toc-toggle" id="tocToggle" aria-controls="sidebar" aria-expanded="false">☰ Contents</button>
-      <a class="brand" href="/welcome/">
-        <span class="brand-mark" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></span>
-        <span class="name">CMS Analytics Studio</span> <small>User Manual</small>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<symbol id="ph-chart-line-up" viewBox="0 0 256 256" fill="currentColor"><path d="M232,208a8,8,0,0,1-8,8H32a8,8,0,0,1-8-8V48a8,8,0,0,1,16,0V156.69l50.34-50.35a8,8,0,0,1,11.32,0L128,132.69,180.69,80H160a8,8,0,0,1,0-16h40a8,8,0,0,1,8,8v40a8,8,0,0,1-16,0V91.31l-58.34,58.35a8,8,0,0,1-11.32,0L96,123.31l-56,56V200H224A8,8,0,0,1,232,208Z"/></symbol>
+<symbol id="ph-target" viewBox="0 0 256 256" fill="currentColor"><path d="M221.87,83.16A104.1,104.1,0,1,1,195.67,49l22.67-22.68a8,8,0,0,1,11.32,11.32l-96,96a8,8,0,0,1-11.32-11.32l27.72-27.72a40,40,0,1,0,17.87,31.09,8,8,0,1,1,16-.9,56,56,0,1,1-22.38-41.65L184.3,60.39a87.88,87.88,0,1,0,23.13,29.67,8,8,0,0,1,14.44-6.9Z"/></symbol>
+<symbol id="ph-paper-plane-tilt" viewBox="0 0 256 256" fill="currentColor"><path d="M227.32,28.68a16,16,0,0,0-15.66-4.08l-.15,0L19.57,82.84a16,16,0,0,0-2.49,29.8L102,154l41.3,84.87A15.86,15.86,0,0,0,157.74,248q.69,0,1.38-.06a15.88,15.88,0,0,0,14-11.51l58.2-191.94c0-.05,0-.1,0-.15A16,16,0,0,0,227.32,28.68ZM157.83,231.85l-.05.14,0-.07-40.06-82.3,48-48a8,8,0,0,0-11.31-11.31l-48,48L24.08,98.25l-.07,0,.14,0L216,40Z"/></symbol>
+<symbol id="ph-chat-circle-dots" viewBox="0 0 256 256" fill="currentColor"><path d="M140,128a12,12,0,1,1-12-12A12,12,0,0,1,140,128ZM84,116a12,12,0,1,0,12,12A12,12,0,0,0,84,116Zm88,0a12,12,0,1,0,12,12A12,12,0,0,0,172,116Zm60,12A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Zm-16,0A88,88,0,1,0,51.81,172.06a8,8,0,0,1,.66,6.54L40,216,77.4,203.53a7.85,7.85,0,0,1,2.53-.42,8,8,0,0,1,4,1.08A88,88,0,0,0,216,128Z"/></symbol>
+<symbol id="ph-magnifying-glass" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/></symbol>
+<symbol id="ph-database" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24C74.17,24,32,48.6,32,80v96c0,31.4,42.17,56,96,56s96-24.6,96-56V80C224,48.6,181.83,24,128,24Zm80,104c0,9.62-7.88,19.43-21.61,26.92C170.93,163.35,150.19,168,128,168s-42.93-4.65-58.39-13.08C55.88,147.43,48,137.62,48,128V111.36c17.06,15,46.23,24.64,80,24.64s62.94-9.68,80-24.64ZM69.61,53.08C85.07,44.65,105.81,40,128,40s42.93,4.65,58.39,13.08C200.12,60.57,208,70.38,208,80s-7.88,19.43-21.61,26.92C170.93,115.35,150.19,120,128,120s-42.93-4.65-58.39-13.08C55.88,99.43,48,89.62,48,80S55.88,60.57,69.61,53.08ZM186.39,202.92C170.93,211.35,150.19,216,128,216s-42.93-4.65-58.39-13.08C55.88,195.43,48,185.62,48,176V159.36c17.06,15,46.23,24.64,80,24.64s62.94-9.68,80-24.64V176C208,185.62,200.12,195.43,186.39,202.92Z"/></symbol>
+<symbol id="ph-instagram-logo" viewBox="0 0 256 256" fill="currentColor"><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160ZM176,24H80A56.06,56.06,0,0,0,24,80v96a56.06,56.06,0,0,0,56,56h96a56.06,56.06,0,0,0,56-56V80A56.06,56.06,0,0,0,176,24Zm40,152a40,40,0,0,1-40,40H80a40,40,0,0,1-40-40V80A40,40,0,0,1,80,40h96a40,40,0,0,1,40,40ZM192,76a12,12,0,1,1-12-12A12,12,0,0,1,192,76Z"/></symbol>
+<symbol id="ph-facebook-logo" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm8,191.63V152h24a8,8,0,0,0,0-16H136V112a16,16,0,0,1,16-16h16a8,8,0,0,0,0-16H152a32,32,0,0,0-32,32v24H96a8,8,0,0,0,0,16h24v63.63a88,88,0,1,1,16,0Z"/></symbol>
+<symbol id="ph-youtube-logo" viewBox="0 0 256 256" fill="currentColor"><path d="M164.44,121.34l-48-32A8,8,0,0,0,104,96v64a8,8,0,0,0,12.44,6.66l48-32a8,8,0,0,0,0-13.32ZM120,145.05V111l25.58,17ZM234.33,69.52a24,24,0,0,0-14.49-16.4C185.56,39.88,131,40,128,40s-57.56-.12-91.84,13.12a24,24,0,0,0-14.49,16.4C19.08,79.5,16,97.74,16,128s3.08,48.5,5.67,58.48a24,24,0,0,0,14.49,16.41C69,215.56,120.4,216,127.34,216h1.32c6.94,0,58.37-.44,91.18-13.11a24,24,0,0,0,14.49-16.41c2.59-10,5.67-28.22,5.67-58.48S236.92,79.5,234.33,69.52Zm-15.49,113a8,8,0,0,1-4.77,5.49c-31.65,12.22-85.48,12-86,12H128c-.54,0-54.33.2-86-12a8,8,0,0,1-4.77-5.49C34.8,173.39,32,156.57,32,128s2.8-45.39,5.16-54.47A8,8,0,0,1,41.93,68c30.52-11.79,81.66-12,85.85-12h.27c.54,0,54.38-.18,86,12a8,8,0,0,1,4.77,5.49C221.2,82.61,224,99.43,224,128S221.2,173.39,218.84,182.47Z"/></symbol>
+<symbol id="ph-linkedin-logo" viewBox="0 0 256 256" fill="currentColor"><path d="M216,24H40A16,16,0,0,0,24,40V216a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V40A16,16,0,0,0,216,24Zm0,192H40V40H216V216ZM96,112v64a8,8,0,0,1-16,0V112a8,8,0,0,1,16,0Zm88,28v36a8,8,0,0,1-16,0V140a20,20,0,0,0-40,0v36a8,8,0,0,1-16,0V112a8,8,0,0,1,15.79-1.78A36,36,0,0,1,184,140ZM100,84A12,12,0,1,1,88,72,12,12,0,0,1,100,84Z"/></symbol>
+<symbol id="ph-arrow-right" viewBox="0 0 256 256" fill="currentColor"><path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"/></symbol>
+<symbol id="ph-check-circle" viewBox="0 0 256 256" fill="currentColor"><path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"/></symbol>
+<symbol id="ph-clock" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"/></symbol>
+<symbol id="ph-list" viewBox="0 0 256 256" fill="currentColor"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM40,72H216a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16ZM216,184H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z"/></symbol>
+<symbol id="ph-x" viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+<symbol id="ph-plus" viewBox="0 0 256 256" fill="currentColor"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/></symbol>
+<symbol id="ph-sign-in" viewBox="0 0 256 256" fill="currentColor"><path d="M141.66,133.66l-40,40a8,8,0,0,1-11.32-11.32L116.69,136H24a8,8,0,0,1,0-16h92.69L90.34,93.66a8,8,0,0,1,11.32-11.32l40,40A8,8,0,0,1,141.66,133.66ZM200,32H136a8,8,0,0,0,0,16h56V208H136a8,8,0,0,0,0,16h64a8,8,0,0,0,8-8V40A8,8,0,0,0,200,32Z"/></symbol>
+<symbol id="ph-book-open" viewBox="0 0 256 256" fill="currentColor"><path d="M232,48H160a40,40,0,0,0-32,16A40,40,0,0,0,96,48H24a8,8,0,0,0-8,8V200a8,8,0,0,0,8,8H96a24,24,0,0,1,24,24,8,8,0,0,0,16,0,24,24,0,0,1,24-24h72a8,8,0,0,0,8-8V56A8,8,0,0,0,232,48ZM96,192H32V64H96a24,24,0,0,1,24,24V200A39.81,39.81,0,0,0,96,192Zm128,0H160a39.81,39.81,0,0,0-24,8V88a24,24,0,0,1,24-24h64Z"/></symbol>
+<symbol id="ph-download-simple" viewBox="0 0 256 256" fill="currentColor"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"/></symbol>
+<symbol id="ph-printer" viewBox="0 0 256 256" fill="currentColor"><path d="M214.67,72H200V40a8,8,0,0,0-8-8H64a8,8,0,0,0-8,8V72H41.33C27.36,72,16,82.77,16,96v80a8,8,0,0,0,8,8H56v32a8,8,0,0,0,8,8H192a8,8,0,0,0,8-8V184h32a8,8,0,0,0,8-8V96C240,82.77,228.64,72,214.67,72ZM72,48H184V72H72ZM184,208H72V160H184Zm40-40H200V152a8,8,0,0,0-8-8H64a8,8,0,0,0-8,8v16H32V96c0-4.41,4.19-8,9.33-8H214.67c5.14,0,9.33,3.59,9.33,8Zm-24-52a12,12,0,1,1-12-12A12,12,0,0,1,200,116Z"/></symbol>
+<symbol id="ph-arrow-up" viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/></symbol>
+<symbol id="ph-caret-down" viewBox="0 0 256 256" fill="currentColor"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></symbol>
+<symbol id="ph-shield-check" viewBox="0 0 256 256" fill="currentColor"><path d="M208,40H48A16,16,0,0,0,32,56v56c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.26,47,25.53a8,8,0,0,0,4.2,0c1-.27,23.91-6.67,47-25.53C198.48,196.67,224,164.72,224,112V56A16,16,0,0,0,208,40Zm0,72c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,223.62a128.25,128.25,0,0,1-38.92-21.81C61.82,179.51,48,149.3,48,112l0-56,160,0ZM82.34,141.66a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32l-56,56a8,8,0,0,1-11.32,0Z"/></symbol>
+<symbol id="ph-plugs-connected" viewBox="0 0 256 256" fill="currentColor"><path d="M237.66,18.34a8,8,0,0,0-11.32,0l-52.4,52.41-5.37-5.38a32.05,32.05,0,0,0-45.26,0L100,88.69l-6.34-6.35A8,8,0,0,0,82.34,93.66L88.69,100,65.37,123.31a32,32,0,0,0,0,45.26l5.38,5.37-52.41,52.4a8,8,0,0,0,11.32,11.32l52.4-52.41,5.37,5.38a32,32,0,0,0,45.26,0L156,167.31l6.34,6.35a8,8,0,0,0,11.32-11.32L167.31,156l23.32-23.31a32,32,0,0,0,0-45.26l-5.38-5.37,52.41-52.4A8,8,0,0,0,237.66,18.34Zm-116.29,161a16,16,0,0,1-22.62,0L76.69,157.25a16,16,0,0,1,0-22.62L100,111.31,144.69,156Zm57.94-57.94L156,144.69,111.31,100l23.32-23.31a16,16,0,0,1,22.62,0l22.06,22A16,16,0,0,1,179.31,121.37ZM88.57,35A8,8,0,0,1,103.43,29l8,20A8,8,0,0,1,96.57,55ZM24.57,93A8,8,0,0,1,35,88.57l20,8A8,8,0,0,1,49,111.43l-20-8A8,8,0,0,1,24.57,93ZM231.43,163a8,8,0,0,1-10.4,4.46l-20-8A8,8,0,1,1,207,144.57l20,8A8,8,0,0,1,231.43,163Zm-64,58.06A8,8,0,0,1,152.57,227l-8-20A8,8,0,0,1,159.43,201Z"/></symbol>
+<symbol id="ph-arrows-clockwise" viewBox="0 0 256 256" fill="currentColor"><path d="M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z"/></symbol>
+<symbol id="ph-lightning" viewBox="0 0 256 256" fill="currentColor"><path d="M215.79,118.17a8,8,0,0,0-5-5.66L153.18,90.9l14.66-73.33a8,8,0,0,0-13.69-7l-112,120a8,8,0,0,0,3,13l57.63,21.61L88.16,238.43a8,8,0,0,0,13.69,7l112-120A8,8,0,0,0,215.79,118.17ZM109.37,214l10.47-52.38a8,8,0,0,0-5-9.06L62,132.71l84.62-90.66L136.16,94.43a8,8,0,0,0,5,9.06l52.8,19.8Z"/></symbol>
+<symbol id="ph-file-csv" viewBox="0 0 256 256" fill="currentColor"><path d="M48,180c0,11,7.18,20,16,20a14.24,14.24,0,0,0,10.22-4.66A8,8,0,0,1,85.78,206.4,30.06,30.06,0,0,1,64,216c-17.65,0-32-16.15-32-36s14.35-36,32-36a30.06,30.06,0,0,1,21.78,9.6,8,8,0,0,1-11.56,11.06A14.24,14.24,0,0,0,64,160C55.18,160,48,169,48,180Zm79.6-8.69c-4-1.16-8.14-2.35-10.45-3.84-1.25-.81-1.23-1-1.12-1.9a4.57,4.57,0,0,1,2-3.67c4.6-3.12,15.34-1.73,19.82-.56A8,8,0,0,0,142,145.86c-2.12-.55-21-5.22-32.84,2.76a20.58,20.58,0,0,0-9,14.95c-2,15.88,13.65,20.41,23,23.11,12.06,3.49,13.12,4.92,12.78,7.59-.31,2.41-1.26,3.34-2.14,3.93-4.6,3.06-15.17,1.56-19.55.36A8,8,0,0,0,109.94,214a61.34,61.34,0,0,0,15.19,2c5.82,0,12.3-1,17.49-4.46a20.82,20.82,0,0,0,9.19-15.23C154,179,137.49,174.17,127.6,171.31Zm83.09-26.84a8,8,0,0,0-10.23,4.84L188,184.21l-12.47-34.9a8,8,0,0,0-15.07,5.38l20,56a8,8,0,0,0,15.07,0l20-56A8,8,0,0,0,210.69,144.47ZM216,88v24a8,8,0,0,1-16,0V96H152a8,8,0,0,1-8-8V40H56v72a8,8,0,0,1-16,0V40A16,16,0,0,1,56,24h96a8,8,0,0,1,5.66,2.34l56,56A8,8,0,0,1,216,88Zm-27.31-8L160,51.31V80Z"/></symbol>
+<symbol id="ph-stack" viewBox="0 0 256 256" fill="currentColor"><path d="M230.91,172A8,8,0,0,1,228,182.91l-96,56a8,8,0,0,1-8.06,0l-96-56A8,8,0,0,1,36,169.09l92,53.65,92-53.65A8,8,0,0,1,230.91,172ZM220,121.09l-92,53.65L36,121.09A8,8,0,0,0,28,134.91l96,56a8,8,0,0,0,8.06,0l96-56A8,8,0,1,0,220,121.09ZM24,80a8,8,0,0,1,4-6.91l96-56a8,8,0,0,1,8.06,0l96,56a8,8,0,0,1,0,13.82l-96,56a8,8,0,0,1-8.06,0l-96-56A8,8,0,0,1,24,80Zm23.88,0L128,126.74,208.12,80,128,33.26Z"/></symbol>
+<symbol id="ph-warning-circle" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z"/></symbol>
+<symbol id="ph-lightbulb" viewBox="0 0 256 256" fill="currentColor"><path d="M176,232a8,8,0,0,1-8,8H88a8,8,0,0,1,0-16h80A8,8,0,0,1,176,232Zm40-128a87.55,87.55,0,0,1-33.64,69.21A16.24,16.24,0,0,0,176,186v6a16,16,0,0,1-16,16H96a16,16,0,0,1-16-16v-6a16,16,0,0,0-6.23-12.66A87.59,87.59,0,0,1,40,104.49C39.74,56.83,78.26,17.14,125.88,16A88,88,0,0,1,216,104Zm-16,0a72,72,0,0,0-73.74-72c-39,.92-70.47,33.39-70.26,72.39a71.65,71.65,0,0,0,27.64,56.3A32,32,0,0,1,96,186v6h64v-6a32.15,32.15,0,0,1,12.47-25.35A71.65,71.65,0,0,0,200,104Zm-16.11-9.34a57.6,57.6,0,0,0-46.56-46.55,8,8,0,0,0-2.66,15.78c16.57,2.79,30.63,16.85,33.44,33.45A8,8,0,0,0,176,104a9,9,0,0,0,1.35-.11A8,8,0,0,0,183.89,94.66Z"/></symbol>
+<symbol id="ph-calendar-check" viewBox="0 0 256 256" fill="currentColor"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-38.34-85.66a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L116,164.69l42.34-42.35A8,8,0,0,1,169.66,122.34Z"/></symbol>
+<symbol id="ph-moon-stars" viewBox="0 0 256 256" fill="currentColor"><path d="M240,96a8,8,0,0,1-8,8H216v16a8,8,0,0,1-16,0V104H184a8,8,0,0,1,0-16h16V72a8,8,0,0,1,16,0V88h16A8,8,0,0,1,240,96ZM144,56h8v8a8,8,0,0,0,16,0V56h8a8,8,0,0,0,0-16h-8V32a8,8,0,0,0-16,0v8h-8a8,8,0,0,0,0,16Zm72.77,97a8,8,0,0,1,1.43,8A96,96,0,1,1,95.07,37.8a8,8,0,0,1,10.6,9.06A88.07,88.07,0,0,0,209.14,150.33,8,8,0,0,1,216.77,153Zm-19.39,14.88c-1.79.09-3.59.14-5.38.14A104.11,104.11,0,0,1,88,64c0-1.79,0-3.59.14-5.38A80,80,0,1,0,197.38,167.86Z"/></symbol>
+<symbol id="ph-magnifying-glass-plus" viewBox="0 0 256 256" fill="currentColor"><path d="M152,112a8,8,0,0,1-8,8H120v24a8,8,0,0,1-16,0V120H80a8,8,0,0,1,0-16h24V80a8,8,0,0,1,16,0v24h24A8,8,0,0,1,152,112Zm77.66,117.66a8,8,0,0,1-11.32,0l-50.06-50.07a88.11,88.11,0,1,1,11.31-11.31l50.07,50.06A8,8,0,0,1,229.66,229.66ZM112,184a72,72,0,1,0-72-72A72.08,72.08,0,0,0,112,184Z"/></symbol>
+<symbol id="ph-x-circle" viewBox="0 0 256 256" fill="currentColor"><path d="M165.66,101.66,139.31,128l26.35,26.34a8,8,0,0,1-11.32,11.32L128,139.31l-26.34,26.35a8,8,0,0,1-11.32-11.32L116.69,128,90.34,101.66a8,8,0,0,1,11.32-11.32L128,116.69l26.34-26.35a8,8,0,0,1,11.32,11.32ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"/></symbol>
+</svg>
+
+  <a class="skip button-sm" href="#main">Skip to content</a>
+
+  <header class="bar">
+    <div class="bar-left">
+      <button class="toc-btn" id="tocBtn" aria-label="Open contents" aria-expanded="false" aria-controls="sidebar"><span></span><span></span></button>
+      <a class="brand title-3" href="/welcome/">
+        <span class="brand-mark"><svg class="ph"><use href="#ph-stack"/></svg></span>
+        <span class="name">CMS Analytics Studio</span>
       </a>
+      <span class="pill caption-3">User manual</span>
     </div>
-    <div class="top-actions">
-      <a class="btn hide-sm" href="CMS-Analytics-Studio-User-Guide.docx" download>⬇ Word version</a>
-      <a class="btn hide-sm" href="/welcome/">Home</a>
-      <a class="btn btn-primary" href="/login">Sign in</a>
+    <div class="bar-actions">
+      <a class="btn button-sm hide-md" href="CMS-Analytics-Studio-User-Guide.docx" download><svg class="ph"><use href="#ph-download-simple"/></svg>Word</a>
+      <a class="btn button-sm hide-sm" href="/welcome/">Home</a>
+      <a class="btn btn-primary button-sm" href="/login">Sign in</a>
     </div>
   </header>
 
   <aside class="sidebar" id="sidebar" aria-label="Manual contents">
     <label class="search">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      <input type="search" id="search" placeholder="Search the manual…" aria-label="Search the manual" />
+      <svg class="ph"><use href="#ph-magnifying-glass"/></svg>
+      <input type="search" id="search" placeholder="Search the manual" aria-label="Search the manual" />
     </label>
-    <ul class="toc" id="toc">
+    <nav class="toc-scroll" aria-label="Sections">
+      <ul class="toc title-4" id="toc">
 <li><a href="#1-signing-in" data-target="1-signing-in">1. Signing in</a></li>
 <li><a href="#2-finding-your-way-around" data-target="2-finding-your-way-around">2. Finding your way around</a><ul><li><a href="#top-menu-bar" data-target="top-menu-bar">Top menu bar</a></li><li><a href="#account-menu" data-target="account-menu">Account menu</a></li></ul></li>
 <li><a href="#3-overview--all-platforms-at-once" data-target="3-overview--all-platforms-at-once">3. Overview — all platforms at once</a><ul><li><a href="#controls-and-totals" data-target="controls-and-totals">Controls and totals</a></li><li><a href="#each-account-at-a-glance" data-target="each-account-at-a-glance">Each account at a glance</a></li><li><a href="#charts-and-best-content" data-target="charts-and-best-content">Charts and best content</a></li></ul></li>
@@ -152,25 +263,29 @@
 <li><a href="#13-how-the-data-is-updated" data-target="13-how-the-data-is-updated">13. How the data is updated</a></li>
 <li><a href="#14-glossary" data-target="14-glossary">14. Glossary</a></li>
 <li><a href="#15-troubleshooting-and-faq" data-target="15-troubleshooting-and-faq">15. Troubleshooting and FAQ</a></li>
-    </ul>
-    <p class="no-results" id="noResults">No sections match.</p>
+      </ul>
+      <div class="empty caption-2" id="empty" role="status">
+        <svg class="ph"><use href="#ph-magnifying-glass"/></svg>
+        <strong class="title-4">No sections match “<span id="q"></span>”</strong>
+        Try a word you see on screen, like schedule, token or CSV.
+      </div>
+    </nav>
   </aside>
 
-  <main>
+  <main id="main">
     <div class="content">
-      <div class="hero">
-        <h1>User Manual</h1>
-        <p>Everything in CMS Analytics Studio, screen by screen: analytics for Instagram, Facebook, YouTube and LinkedIn, the Social Post wizard, Instagram auto-replies and connected accounts.</p>
-        <p>Each screenshot has red numbered labels (like <span class="num sm">1</span>), explained in the table underneath. Click any screenshot to enlarge it.</p>
+      <section class="hero">
+        <h1 class="heading-1">User manual</h1>
+        <p class="title-2">Every screen of CMS Analytics Studio, explained.<br> Analytics for four platforms, the Social Post wizard, Instagram auto replies and connected accounts.</p>
         <div class="hero-actions">
-          <a class="btn btn-primary" href="#1-signing-in">Start reading →</a>
-          <a class="btn" href="CMS-Analytics-Studio-User-Guide.docx" download>Download Word (.docx)</a>
-          <button class="btn" type="button" onclick="window.print()">Print / PDF</button>
+          <a class="btn btn-primary button-sm" href="#1-signing-in">Start reading<svg class="ph"><use href="#ph-arrow-right"/></svg></a>
+          <a class="btn button-sm" href="CMS-Analytics-Studio-User-Guide.docx" download><svg class="ph"><use href="#ph-download-simple"/></svg>Download Word file</a>
+          <button class="btn button-sm" type="button" id="printBtn"><svg class="ph"><use href="#ph-printer"/></svg>Print or save PDF</button>
         </div>
-      </div>
-      <div class="intro"></div>
+        <div class="legend-hint body-6"><span class="num">1</span>Red numbers on each screenshot match the rows in the table under it. Click a screenshot to see it full size.</div>
+      </section>
 <section class="doc-section" data-id="1-signing-in"><h2 id="1-signing-in">1. Signing in</h2>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 1 — Sign-in page"><img src="images/01-login.png" alt="Figure 1 — Sign-in page" loading="lazy" /></button><figcaption>Figure 1 — Sign-in page</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 1 — Sign in page"><img src="images/01-login.png" alt="Figure 1 — Sign in page" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 1 — Sign in page</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -212,11 +327,10 @@
 </tr>
 </tbody>
 </table></div>
-<hr />
 </section>
 <section class="doc-section" data-id="2-finding-your-way-around"><h2 id="2-finding-your-way-around">2. Finding your way around</h2>
 <h3 id="top-menu-bar">Top menu bar</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 2 — Top menu bar (visible on every page)"><img src="images/02-navbar.png" alt="Figure 2 — Top menu bar" loading="lazy" /></button><figcaption>Figure 2 — Top menu bar (visible on every page)</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 2 — Top menu bar (visible on every page)"><img src="images/02-navbar.png" alt="Figure 2 — Top menu bar" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 2 — Top menu bar (visible on every page)</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -270,7 +384,7 @@
 </table></div>
 <p>On a phone, tap the <strong>☰</strong> icon to open this menu.</p>
 <h3 id="account-menu">Account menu</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 3 — Account menu (click your name, Figure 2 → <span class="num sm">8</span>)"><img src="images/03-user-menu.png" alt="Figure 3 — Account menu" loading="lazy" /></button><figcaption>Figure 3 — Account menu (click your name, Figure 2 → <span class="num sm">8</span>)</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 3 — Account menu (click your name, Figure 2 → <span class="num sm">8</span>)"><img src="images/03-user-menu.png" alt="Figure 3 — Account menu" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 3 — Account menu (click your name, Figure 2 → <span class="num sm">8</span>)</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -302,11 +416,10 @@
 </tr>
 </tbody>
 </table></div>
-<hr />
 </section>
 <section class="doc-section" data-id="3-overview--all-platforms-at-once"><h2 id="3-overview--all-platforms-at-once">3. Overview — all platforms at once</h2>
 <h3 id="controls-and-totals">Controls and totals</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 4 — Overview page, top"><img src="images/04-overview-top.png" alt="Figure 4 — Overview: controls and totals" loading="lazy" /></button><figcaption>Figure 4 — Overview page, top</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 4 — Overview page, top"><img src="images/04-overview-top.png" alt="Figure 4 — Overview: controls and totals" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 4 — Overview page, top</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -349,7 +462,7 @@
 </tbody>
 </table></div>
 <h3 id="each-account-at-a-glance">Each account at a glance</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 5 — One card per connected account"><img src="images/05-overview-accounts.png" alt="Figure 5 — Overview: account cards" loading="lazy" /></button><figcaption>Figure 5 — One card per connected account</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 5 — One card per connected account"><img src="images/05-overview-accounts.png" alt="Figure 5 — Overview: account cards" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 5 — One card per connected account</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -382,7 +495,7 @@
 </tbody>
 </table></div>
 <h3 id="charts-and-best-content">Charts and best content</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 6 — Overview page, lower half"><img src="images/06-overview-charts.png" alt="Figure 6 — Overview: charts" loading="lazy" /></button><figcaption>Figure 6 — Overview page, lower half</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 6 — Overview page, lower half"><img src="images/06-overview-charts.png" alt="Figure 6 — Overview: charts" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 6 — Overview page, lower half</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -417,11 +530,10 @@
 <blockquote>
 <p>LinkedIn <em>impressions</em> count as views here. Facebook numbers are read live.</p>
 </blockquote>
-<hr />
 </section>
 <section class="doc-section" data-id="4-platform-workspace-basics"><h2 id="4-platform-workspace-basics">4. Platform workspace basics</h2>
 <p>Instagram, Facebook, YouTube and LinkedIn pages all share the same layout.</p>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 7 — Platform workspace (Instagram shown)"><img src="images/10-instagram-overview.png" alt="Figure 7 — Workspace layout" loading="lazy" /></button><figcaption>Figure 7 — Platform workspace (Instagram shown)</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 7 — Platform workspace (Instagram shown)"><img src="images/10-instagram-overview.png" alt="Figure 7 — Workspace layout" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 7 — Platform workspace (Instagram shown)</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -473,12 +585,11 @@
 </tr>
 </tbody>
 </table></div>
-<p>The <strong>Overview</strong> tab also has <em>Reels at a glance</em>, <em>Stories at a glance</em>, <strong>What your data says</strong> (plain-language takeaways) and <strong>More numbers</strong>.</p>
-<hr />
+<p>The <strong>Overview</strong> tab also has <em>Reels at a glance</em>, <em>Stories at a glance</em>, <strong>What your data says</strong> (plain language takeaways) and <strong>More numbers</strong>.</p>
 </section>
 <section class="doc-section" data-id="5-instagram"><h2 id="5-instagram">5. Instagram</h2>
 <h3 id="content-tab">Content tab</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 8 — Instagram → Content"><img src="images/11-instagram-content.png" alt="Figure 8 — Instagram Content tab" loading="lazy" /></button><figcaption>Figure 8 — Instagram → Content</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 8 — Instagram → Content"><img src="images/11-instagram-content.png" alt="Figure 8 — Instagram Content tab" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 8 — Instagram → Content</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -534,7 +645,7 @@
 <p><strong>Stories:</strong> Instagram keeps story numbers for only 24 hours. The app saves them every 6 hours (and whenever you press Update data) so you keep their history.</p>
 </blockquote>
 <h3 id="audience-tab">Audience tab</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 9 — Instagram → Audience"><img src="images/12-instagram-audience.png" alt="Figure 9 — Instagram Audience tab" loading="lazy" /></button><figcaption>Figure 9 — Instagram → Audience</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 9 — Instagram → Audience"><img src="images/12-instagram-audience.png" alt="Figure 9 — Instagram Audience tab" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 9 — Instagram → Audience</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -547,7 +658,7 @@
 <tr class="odd">
 <td><span class="num">1</span></td>
 <td>Followers vs new people</td>
-<td>How many accounts reached were followers vs non-followers. High non-follower share = you're being discovered.</td>
+<td>How many accounts reached were followers vs people who don't follow you. High share of people who don't follow you = you're being discovered.</td>
 </tr>
 <tr class="even">
 <td><span class="num">2</span></td>
@@ -571,7 +682,7 @@
 <p>Instagram only provides demographics and "best time to post" for accounts with <strong>100+ followers</strong>.</p>
 </blockquote>
 <h3 id="strategy-tab">Strategy tab</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 10 — Instagram → Strategy (action plan)"><img src="images/13-instagram-strategy.png" alt="Figure 10 — Instagram action plan" loading="lazy" /></button><figcaption>Figure 10 — Instagram → Strategy (action plan)</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 10 — Instagram → Strategy (action plan)"><img src="images/13-instagram-strategy.png" alt="Figure 10 — Instagram action plan" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 10 — Instagram → Strategy (action plan)</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -598,7 +709,7 @@
 </tr>
 </tbody>
 </table></div>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 11 — Instagram → Strategy (reel hooks)"><img src="images/13b-instagram-hooks.png" alt="Figure 11 — Reel hooks" loading="lazy" /></button><figcaption>Figure 11 — Instagram → Strategy (reel hooks)</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 11 — Instagram → Strategy (reel hooks)"><img src="images/13b-instagram-hooks.png" alt="Figure 11 — Reel hooks" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 11 — Instagram → Strategy (reel hooks)</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -627,7 +738,7 @@
 </table></div>
 <p>Below this: the <strong>Format scorecard</strong> comparing reels, carousels and images.</p>
 <h3 id="research-tab">Research tab</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 12 — Instagram → Research"><img src="images/14-instagram-research.png" alt="Figure 12 — Instagram Research tab" loading="lazy" /></button><figcaption>Figure 12 — Instagram → Research</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 12 — Instagram → Research"><img src="images/14-instagram-research.png" alt="Figure 12 — Instagram Research tab" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 12 — Instagram → Research</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -660,7 +771,7 @@
 </tbody>
 </table></div>
 <h3 id="data-tab">Data tab</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 13 — Instagram → Data"><img src="images/15-instagram-data.png" alt="Figure 13 — Instagram Data tab" loading="lazy" /></button><figcaption>Figure 13 — Instagram → Data</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 13 — Instagram → Data"><img src="images/15-instagram-data.png" alt="Figure 13 — Instagram Data tab" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 13 — Instagram → Data</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -682,10 +793,9 @@
 </tr>
 </tbody>
 </table></div>
-<hr />
 </section>
 <section class="doc-section" data-id="6-facebook"><h2 id="6-facebook">6. Facebook</h2>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 14 — Facebook → Overview"><img src="images/20-facebook.png" alt="Figure 14 — Facebook Page workspace" loading="lazy" /></button><figcaption>Figure 14 — Facebook → Overview</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 14 — Facebook → Overview"><img src="images/20-facebook.png" alt="Figure 14 — Facebook Page workspace" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 14 — Facebook → Overview</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -713,7 +823,7 @@
 <tr class="even">
 <td><span class="num">4</span></td>
 <td>Tabs</td>
-<td><strong>Overview</strong>, <strong>Content</strong> (every post with its numbers, best type/day/time to post), <strong>Video &amp; Reels</strong> (views, minutes watched, per-reel table), <strong>Audience</strong>.</td>
+<td><strong>Overview</strong>, <strong>Content</strong> (every post with its numbers, best type/day/time to post), <strong>Video &amp; Reels</strong> (views, minutes watched, table for each reel), <strong>Audience</strong>.</td>
 </tr>
 <tr class="odd">
 <td><span class="num">5</span></td>
@@ -722,7 +832,7 @@
 </tr>
 </tbody>
 </table></div>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 15 — Facebook daily chart"><img src="images/21-facebook-chart.png" alt="Figure 15 — Facebook daily chart" loading="lazy" /></button><figcaption>Figure 15 — Facebook daily chart</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 15 — Facebook daily chart"><img src="images/21-facebook-chart.png" alt="Figure 15 — Facebook daily chart" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 15 — Facebook daily chart</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -740,14 +850,13 @@
 <tr class="even">
 <td><span class="num">2</span></td>
 <td>Daily chart</td>
-<td>One point per day. Below it: followers vs non-followers, organic vs ads, reactions by type, views by weekday.</td>
+<td>One point per day. Below it: followers vs people who don't follow you, organic vs ads, reactions by type, views by weekday.</td>
 </tr>
 </tbody>
 </table></div>
-<hr />
 </section>
 <section class="doc-section" data-id="7-youtube"><h2 id="7-youtube">7. YouTube</h2>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 16 — YouTube → Overview"><img src="images/30-youtube.png" alt="Figure 16 — YouTube workspace" loading="lazy" /></button><figcaption>Figure 16 — YouTube → Overview</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 16 — YouTube → Overview"><img src="images/30-youtube.png" alt="Figure 16 — YouTube workspace" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 16 — YouTube → Overview</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -774,7 +883,7 @@
 </tr>
 </tbody>
 </table></div>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 17 — YouTube charts"><img src="images/31-youtube-chart.png" alt="Figure 17 — YouTube charts" loading="lazy" /></button><figcaption>Figure 17 — YouTube charts</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 17 — YouTube charts"><img src="images/31-youtube-chart.png" alt="Figure 17 — YouTube charts" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 17 — YouTube charts</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -811,7 +920,7 @@
 </tr>
 </tbody>
 </table></div>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 18 — YouTube → Strategy"><img src="images/32-youtube-strategy.png" alt="Figure 18 — YouTube strategy" loading="lazy" /></button><figcaption>Figure 18 — YouTube → Strategy</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 18 — YouTube → Strategy"><img src="images/32-youtube-strategy.png" alt="Figure 18 — YouTube strategy" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 18 — YouTube → Strategy</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -834,10 +943,9 @@
 </tbody>
 </table></div>
 <p>The <strong>Content</strong> tab lists every video (search, sort, open on YouTube, comment insights). The <strong>Data</strong> tab has the daily table and <strong>Download CSV</strong>.</p>
-<hr />
 </section>
 <section class="doc-section" data-id="8-linkedin"><h2 id="8-linkedin">8. LinkedIn</h2>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 19 — LinkedIn → Overview"><img src="images/40-linkedin.png" alt="Figure 19 — LinkedIn workspace" loading="lazy" /></button><figcaption>Figure 19 — LinkedIn → Overview</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 19 — LinkedIn → Overview"><img src="images/40-linkedin.png" alt="Figure 19 — LinkedIn workspace" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 19 — LinkedIn → Overview</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -882,12 +990,11 @@
 <blockquote>
 <p>LinkedIn keeps 12 months of daily history and can lag by a day or two.</p>
 </blockquote>
-<hr />
 </section>
 <section class="doc-section" data-id="9-social-post--publish-everywhere"><h2 id="9-social-post--publish-everywhere">9. Social Post — publish everywhere</h2>
 <p>Write once, publish (or schedule) to Instagram, Facebook, LinkedIn and YouTube. Steps: <strong>Platform → Account → Content → Auto reply → Review</strong>. Your work is saved as a draft automatically.</p>
 <h3 id="step-1--choose-platforms">Step 1 — Choose platforms</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 20 — Social Post, step 1"><img src="images/50-publish-platform.png" alt="Figure 20 — Choose platforms" loading="lazy" /></button><figcaption>Figure 20 — Social Post, step 1</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 20 — Social Post, step 1"><img src="images/50-publish-platform.png" alt="Figure 20 — Choose platforms" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 20 — Social Post, step 1</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -957,7 +1064,7 @@
 </tbody>
 </table></div>
 <h3 id="step-2--choose-accounts">Step 2 — Choose accounts</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 21 — Social Post, step 2"><img src="images/51-publish-account.png" alt="Figure 21 — Choose accounts" loading="lazy" /></button><figcaption>Figure 21 — Social Post, step 2</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 21 — Social Post, step 2"><img src="images/51-publish-account.png" alt="Figure 21 — Choose accounts" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 21 — Social Post, step 2</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -985,7 +1092,7 @@
 </tbody>
 </table></div>
 <h3 id="step-3--write-the-post">Step 3 — Write the post</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 22 — Social Post, step 3"><img src="images/52-publish-content.png" alt="Figure 22 — Write the post" loading="lazy" /></button><figcaption>Figure 22 — Social Post, step 3</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 22 — Social Post, step 3"><img src="images/52-publish-content.png" alt="Figure 22 — Write the post" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 22 — Social Post, step 3</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -1037,12 +1144,11 @@
 </ol>
 <h3 id="step-5--review-and-publish">Step 5 — Review and publish</h3>
 <p>Check the summary, then click <strong>Publish now</strong> (or <strong>Schedule for …</strong>). You'll see live progress per platform (Upload → Create → Processing → Publish). If one platform fails, click <strong>Retry</strong> for just that platform.</p>
-<hr />
 </section>
 <section class="doc-section" data-id="10-auto-replies-instagram"><h2 id="10-auto-replies-instagram">10. Auto-replies (Instagram)</h2>
 <p>Open from <strong>Account menu → Auto-replies</strong> (Figure 3 → <span class="num sm">3</span>). When someone comments or DMs a keyword (e.g. "link"), the app sends them your message and URL automatically.</p>
 <h3 id="rules-list">Rules list</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 23 — Auto-replies page"><img src="images/60-auto-replies.png" alt="Figure 23 — Auto-reply rules" loading="lazy" /></button><figcaption>Figure 23 — Auto-replies page</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 23 — Auto-replies page"><img src="images/60-auto-replies.png" alt="Figure 23 — Auto-reply rules" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 23 — Auto-replies page</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -1095,7 +1201,7 @@
 </tbody>
 </table></div>
 <h3 id="create-a-rule">Create a rule</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 24 — New rule (top half)"><img src="images/61-auto-reply-new-rule.png" alt="Figure 24 — New rule, part 1" loading="lazy" /></button><figcaption>Figure 24 — New rule (top half)</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 24 — New rule (top half)"><img src="images/61-auto-reply-new-rule.png" alt="Figure 24 — New rule, part 1" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 24 — New rule (top half)</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -1137,7 +1243,7 @@
 </tr>
 </tbody>
 </table></div>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 25 — New rule (bottom half — scroll down in the form)"><img src="images/62-auto-reply-new-rule-2.png" alt="Figure 25 — New rule, part 2" loading="lazy" /></button><figcaption>Figure 25 — New rule (bottom half — scroll down in the form)</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 25 — New rule (bottom half — scroll down in the form)"><img src="images/62-auto-reply-new-rule-2.png" alt="Figure 25 — New rule, part 2" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 25 — New rule (bottom half — scroll down in the form)</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -1182,7 +1288,7 @@
 <p><strong>Which rule wins?</strong> The most specific: one reel/post rule → all reels/posts rule → Everything rule. Reel/post rules only answer comments (a DM can't be linked to a post).</p>
 <p><strong>Shortcut:</strong> Instagram → Content → <strong>Set up auto-reply for this reel</strong> (Figure 8 → <span class="num sm">7</span>) opens this form already pointed at that post.</p>
 <h3 id="setup-check">Setup check</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 26 — Automation tools → Setup check"><img src="images/63-auto-reply-setup-check.png" alt="Figure 26 — Setup check" loading="lazy" /></button><figcaption>Figure 26 — Automation tools → Setup check</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 26 — Automation tools → Setup check"><img src="images/63-auto-reply-setup-check.png" alt="Figure 26 — Setup check" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 26 — Automation tools → Setup check</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -1210,7 +1316,7 @@
 </tbody>
 </table></div>
 <h3 id="try-it-safe-test">Try it (safe test)</h3>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 27 — Automation tools → Try it"><img src="images/64-auto-reply-try-it.png" alt="Figure 27 — Try it" loading="lazy" /></button><figcaption>Figure 27 — Automation tools → Try it</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 27 — Automation tools → Try it"><img src="images/64-auto-reply-try-it.png" alt="Figure 27 — Try it" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 27 — Automation tools → Try it</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -1249,11 +1355,10 @@
 </table></div>
 <p><strong>Activity</strong> (third tool) lists the latest messages handled, with Instagram's error code if something failed. Click <strong>Refresh</strong> to reload.</p>
 <p><strong>Instagram's limits:</strong> one private reply (DM) per comment, within <strong>7 days</strong> of the comment; DMs can be answered within <strong>24 hours</strong>.</p>
-<hr />
 </section>
 <section class="doc-section" data-id="11-connected-accounts"><h2 id="11-connected-accounts">11. Connected accounts</h2>
 <p>Open from <strong>Account menu → Connected accounts</strong> (Figure 3 → <span class="num sm">2</span>). Connect each platform once; connections renew themselves.</p>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 28 — Accounts page (Instagram and Facebook)"><img src="images/70-accounts.png" alt="Figure 28 — Connected accounts" loading="lazy" /></button><figcaption>Figure 28 — Accounts page (Instagram and Facebook)</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 28 — Accounts page (Instagram and Facebook)"><img src="images/70-accounts.png" alt="Figure 28 — Connected accounts" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 28 — Accounts page (Instagram and Facebook)</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -1290,7 +1395,7 @@
 </tr>
 </tbody>
 </table></div>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 29 — Accounts page (YouTube, LinkedIn, connection log)"><img src="images/71-accounts-more.png" alt="Figure 29 — More accounts and connection log" loading="lazy" /></button><figcaption>Figure 29 — Accounts page (YouTube, LinkedIn, connection log)</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 29 — Accounts page (YouTube, LinkedIn, connection log)"><img src="images/71-accounts-more.png" alt="Figure 29 — More accounts and connection log" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 29 — Accounts page (YouTube, LinkedIn, connection log)</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -1322,10 +1427,9 @@
 </tr>
 </tbody>
 </table></div>
-<hr />
 </section>
 <section class="doc-section" data-id="12-my-profile-and-logging-out"><h2 id="12-my-profile-and-logging-out">12. My profile and logging out</h2>
-<figure><button class="zoom" type="button" aria-label="Enlarge Figure 30 — My profile"><img src="images/80-profile.png" alt="Figure 30 — My profile" loading="lazy" /></button><figcaption>Figure 30 — My profile</figcaption></figure>
+<figure><button class="zoom" type="button" aria-label="Enlarge Figure 30 — My profile"><img src="images/80-profile.png" alt="Figure 30 — My profile" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>Figure 30 — My profile</figcaption></figure>
 <div class="table-wrap"><table class="legend">
 <thead>
 <tr class="header">
@@ -1352,7 +1456,6 @@
 </tr>
 </tbody>
 </table></div>
-<hr />
 </section>
 <section class="doc-section" data-id="13-how-the-data-is-updated"><h2 id="13-how-the-data-is-updated">13. How the data is updated</h2>
 <div class="table-wrap"><table class="plain">
@@ -1382,7 +1485,6 @@
 </tbody>
 </table></div>
 <p>Preset ranges (7/14/30 days) use saved history; <strong>Custom</strong> ranges are fetched live. All times are in <strong>India Standard Time (IST)</strong>.</p>
-<hr />
 </section>
 <section class="doc-section" data-id="14-glossary"><h2 id="14-glossary">14. Glossary</h2>
 <div class="table-wrap"><table class="plain">
@@ -1439,7 +1541,6 @@
 </tr>
 </tbody>
 </table></div>
-<hr />
 </section>
 <section class="doc-section" data-id="15-troubleshooting-and-faq"><h2 id="15-troubleshooting-and-faq">15. Troubleshooting and FAQ</h2>
 <p><strong>"No data stored yet for this period"</strong> — press <strong>Update data</strong> (Figure 7 → <span class="num sm">6</span>). After that it refreshes every night.</p>
@@ -1457,7 +1558,7 @@
 <p><strong>Times look wrong</strong> — all times are in India Standard Time (IST).</p>
 <p><strong>Forgot password</strong> — contact your administrator.</p>
 </section>
-      <div class="page-foot">
+      <div class="page-foot caption-2">
         <span>© 2026 CMS Analytics Studio · A product of <a href="https://changtechs.com/">changtechs.com</a></span>
         <span>All times are India Standard Time (IST)</span>
       </div>
@@ -1465,52 +1566,70 @@
   </main>
 
   <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Enlarged screenshot">
-    <button class="close" type="button" aria-label="Close">×</button>
+    <button class="btn button-sm close" type="button"><svg class="ph"><use href="#ph-x"/></svg>Close</button>
     <img alt="" />
   </div>
-  <button class="to-top" id="toTop" type="button" aria-label="Back to top">↑</button>
+  <a class="btn button-sm to-top" id="toTop" href="#main" aria-label="Back to top"><svg class="ph"><use href="#ph-arrow-up"/></svg>Top</a>
 
   <script>
-    // Contents drawer on small screens
-    const body = document.body, toggle = document.getElementById('tocToggle');
-    toggle.addEventListener('click', () => { const open = body.classList.toggle('toc-open'); toggle.setAttribute('aria-expanded', open); });
-    document.getElementById('toc').addEventListener('click', (e) => { if (e.target.tagName === 'A') { body.classList.remove('toc-open'); toggle.setAttribute('aria-expanded', 'false'); } });
+    const body = document.body, tocBtn = document.getElementById('tocBtn');
+    const setToc = (open) => { body.classList.toggle('toc-open', open); tocBtn.setAttribute('aria-expanded', open); tocBtn.setAttribute('aria-label', open ? 'Close contents' : 'Open contents'); };
+    tocBtn.addEventListener('click', () => setToc(!body.classList.contains('toc-open')));
+    document.getElementById('toc').addEventListener('click', (e) => { if (e.target.closest('a')) setToc(false); });
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
 
-    // Highlight the section being read
+    // Current section in the contents (IntersectionObserver, no scroll listener)
     const links = [...document.querySelectorAll('.toc a')];
-    const targets = links.map((a) => document.getElementById(a.dataset.target)).filter(Boolean);
-    const setActive = () => {
-      let current = targets[0];
-      for (const t of targets) if (t.getBoundingClientRect().top < 120) current = t;
-      links.forEach((a) => a.classList.toggle('active', current && a.dataset.target === current.id));
-      document.getElementById('toTop').classList.toggle('show', window.scrollY > 800);
-    };
-    window.addEventListener('scroll', setActive, { passive: true }); setActive();
-    document.getElementById('toTop').addEventListener('click', () => window.scrollTo({ top: 0 }));
+    const byId = new Map(links.map((a) => [a.dataset.target, a]));
+    const spy = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (!en.isIntersecting) return;
+        const a = byId.get(en.target.id); if (!a) return;
+        links.forEach((l) => l.setAttribute('aria-current', 'false'));
+        a.setAttribute('aria-current', 'true');
+        const parent = a.closest('ul ul') ? a.closest('ul').closest('li').querySelector(':scope > a') : null;
+        if (parent) parent.setAttribute('aria-current', 'true');
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    links.forEach((a) => { const t = document.getElementById(a.dataset.target); if (t) spy.observe(t); });
 
-    // Search: hide sections (and their contents entries) that don't match
+    // Back to top appears once the hero is off screen
+    const toTop = document.getElementById('toTop');
+    new IntersectionObserver(([en]) => toTop.classList.toggle('show', !en.isIntersecting)).observe(document.querySelector('.hero'));
+
+    // Sections rise in once
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const sections = [...document.querySelectorAll('.doc-section')];
+    const rev = new IntersectionObserver((entries) => entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); rev.unobserve(en.target); } }), { threshold: 0.05 });
+    sections.forEach((s) => { if (!reduce) { s.classList.add('reveal'); rev.observe(s); } });
+
+    // Search
     const tocItems = [...document.querySelectorAll('#toc > li')];
+    const empty = document.getElementById('empty');
     document.getElementById('search').addEventListener('input', (e) => {
       const q = e.target.value.trim().toLowerCase();
       let shown = 0;
       sections.forEach((s, i) => {
         const hit = !q || s.textContent.toLowerCase().includes(q);
         s.classList.toggle('hidden', !hit);
+        if (hit) s.classList.add('in');
         if (tocItems[i]) tocItems[i].classList.toggle('hidden', !hit);
         if (hit) shown++;
       });
-      document.getElementById('noResults').style.display = shown ? 'none' : 'block';
+      document.getElementById('q').textContent = e.target.value.trim();
+      empty.style.display = shown ? 'none' : 'block';
     });
 
-    // Click a screenshot to see it full size
+    // Lightbox
     const lb = document.getElementById('lightbox'), lbImg = lb.querySelector('img');
+    let opener = null;
     document.querySelectorAll('.zoom').forEach((b) => b.addEventListener('click', () => {
-      const img = b.querySelector('img'); lbImg.src = img.src; lbImg.alt = img.alt; lb.classList.add('open'); lb.querySelector('.close').focus();
+      const img = b.querySelector('img'); lbImg.src = img.src; lbImg.alt = img.alt; opener = b;
+      lb.classList.add('open'); lb.querySelector('.close').focus();
     }));
-    const closeLb = () => lb.classList.remove('open');
+    const closeLb = () => { lb.classList.remove('open'); if (opener) opener.focus(); };
     lb.addEventListener('click', closeLb);
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeLb(); body.classList.remove('toc-open'); } });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (lb.classList.contains('open')) closeLb(); setToc(false); } });
   </script>
 </body>
 </html>

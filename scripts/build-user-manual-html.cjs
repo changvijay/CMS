@@ -16,12 +16,14 @@ md = md.slice(md.indexOf('## 1.'));
 
 let html = execFileSync('pandoc', ['-f', 'gfm', '-t', 'html5', '--wrap=none'], { input: md }).toString();
 
+html = html.replace(/<hr \/>\n?/g, '');
+
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const strip = (s) => s.replace(/<[^>]+>/g, '');
 
 // Image + "*Figure …*" caption -> <figure>
 html = html.replace(/<p><img src="([^"]+)" alt="([^"]*)" \/><\/p>\s*<p><em>(Figure[^<]*)<\/em><\/p>/g,
-  (_, src, alt, cap) => `<figure><button class="zoom" type="button" aria-label="Enlarge ${esc(cap)}"><img src="${src}" alt="${alt}" loading="lazy" /></button><figcaption>${cap}</figcaption></figure>`);
+  (_, src, alt, cap) => `<figure><button class="zoom" type="button" aria-label="Enlarge ${esc(cap)}"><img src="${src}" alt="${alt}" loading="lazy" /><span class="hint"><svg class="ph"><use href="#ph-magnifying-glass-plus"/></svg>Enlarge</span></button><figcaption>${cap}</figcaption></figure>`);
 html = html.replace(/<p><img src="([^"]+)" alt="([^"]*)" \/><\/p>/g,
   (_, src, alt) => `<figure><button class="zoom" type="button" aria-label="Enlarge image"><img src="${src}" alt="${alt}" loading="lazy" /></button></figure>`);
 
@@ -50,6 +52,7 @@ const page = fs.readFileSync(path.join(__dirname, 'user-manual-template.html'), 
   .replace('{{TOC}}', tocHtml)
   .replace('{{INTRO}}', intro)
   .replace('{{CONTENT}}', sections)
+  .replace('{{ICONS}}', fs.readFileSync(path.join(__dirname, 'phosphor-sprite.html'), 'utf8'))
   .replace(/{{DOCX}}/g, DOCX);
 
 fs.mkdirSync(path.join(OUT_DIR, 'images'), { recursive: true });

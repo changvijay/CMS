@@ -34,9 +34,9 @@ Web address: **https://cms.changtechs.com**
 
 ## 1. Signing in
 
-![Figure 1 — Sign-in page](images/01-login.png)
+![Figure 1 — Sign in page](images/01-login.png)
 
-*Figure 1 — Sign-in page*
+*Figure 1 — Sign in page*
 
 | # | Label | What to do |
 |---|---|---|
@@ -151,7 +151,7 @@ Instagram, Facebook, YouTube and LinkedIn pages all share the same layout.
 | ⑦ | Tabs | Overview, Content, Audience, Strategy, Research, Data (each explained below). |
 | ⑧ | Metric card | Big number = total for the period; ▲/▼ = change vs previous period; small line = daily trend. Hover the **?** for an explanation. "no prior data" = nothing to compare yet. |
 
-The **Overview** tab also has *Reels at a glance*, *Stories at a glance*, **What your data says** (plain-language takeaways) and **More numbers**.
+The **Overview** tab also has *Reels at a glance*, *Stories at a glance*, **What your data says** (plain language takeaways) and **More numbers**.
 
 ---
 
@@ -184,7 +184,7 @@ The **Overview** tab also has *Reels at a glance*, *Stories at a glance*, **What
 
 | # | Label | What it tells you |
 |---|---|---|
-| ① | Followers vs new people | How many accounts reached were followers vs non-followers. High non-follower share = you're being discovered. |
+| ① | Followers vs new people | How many accounts reached were followers vs people who don't follow you. High share of people who don't follow you = you're being discovered. |
 | ② | Views split | Same split for views. |
 | ③ | Views by format | Views from reels, posts and stories. |
 | ④ | Reach by format | Which format finds new people. |
@@ -254,7 +254,7 @@ Below this: the **Format scorecard** comparing reels, carousels and images.
 | ① | Page profile | Page name, category, bio, followers and likes. |
 | ② | Date range | 7 / 14 / 30 days or Custom. |
 | ③ | Update data | Refresh now. |
-| ④ | Tabs | **Overview**, **Content** (every post with its numbers, best type/day/time to post), **Video & Reels** (views, minutes watched, per-reel table), **Audience**. |
+| ④ | Tabs | **Overview**, **Content** (every post with its numbers, best type/day/time to post), **Video & Reels** (views, minutes watched, table for each reel), **Audience**. |
 | ⑤ | Key numbers | Views, reach, engagements, reactions, page visits, actions, net followers, engagement rate, new conversations. |
 
 ![Figure 15 — Facebook daily chart](images/21-facebook-chart.png)
@@ -264,7 +264,7 @@ Below this: the **Format scorecard** comparing reels, carousels and images.
 | # | Label | What to do |
 |---|---|---|
 | ① | Change metric | Pick which number the chart shows (views, reach, follows, video views…). |
-| ② | Daily chart | One point per day. Below it: followers vs non-followers, organic vs ads, reactions by type, views by weekday. |
+| ② | Daily chart | One point per day. Below it: followers vs people who don't follow you, organic vs ads, reactions by type, views by weekday. |
 
 ---
 
