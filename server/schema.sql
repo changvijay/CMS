@@ -390,3 +390,17 @@ CREATE TABLE IF NOT EXISTS fb_daily_metrics (
     PRIMARY KEY (account_id, metric_date)
 );
 CREATE INDEX IF NOT EXISTS idx_fb_daily_date ON fb_daily_metrics(metric_date);
+
+-- Waiting list sign-ups from the login page. One row per email; signing up again updates it.
+CREATE TABLE IF NOT EXISTS waitlist (
+    id BIGSERIAL PRIMARY KEY,
+    email_address VARCHAR(255) NOT NULL UNIQUE,
+    phone_number VARCHAR(20) NOT NULL,
+    instagram_accounts SMALLINT NOT NULL DEFAULT 0 CHECK (instagram_accounts BETWEEN 0 AND 50),
+    facebook_pages SMALLINT NOT NULL DEFAULT 0 CHECK (facebook_pages BETWEEN 0 AND 50),
+    linkedin_pages SMALLINT NOT NULL DEFAULT 0 CHECK (linkedin_pages BETWEEN 0 AND 50),
+    youtube_channels SMALLINT NOT NULL DEFAULT 0 CHECK (youtube_channels BETWEEN 0 AND 50),
+    profile_links TEXT[] NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

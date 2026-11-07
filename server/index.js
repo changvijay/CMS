@@ -19,6 +19,7 @@ import { createGoogleRouter } from './routes/google.js';
 import { createInstagramRouter } from './routes/instagram.js';
 import { createPublishRouter } from './routes/publish.js';
 import { createOAuthLogRouter, startOAuthLogSink } from './routes/oauthLog.js';
+import { createWaitlistRouter } from './routes/waitlist.js';
 import { startPublishSchedule } from './jobs/publishQueue.js';
 import { tokenStatus } from './services/instagramAuth.js';
 import { checkToken as checkInstagramToken } from './services/instagramMessaging.js';
@@ -866,6 +867,7 @@ app.use('/api', createFacebookInsightsRouter(authenticateToken));
 app.use('/api', createGoogleRouter(authenticateToken, JWT_SECRET));
 app.use('/api', createInstagramRouter(authenticateToken, JWT_SECRET));
 app.use('/api', createOAuthLogRouter(authenticateToken));
+app.use('/api', createWaitlistRouter());
 startOAuthLogSink();
 app.use('/api', createPublishRouter(authenticateToken));
 

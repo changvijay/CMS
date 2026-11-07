@@ -54,6 +54,37 @@ export async function loginUser(username: string, password: string): Promise<{ t
   return data;
 }
 
+export interface WaitlistSignup {
+  email: string;
+  phone: string;
+  instagram: number;
+  facebook: number;
+  linkedin: number;
+  youtube: number;
+  links: string;
+  website?: string; // hidden spam trap, always empty for people
+}
+
+/** Thrown when the server rejects some fields; `fields` maps each field to its message. */
+export class WaitlistError extends Error {
+  fields: Record<string, string>;
+  constructor(message: string, fields: Record<string, string> = {}) {
+    super(message);
+    this.fields = fields;
+  }
+}
+
+export async function joinWaitlist(signup: WaitlistSignup): Promise<{ updated: boolean }> {
+  const response = await fetch(`${API_BASE}/waitlist`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(signup),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new WaitlistError(data.error || 'Your details could not be saved. Please try again.', data.fields || {});
+  return { updated: Boolean(data.updated) };
+}
+
 export async function getCurrentUser(token: string): Promise<User> {
   const response = await fetch(`${API_BASE}/auth/me`, {
     headers: {

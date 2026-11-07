@@ -4,6 +4,7 @@
 // "motion" class on <html>, so without this script the page keeps its plain layout.
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { startMascot } from './mascot'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -26,6 +27,9 @@ if (fx && canvas && stage && frame) {
   if ('requestIdleCallback' in window) window.requestIdleCallback(load, { timeout: 1200 })
   else setTimeout(load, 300)
 }
+
+// ---------- Pixel, the mascot (moves itself: follows a mouse, zigzags on touch scroll) ----------
+startMascot({ reduce })
 
 // ---------- Nav gets a firmer surface once the page moves ----------
 const nav = $('#nav')

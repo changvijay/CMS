@@ -141,7 +141,99 @@
     .node-chip { display: grid; place-items: center; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: var(--r-2xl);
       background: var(--base); border: 1px solid var(--line); box-shadow: var(--shadow); color: var(--c); }
     .node-chip .ph { width: 28px; height: 28px; }
-    .frame-stage { margin: var(--s-700) auto 0; max-width: 1080px; perspective: 1800px; }
+    .frame-stage { position: relative; margin: var(--s-700) auto 0; max-width: 1080px; perspective: 1800px; }
+    /* Where Pixel sits in the hero: on the screenshot's top right corner */
+    .mascot-anchor { position: absolute; right: 6%; top: 10px; width: 0; height: 0; }
+
+    /* ---------- Pixel, the mascot ---------- */
+    .mascot { position: fixed; z-index: 50; width: 96px;
+      right: calc(var(--s-300) + env(safe-area-inset-right, 0px)); bottom: calc(var(--s-300) + env(safe-area-inset-bottom, 0px));
+      transition: opacity 300ms var(--ease); }
+    .menu-open .mascot { opacity: 0; pointer-events: none; }
+    .mascot-fig { position: relative; transform-origin: 50% 100%; --s: 1; will-change: transform; }
+    .mascot-btn { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; border-radius: var(--r-2xl); -webkit-tap-highlight-color: transparent; }
+    .mascot-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+    .mascot-bubble { position: absolute; right: 0; bottom: calc(100% + var(--s-75)); width: 240px; padding: var(--s-100) var(--s-200);
+      border-radius: var(--r-2xl); border: 1px solid var(--line); background: var(--base); box-shadow: var(--shadow);
+      scale: calc(1 / var(--s)); transform-origin: 100% 100%; opacity: 0; transform: translateY(var(--s-75)); pointer-events: none;
+      transition: opacity 300ms var(--ease), transform 500ms var(--ease); }
+    .mascot.talking .mascot-bubble { opacity: 1; transform: none; pointer-events: auto; }
+    .mascot-bubble p { color: var(--ink); }
+    .mascot-cta { display: inline-flex; align-items: center; gap: var(--s-50); margin-top: var(--s-75); color: var(--accent); }
+    .mascot-cta[hidden] { display: none; }
+    .mascot-cta .ph { width: 14px; height: 14px; }
+
+    .pixel { display: block; width: 100%; height: auto; overflow: visible; animation: pixel-pop 700ms var(--ease) 1.2s both; }
+    .pixel-bob { animation: pixel-bob 3.2s var(--ease) infinite alternate; }
+    .pixel-head, .pixel-ear { transform-box: view-box; }
+    .pixel-head { transform-origin: 60px 60px; }
+    .pixel-ear-l { transform-origin: 32px 36px; }
+    .pixel-ear-r { transform-origin: 88px 36px; }
+    .pixel-ear path { fill: var(--accent); stroke: var(--ink); stroke-width: 3; stroke-linejoin: round; }
+    .pixel-stalk { stroke: var(--ink); stroke-width: 3; stroke-linecap: round; }
+    .pixel-bulb { fill: #a5b4fc; stroke: var(--ink); stroke-width: 2.5; transition: fill 300ms var(--ease); }
+    .pixel-skull { fill: #ffffff; stroke: var(--ink); stroke-width: 3; }
+    .pixel-screen { fill: #181818; }
+    .e-open rect, .e-wow circle:not(.ring), .e-star polygon, .m-open, .m-o { fill: #c7d2fe; }
+    .e-happy path, .e-closed path, .e-dizzy path, .m-smile, .m-flat, .m-wavy, .e-wow .ring { fill: none; stroke: #c7d2fe; stroke-width: 3; stroke-linecap: round; }
+    .e-wow .ring { stroke-width: 2.5; }
+    .e-heart path { fill: #f472b6; }
+    .blush ellipse { fill: #f472b6; opacity: .6; }
+    .zzz text, .qmark text { fill: var(--ink); font-family: Geist, system-ui, sans-serif; font-weight: 600; font-size: 13px; }
+    .e-open rect { transform-box: fill-box; transform-origin: center; transition: transform 120ms var(--ease); }
+    .mascot.blink .e-open rect { transform: scaleY(.15); }
+
+    /* Faces: each mood shows its own eyes, mouth and extras */
+    .pixel .v { opacity: 0; transition: opacity 200ms var(--ease); }
+    .mascot[data-mood="happy"] :is(.e-open, .m-smile),
+    .mascot[data-mood="playful"] :is(.e-open, .m-open),
+    .mascot[data-mood="dizzy"] :is(.e-dizzy, .m-wavy),
+    .mascot[data-mood="clicked"] :is(.e-happy, .m-open),
+    .mascot[data-mood="shy"] :is(.e-open, .m-wavy, .blush),
+    .mascot[data-mood="excited"] :is(.e-star, .m-open),
+    .mascot:is([data-mood="surprised"], [data-mood="wow"]) :is(.e-wow, .m-o),
+    .mascot[data-mood="sleepy"] :is(.e-closed, .m-flat, .zzz),
+    .mascot[data-mood="love"] :is(.e-heart, .m-smile, .blush),
+    .mascot[data-mood="thinking"] :is(.e-open, .m-flat, .qmark) { opacity: 1; }
+    .mascot[data-mood="excited"] .pixel-bulb { fill: #facc15; animation: pixel-bulb 500ms steps(2) infinite; }
+    .mascot[data-mood="love"] .pixel-bulb { fill: #f472b6; }
+    .mascot[data-mood="thinking"] .pixel-bulb { fill: #fbbf24; }
+    .mascot[data-mood="sleepy"] .pixel-bulb { fill: #525252; }
+    .mascot[data-mood="clicked"] .pixel-bob { animation: pixel-bounce 600ms var(--ease); }
+    .mascot[data-mood="sleepy"] .zzz text { animation: pixel-z 2.4s var(--ease) infinite; }
+    .mascot[data-mood="sleepy"] .zzz text + text { animation-delay: 1.2s; }
+
+    /* Follow mode: Pixel trails the mouse (src/welcome/mascot.ts moves it every frame).
+       Clicks pass through it until the cursor rests on it ("catchable"). */
+    .mascot.is-following { left: 0; top: 0; right: auto; bottom: auto; width: 64px; pointer-events: none; will-change: transform; }
+    .mascot.is-following.catchable { pointer-events: auto; }
+    /* Roaming mode (touch screens): Pixel zigzags across the screen while you scroll. Tappable. */
+    .mascot.is-roaming { left: 0; top: 0; right: auto; bottom: auto; width: 56px; will-change: transform; }
+    .mascot.is-following.catchable .mascot-btn { cursor: pointer; }
+    .mascot.bubble-left .mascot-bubble { right: auto; left: 0; transform-origin: 0 100%; }
+    .mascot.bubble-below .mascot-bubble { bottom: auto; top: calc(100% + var(--s-75)); transform-origin: 100% 0; }
+    .mascot.bubble-left.bubble-below .mascot-bubble { transform-origin: 0 0; }
+    .pixel-act { transform-box: view-box; transform-origin: 60px 60px; }
+    .mascot.act-jump .pixel-act { animation: pixel-jump 700ms var(--ease); }
+    .mascot.act-spin .pixel-act { animation: pixel-spin 800ms var(--ease); }
+    @keyframes pixel-jump { 0% { transform: none; } 15% { transform: translateY(2px) scale(1.06, .92); } 45% { transform: translateY(-16px) scale(.96, 1.05); } 75% { transform: translateY(1px) scale(1.04, .95); } 100% { transform: none; } }
+    @keyframes pixel-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    @keyframes pixel-pop { from { opacity: 0; transform: scale(.3) translateY(24px); } to { opacity: 1; transform: none; } }
+    @keyframes pixel-bob { from { transform: translateY(0); } to { transform: translateY(-3px); } }
+    @keyframes pixel-bounce { 0% { transform: translateY(0); } 35% { transform: translateY(-10px); } 70% { transform: translateY(2px); } 100% { transform: translateY(0); } }
+    @keyframes pixel-bulb { to { opacity: .35; } }
+    @keyframes pixel-z { 0% { opacity: 0; transform: translate(0, 4px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(6px, -10px); } }
+
+    @media (max-width: 720px) {
+      .mascot { width: 64px; right: calc(var(--s-200) + env(safe-area-inset-right, 0px)); bottom: calc(var(--s-200) + env(safe-area-inset-bottom, 0px)); }
+      .mascot-bubble { width: min(240px, calc(100vw - 32px)); }
+      .mascot-anchor { right: 56px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .pixel, .pixel-bob, .mascot .pixel-bulb, .mascot .zzz text, .mascot[data-mood="clicked"] .pixel-bob { animation: none !important; }
+      .mascot-bubble { transition: opacity 300ms var(--ease); transform: none; }
+    }
     .frame-stage .frame { margin: 0; transform-origin: 50% 0; will-change: transform; }
     .hero h1 .line { display: block; overflow: hidden; padding-bottom: .12em; margin-bottom: -.12em; }
     .hero h1 .line > span { display: inline-block; background: linear-gradient(90deg, #000000, #666666); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -391,7 +483,7 @@
       .pricing-grid { grid-template-columns: 1fr; max-width: 680px; margin: 0 auto; }
       .heading-1 { font-size: 48px; line-height: 48px; }
     }
-    @media (max-width: 860px) {
+    @media (max-width: 980px) {
       .nav-links, .nav .btn-primary { display: none; }
       .menu-btn { display: block; }
       .nav { left: var(--s-200); right: var(--s-200); transform: none; max-width: none; justify-content: space-between; }
@@ -474,8 +566,9 @@
       <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
       <a href="/manual/">Manual</a>
+      <a href="/login">Sign in</a>
     </nav>
-    <a class="btn btn-primary button-sm" href="/login">Sign in</a>
+    <a class="btn btn-primary button-sm" href="/login#waitlist">Join waitlist</a>
     <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="mobilePanel"><span></span><span></span></button>
   </header>
   <div class="mobile-panel" id="mobilePanel" aria-hidden="true">
@@ -485,12 +578,13 @@
     <a class="heading-5" href="#pricing">Pricing</a>
     <a class="heading-5" href="#faq">FAQ</a>
     <a class="heading-5" href="/manual/">User manual</a>
-    <a class="btn btn-primary button-md" href="/login">Sign in to your studio</a>
+    <a class="heading-5" href="/login">Sign in</a>
+    <a class="btn btn-primary button-md" href="/login#waitlist">Join the waiting list</a>
   </div>
 
   <main id="main">
     <!-- 1. Hero -->
-    <section class="hero">
+    <section class="hero" id="hero">
       <div class="hero-fx" aria-hidden="true">
         <canvas id="heroCanvas" data-intro></canvas>
         <span class="node" data-node data-at="0.32" data-depth="1.4" data-rgb="225,48,108" style="--x:15%;--y:236px;--c:#E1306C"><span class="node-chip" data-intro><svg class="ph"><use href="#ph-instagram-logo"/></svg></span></span>
@@ -507,11 +601,12 @@
         <h1 class="heading-1"><span class="line"><span>Grow on four platforms</span></span> <span class="line"><span>without four dashboards</span></span></h1>
         <p class="lead title-2" data-intro>See what works on Instagram, Facebook, YouTube and LinkedIn in one place.<br class="br-lg"> Get a plan for what to post next, publish everywhere at once, and let “link” comments answer themselves.</p>
         <div class="hero-cta" data-intro>
-          <a class="btn btn-primary button-md magnetic" href="/login">Sign in to your studio <svg class="ph ph-move"><use href="#ph-arrow-right"/></svg></a>
+          <a class="btn btn-primary button-md magnetic" href="/login#waitlist">Join the waiting list <svg class="ph ph-move"><use href="#ph-arrow-right"/></svg></a>
           <div><span class="hero-proof caption-2"><svg class="ph"><use href="#ph-chart-line-up"/></svg>Chang Research Base reach: 5,706 in 30 days, up&nbsp;1,340.9%</span></div>
         </div>
         </div>
         <div class="frame-stage" data-intro>
+          <span class="mascot-anchor" aria-hidden="true"></span>
           <div class="frame">
             <div class="frame-inner">
               <img src="/welcome/img/hero.webp" width="1440" height="900" alt="Overview dashboard comparing views, interactions and new followers across Instagram, YouTube, LinkedIn and Facebook" fetchpriority="high" />
@@ -809,7 +904,7 @@
               <li><svg class="ph"><use href="#ph-check-circle"/></svg>CSV and PDF export</li>
             </ul>
             <div class="plan-cta">
-              <a class="btn btn-primary button-md magnetic" href="/login">Sign in to your studio <svg class="ph ph-move"><use href="#ph-arrow-right"/></svg></a>
+              <a class="btn btn-primary button-md magnetic" href="/login#waitlist">Join the waiting list <svg class="ph ph-move"><use href="#ph-arrow-right"/></svg></a>
               <span class="caption-2">No per account fees</span>
             </div>
           </article>
@@ -854,8 +949,8 @@
         </div>
         <div class="cta">
           <h2 class="heading-2">Grow on four platforms<br class="br-lg"> without four dashboards</h2>
-          <p class="title-2">Sign in and press Update data. Your Overview is ready in seconds.</p>
-          <a class="btn btn-primary button-md magnetic" href="/login">Sign in to your studio <svg class="ph ph-move"><use href="#ph-arrow-right"/></svg></a>
+          <p class="title-2">Tell us which accounts you manage. We will contact you as soon as your studio is ready.</p>
+          <a class="btn btn-primary button-md magnetic" href="/login#waitlist">Join the waiting list <svg class="ph ph-move"><use href="#ph-arrow-right"/></svg></a>
           <span class="alt caption-2">New here? <a href="/manual/">Read the user manual</a> first.</span>
         </div>
       </div>
@@ -871,10 +966,60 @@
         <a href="#pricing">Pricing</a>
         <a href="#faq">FAQ</a>
         <a href="/manual/">User manual</a>
+        <a href="/login#waitlist">Waiting list</a>
         <a href="/login">Sign in</a>
       </nav>
     </div>
   </footer>
+
+  <!-- Pixel, the mascot. Shown by src/welcome/mascot.ts; stays hidden without the script. -->
+  <div class="mascot" id="mascot" data-mood="happy" hidden>
+    <div class="mascot-fig">
+      <div class="mascot-bubble" role="status" aria-live="polite">
+        <p class="body-6"></p>
+        <a class="mascot-cta caption-1" href="/login#waitlist" hidden>Join the waiting list <svg class="ph"><use href="#ph-arrow-right"/></svg></a>
+      </div>
+      <button class="mascot-btn" type="button" aria-label="Pixel, the studio mascot. Press for a tip">
+        <svg class="pixel" viewBox="0 0 120 100" aria-hidden="true" focusable="false">
+          <g class="pixel-act">
+          <g class="pixel-bob">
+            <g class="pixel-ear pixel-ear-l"><path d="M32 34 C16 31 7 48 10 68 C12 80 23 81 27 70 C29 60 31 48 36 40 Z"/></g>
+            <g class="pixel-ear pixel-ear-r"><path d="M88 34 C104 31 113 48 110 68 C108 80 97 81 93 70 C91 60 89 48 84 40 Z"/></g>
+            <g class="pixel-head">
+              <line class="pixel-stalk" x1="60" y1="25" x2="60" y2="13"/>
+              <circle class="pixel-bulb" cx="60" cy="9" r="5"/>
+              <rect class="pixel-skull" x="20" y="24" width="80" height="72" rx="24"/>
+              <rect class="pixel-screen" x="30" y="37" width="60" height="44" rx="14"/>
+              <g class="pixel-eyes">
+                <g class="v e-open"><rect x="41" y="49" width="8" height="12" rx="4"/><rect x="71" y="49" width="8" height="12" rx="4"/></g>
+                <g class="v e-happy"><path d="M39 58 q6 -8 12 0"/><path d="M69 58 q6 -8 12 0"/></g>
+                <g class="v e-closed"><path d="M39 55 q6 5 12 0"/><path d="M69 55 q6 5 12 0"/></g>
+                <g class="v e-wow"><circle class="ring" cx="45" cy="55" r="6"/><circle class="ring" cx="75" cy="55" r="6"/><circle cx="45" cy="55" r="2.2"/><circle cx="75" cy="55" r="2.2"/></g>
+                <g class="v e-star">
+                  <polygon points="45,49 46.5,52.9 50.7,53.2 47.5,55.8 48.5,59.9 45,57.6 41.5,59.9 42.5,55.8 39.3,53.2 43.5,52.9"/>
+                  <polygon points="75,49 76.5,52.9 80.7,53.2 77.5,55.8 78.5,59.9 75,57.6 71.5,59.9 72.5,55.8 69.3,53.2 73.5,52.9"/>
+                </g>
+                <g class="v e-dizzy"><path d="M41 51 l8 8 M49 51 l-8 8"/><path d="M71 51 l8 8 M79 51 l-8 8"/></g>
+                <g class="v e-heart">
+                  <path d="M45 60 C38 55 39 49 42.5 49.5 C44 49.7 45 51 45 52 C45 51 46 49.7 47.5 49.5 C51 49 52 55 45 60 Z"/>
+                  <path d="M75 60 C68 55 69 49 72.5 49.5 C74 49.7 75 51 75 52 C75 51 76 49.7 77.5 49.5 C81 49 82 55 75 60 Z"/>
+                </g>
+              </g>
+              <path class="v m-smile" d="M54 70 q6 5 12 0"/>
+              <path class="v m-open" d="M53 68 q7 10 14 0 Z"/>
+              <circle class="v m-o" cx="60" cy="71" r="3.2"/>
+              <path class="v m-flat" d="M55 71 h10"/>
+              <path class="v m-wavy" d="M53 71 q3.5 -3 7 0 q3.5 3 7 0"/>
+              <g class="v blush"><ellipse cx="37" cy="68" rx="4" ry="2.5"/><ellipse cx="83" cy="68" rx="4" ry="2.5"/></g>
+            </g>
+            <g class="v zzz"><text x="94" y="24">z</text><text x="103" y="13">z</text></g>
+            <g class="v qmark"><text x="70" y="14">?</text></g>
+          </g>
+          </g>
+        </svg>
+      </button>
+    </div>
+  </div>
 
   <script>
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

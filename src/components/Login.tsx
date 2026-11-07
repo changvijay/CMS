@@ -1,12 +1,21 @@
 import React, { useState } from 'react';
 import { loginUser, type User } from '../services/api';
 import { errorMessage } from '../utils/errors';
+import { Waitlist } from './Waitlist';
 
 interface LoginProps {
   onLoginSuccess: (token: string, user: User) => void;
 }
 
+type Mode = 'signin' | 'waitlist';
+
 export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
+  // /login#waitlist opens the waiting list directly, so other pages can link to it.
+  const [mode, setModeState] = useState<Mode>(() => (window.location.hash === '#waitlist' ? 'waitlist' : 'signin'));
+  const setMode = (next: Mode) => {
+    setModeState(next);
+    window.history.replaceState(null, '', next === 'waitlist' ? '#waitlist' : window.location.pathname);
+  };
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -35,7 +44,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
   return (
     <div className="login-container">
-      <div className="login-card">
+      <div className={`login-card${mode === 'waitlist' ? ' is-waitlist' : ''}`}>
         {/* Header Branding */}
         <div className="login-header">
           <div className="brand-badge">
@@ -43,10 +52,23 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
             </svg>
           </div>
-          <h1>Welcome Back</h1>
-          <p>Sign in to manage your connected Instagram accounts</p>
+          <h1>{mode === 'signin' ? 'Welcome Back' : 'Join the waiting list'}</h1>
+          <p>{mode === 'signin'
+            ? 'Sign in to manage your connected Instagram accounts'
+            : 'Tell us what you will manage and we will contact you when your studio is ready'}</p>
         </div>
 
+        <div className="login-tabs" role="tablist" aria-label="Sign in or join the waiting list">
+          <button type="button" role="tab" id="tab-signin" aria-selected={mode === 'signin'} aria-controls="panel-signin" onClick={() => setMode('signin')}>Sign in</button>
+          <button type="button" role="tab" id="tab-waitlist" aria-selected={mode === 'waitlist'} aria-controls="panel-waitlist" onClick={() => setMode('waitlist')}>Join the waiting list</button>
+        </div>
+
+        {mode === 'waitlist' ? (
+          <div role="tabpanel" id="panel-waitlist" aria-labelledby="tab-waitlist">
+            <Waitlist onBackToSignIn={() => setMode('signin')} />
+          </div>
+        ) : (
+        <div role="tabpanel" id="panel-signin" aria-labelledby="tab-signin">
         {/* Error Alert */}
         {error && (
           <div className="error-alert" role="alert">
@@ -137,7 +159,10 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               <span>Sign In to Dashboard →</span>
             )}
           </button>
+          <p className="wl-cta">No account yet? <button type="button" onClick={() => setMode('waitlist')}>Join the waiting list</button></p>
         </form>
+        </div>
+        )}
 
         <div className="login-footer">
           <p>Protected by Enterprise Node.js & PostgreSQL Security</p>
