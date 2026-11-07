@@ -21,6 +21,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
     "express": "^4.21.2",
+    "gsap": "^3.15.1",
     "jsonwebtoken": "^9.0.2",
     "node-cron": "^4.6.0",
     "pg": "^8.16.3",
@@ -29,7 +30,8 @@
     "react-router-dom": "^7.18.3",
     "recharts": "^3.10.1",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "three": "^0.187.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -43,6 +45,7 @@
     "@types/react-dom": "^19.2.4",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
+    "@types/three": "^0.187.0",
     "@vitejs/plugin-react": "^6.1.0",
     "concurrently": "^9.2.1",
     "eslint": "^10.9.0",

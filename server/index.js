@@ -67,6 +67,15 @@ app.use(cors(allowedOrigins.length ? { origin: allowedOrigins } : undefined));
 app.set('trust proxy', true);
 // Keep the raw body: Instagram's webhook signature is computed over the exact bytes it sent.
 app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } }));
+// The landing page lives at the site root; the old /welcome/ address forwards there.
+app.get('/', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-cache');
+  res.sendFile(path.join(distPath, 'welcome', 'index.html'), (err) => { if (err) next(); });
+});
+app.get(['/welcome', '/welcome/', '/welcome/index.html'], (req, res) => {
+  const q = req.originalUrl.indexOf('?');
+  res.redirect(301, q === -1 ? '/' : `/${req.originalUrl.slice(q)}`);
+});
 // index.html is never cached, so after a deploy the browser picks up the new file names straight away.
 // Hashed files under /assets never change, so they can be cached for good.
 app.use(express.static(distPath, {

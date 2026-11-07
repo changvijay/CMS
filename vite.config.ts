@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import { fileURLToPath } from 'node:url'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -10,18 +11,35 @@ export default defineConfig(({ mode }) => {
   return {
   plugins: [
     react(),
-    // Dev only: serve public/welcome and public/manual for their folder URLs, as Express does in production.
+    // Dev only: serve the landing page at / and the manual at /manual/, as Express does in production.
     {
       name: 'static-page-folders',
       configureServer(server) {
-        server.middlewares.use((req, _res, next) => {
-          const m = req.url?.match(/^\/(welcome|manual)\/?(\?.*)?$/)
-          if (m) req.url = `/${m[1]}/index.html${m[2] ?? ''}`
+        server.middlewares.use((req, res, next) => {
+          const old = req.url?.match(/^\/welcome(?:\/|\/index\.html)?(\?.*)?$/)
+          if (old) {
+            res.statusCode = 301
+            res.setHeader('Location', `/${old[1] ?? ''}`)
+            return res.end()
+          }
+          const root = req.url?.match(/^\/(\?.*)?$/)
+          if (root) req.url = `/welcome/index.html${root[1] ?? ''}`
+          const m = req.url?.match(/^\/manual\/?(\?.*)?$/)
+          if (m) req.url = `/manual/index.html${m[1] ?? ''}`
           next()
         })
       },
     },
   ],
+  // Two pages: the React app, and the landing page (built to dist/welcome/, served at /).
+  build: {
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        welcome: fileURLToPath(new URL('./welcome/index.html', import.meta.url)),
+      },
+    },
+  },
   // Agent worktrees under .claude/ hold copies of the repo; their tests are not this checkout's.
   test: { exclude: ['**/node_modules/**', '**/dist/**', '.claude/**'] },
   server: {

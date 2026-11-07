@@ -14,11 +14,21 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    // Hide the hero until the intro animation starts, so it never flashes in twice.
+    // Safety net: show everything after 3 seconds even if the motion script fails to load.
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      document.documentElement.classList.add('intro');
+      setTimeout(function () { document.documentElement.classList.remove('intro'); }, 3000);
+    }
+  </script>
+  <script type="module" src="/src/welcome/main.ts"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "FAQPage",
     "mainEntity": [
+      { "@type": "Question", "name": "How much does the studio cost?", "acceptedAnswer": { "@type": "Answer", "text": "₹7,999 a year plus GST for one brand on Instagram, Facebook, YouTube and LinkedIn. Every feature is included and there are no per account fees." } },
       { "@type": "Question", "name": "Which accounts can I connect?", "acceptedAnswer": { "@type": "Answer", "text": "Instagram Professional accounts (Business or Creator), Facebook Pages, YouTube channels and LinkedIn company pages. You can connect several of each." } },
       { "@type": "Question", "name": "How fresh are the numbers?", "acceptedAnswer": { "@type": "Answer", "text": "Every account is refreshed every night at 2:30 AM IST. Press Update data at any time to load the latest numbers in a few seconds." } },
       { "@type": "Question", "name": "How do Instagram auto replies work?", "acceptedAnswer": { "@type": "Answer", "text": "You create a rule with keywords, a message and a link. When someone comments or sends a DM with that keyword, the studio replies automatically. Instagram allows one private reply per comment within 7 days, and DM replies within 24 hours." } },
@@ -95,7 +105,11 @@
     /* ---------- Floating nav ---------- */
     .nav { position: fixed; top: var(--s-200); left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: var(--s-300);
       padding: var(--s-75); padding-left: var(--s-200); border-radius: var(--r-2xl); border: 1px solid rgba(229, 229, 229, .8);
-      background: rgba(255, 255, 255, .72); backdrop-filter: saturate(180%) blur(16px); -webkit-backdrop-filter: saturate(180%) blur(16px); box-shadow: var(--shadow); max-width: calc(100% - var(--s-400)); }
+      background: rgba(255, 255, 255, .72); backdrop-filter: saturate(180%) blur(16px); -webkit-backdrop-filter: saturate(180%) blur(16px); box-shadow: var(--shadow); max-width: calc(100% - var(--s-400));
+      transition: background-color 300ms var(--ease), border-color 300ms var(--ease); }
+    .nav.scrolled { background: rgba(255, 255, 255, .88); border-color: var(--line); }
+    .progress { position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 70; pointer-events: none; }
+    .progress span { display: block; height: 100%; background: var(--accent); transform: scaleX(0); transform-origin: 0 50%; }
     .brand { display: flex; align-items: center; gap: var(--s-75); white-space: nowrap; }
     .brand-mark { width: 32px; height: 32px; border-radius: var(--r-lg); background: var(--accent); color: #fff; display: grid; place-items: center; }
     .brand-mark .ph { width: 18px; height: 18px; }
@@ -118,12 +132,26 @@
     .mobile-panel .btn { margin-top: var(--s-200); }
 
     /* ---------- Hero ---------- */
-    .hero { padding: calc(var(--s-900) + var(--s-700)) 0 var(--s-800); text-align: center; }
+    .hero { position: relative; padding: calc(var(--s-900) + var(--s-700)) 0 var(--s-800); text-align: center; }
+    .hero > .wrap { position: relative; z-index: 1; }
+    /* 3D layer: particle field, platform chips and the cables that run into the screenshot */
+    .hero-fx { position: absolute; top: 0; left: 0; right: 0; height: 760px; z-index: 0; pointer-events: none; overflow: hidden; }
+    .hero-fx canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .node { position: absolute; left: var(--x); top: var(--y); }
+    .node-chip { display: grid; place-items: center; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: var(--r-2xl);
+      background: var(--base); border: 1px solid var(--line); box-shadow: var(--shadow); color: var(--c); }
+    .node-chip .ph { width: 28px; height: 28px; }
+    .frame-stage { margin: var(--s-700) auto 0; max-width: 1080px; perspective: 1800px; }
+    .frame-stage .frame { margin: 0; transform-origin: 50% 0; will-change: transform; }
+    .hero h1 .line { display: block; overflow: hidden; padding-bottom: .12em; margin-bottom: -.12em; }
+    .hero h1 .line > span { display: inline-block; background: linear-gradient(90deg, #000000, #666666); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    /* Hidden until the intro animation in src/welcome/main.ts takes over */
+    .intro .hero [data-intro] { opacity: 0; }
+    .intro .hero h1 .line > span { transform: translateY(110%); }
     .badge { display: inline-flex; align-items: center; gap: var(--s-75); padding: var(--s-50) var(--s-100); border-radius: var(--r-full); border: 1px solid var(--line); background: var(--base); color: var(--ink-2); }
     .badge .dots { display: flex; gap: var(--s-50); color: var(--muted); }
     .badge .ph { width: 16px; height: 16px; }
-    .hero h1 { max-width: 680px; margin: var(--s-300) auto var(--s-300);
-      background: linear-gradient(90deg, #000000, #666666); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero h1 { max-width: 680px; margin: var(--s-300) auto var(--s-300); }
     .hero .lead { max-width: 680px; margin: 0 auto var(--s-400); color: var(--ink-2); }
     .hero-proof { display: inline-block; margin-top: var(--s-300); color: var(--muted); }
     .hero-proof .ph { color: #16a34a; width: 16px; height: 16px; vertical-align: -3px; margin-right: var(--s-75); }
@@ -157,14 +185,25 @@
     /* Tagline reveal */
     .tagline { padding: var(--s-900) 0; }
     .tagline p { max-width: 680px; margin: 0 auto; text-align: center; color: var(--ink); text-wrap: balance; }
-    .tagline .w { opacity: 0.3; transition: opacity 500ms var(--ease); }
-    .tagline .w.on { opacity: 1; }
+    .tagline .w { display: inline-block; opacity: 0.3; transform: translateY(6px); transition: opacity 500ms var(--ease), transform 500ms var(--ease); }
+    .tagline .w.on { opacity: 1; transform: none; }
 
-    .benefits { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--s-300); }
-    .benefit { grid-column: span 2; padding: var(--s-400); border-radius: var(--r-2xl); border: 1px solid var(--line); background: var(--base);
-      transition: transform 500ms var(--ease), box-shadow 500ms var(--ease); }
+    /* List items inside a revealed block arrive one after another */
+    .reveal .list li { opacity: 0; transform: translateY(var(--s-75)); transition: opacity 600ms var(--ease), transform 600ms var(--ease); }
+    .reveal.in .list li { opacity: 1; transform: none; }
+    .reveal.in .list li:nth-child(1) { transition-delay: 200ms; }
+    .reveal.in .list li:nth-child(2) { transition-delay: 280ms; }
+    .reveal.in .list li:nth-child(3) { transition-delay: 360ms; }
+    .reveal.in .list li:nth-child(4) { transition-delay: 440ms; }
+
+    #features, .story { overflow-x: clip; }
+    .benefits { position: relative; display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--s-300); }
+    .benefit { grid-column: span 2; display: flex; will-change: transform; }
+    .benefit-card { box-shadow: 0 1px 2px rgba(10, 10, 10, .04); }
     .benefit:nth-child(4), .benefit:nth-child(5) { grid-column: span 3; }
-    .benefit:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .benefit-card { flex: 1; padding: var(--s-400); border-radius: var(--r-2xl); border: 1px solid var(--line); background: var(--base);
+      transition: box-shadow 500ms var(--ease), border-color 300ms var(--ease); }
+    .benefit-card:hover { box-shadow: var(--shadow); border-color: #d4d4d4; }
     .icon-box { width: 40px; height: 40px; border-radius: var(--r-xl); display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); margin-bottom: var(--s-300); }
     .benefit h3 { margin-bottom: var(--s-75); }
     .benefit p { color: var(--ink-2); }
@@ -174,12 +213,56 @@
     .spot.rev .spot-copy { order: 2; }
     .spot-copy h3 { margin: var(--s-100) 0 var(--s-200); }
     .spot-copy > p { color: var(--ink-2); margin-bottom: var(--s-300); }
-    .shot { padding: var(--s-75); border-radius: var(--r-2xl); background: var(--base); border: 1px solid var(--line); box-shadow: var(--shadow); }
-    .shot img { border-radius: var(--r-lg); background: #f4f4f5; }
+    .shot { padding: var(--s-75); border-radius: var(--r-2xl); background: var(--base); border: 1px solid var(--line); box-shadow: var(--shadow); will-change: transform; }
+    .shot-clip { border-radius: var(--r-lg); overflow: hidden; background: #f4f4f5; }
+    .shot img { will-change: transform; }
 
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-300); }
-    .step { padding: var(--s-400); border-radius: var(--r-2xl); border: 1px solid var(--line); background: var(--base); }
-    .step-num { width: 40px; height: 40px; border-radius: var(--r-xl); display: grid; place-items: center; background: var(--ink); color: #fff; margin-bottom: var(--s-300); }
+    /* Product tour as sticky scrollytelling (wide screens with motion on, see src/welcome/main.ts) */
+    .story-stage { display: none; }
+    .story-sticky { display: flex; flex-direction: column; justify-content: center; gap: var(--s-300); }
+    .story-device { position: relative; aspect-ratio: 1440 / 960; }
+    .story-shot { position: absolute; inset: 0; will-change: transform, opacity; }
+    .story-shot .shot-clip { height: 100%; }
+    .story-shot img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+    .story-meta { display: flex; align-items: center; gap: var(--s-100); color: var(--muted); }
+    .story-count { color: var(--ink); font-variant-numeric: tabular-nums; }
+    .story-bar { flex: 1; height: 2px; border-radius: var(--r-full); background: var(--line); overflow: hidden; }
+    .story-bar span { display: block; height: 100%; background: var(--accent); transform-origin: 0 50%; transform: scaleX(.34); }
+    @media (min-width: 1025px) {
+      .motion .story-grid { display: grid; grid-template-columns: 5fr 7fr; gap: var(--s-700); }
+      .motion .story .spot { display: flex; align-items: center; min-height: 88vh; }
+      .motion .story .spot + .spot { margin-top: 0; }
+      .motion .story .spot > .shot { display: none; }
+      .motion .story .spot-copy { opacity: .3; transition: opacity 500ms var(--ease); }
+      .motion .story .spot.is-active .spot-copy { opacity: 1; }
+      .motion .story-stage { display: block; }
+      .motion .story-sticky { position: sticky; top: 0; height: 100vh; }
+    }
+
+    /* How it works as stacked cards: each step sticks a little lower than the last */
+    .stack { display: grid; gap: var(--s-300); max-width: 960px; margin: 0 auto; padding: 0; list-style: none; }
+    .stack-inner { display: grid; grid-template-columns: auto 1fr auto; gap: var(--s-400); align-items: start; min-height: 280px; padding: var(--s-600);
+      border-radius: var(--r-3xl); border: 1px solid var(--line); background: var(--base); box-shadow: var(--shadow); transform-origin: 50% 0; will-change: transform; }
+    .stack-card:nth-child(2) .stack-inner { background: var(--accent-soft); border-color: #c7d2fe; }
+    .stack-card:nth-child(3) .stack-inner { background: var(--dark); border-color: #313131; color: #fff; }
+    .stack-num { color: var(--accent); font-variant-numeric: tabular-nums; }
+    .stack-card:nth-child(3) .stack-num { color: #a5b4fc; }
+    .stack-copy h3 { margin-bottom: var(--s-200); }
+    .stack-copy p { color: var(--ink-2); max-width: 480px; }
+    .stack-card:nth-child(3) .stack-copy p { color: #a3a3a3; }
+    .stack-icon { width: 56px; height: 56px; border-radius: var(--r-2xl); display: grid; place-items: center; background: var(--soft); border: 1px solid var(--line); color: var(--accent); }
+    .stack-card:nth-child(2) .stack-icon { background: var(--base); border-color: #c7d2fe; }
+    .stack-card:nth-child(3) .stack-icon { background: var(--dark-2); border-color: #313131; color: #a5b4fc; }
+    .stack-icon .ph { width: 28px; height: 28px; }
+    .motion .stack { gap: var(--s-700); padding-bottom: var(--s-400); }
+    .motion .stack-card { position: sticky; top: calc(var(--s-900) + var(--s-200) + var(--i) * var(--s-300)); }
+
+    /* Sticky tagline: the line holds in the middle of the screen while its words light up */
+    .tagline-sticky { width: 100%; }
+    .motion .tagline { height: 240vh; padding: 0; }
+    .motion .tagline-sticky { position: sticky; top: 0; height: 100vh; display: flex; align-items: center; }
+    .motion .tagline-sticky .wrap { width: 100%; }
+    #tagline { will-change: transform; }
     .step h3 { margin-bottom: var(--s-75); }
     .step p { color: var(--ink-2); }
 
@@ -195,7 +278,8 @@
     .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-200); }
     .stat { padding: var(--s-300); border-radius: var(--r-xl); background: #1f1f1f; border: 1px solid #313131; }
     .stat .label { color: #a3a3a3; }
-    .stat .value { margin: var(--s-75) 0 var(--s-50); }
+    .stat .value { margin: var(--s-75) 0 var(--s-50); font-variant-numeric: tabular-nums; }
+    .case { will-change: transform; }
     .stat .delta { color: #4ade80; display: inline-flex; align-items: center; gap: var(--s-50); }
     .case-note { margin-top: var(--s-300); color: #a3a3a3; }
     .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-200); margin-top: var(--s-300); }
@@ -203,6 +287,56 @@
     .fact .ph { color: #a5b4fc; margin-bottom: var(--s-200); }
     .fact strong { display: block; margin-bottom: var(--s-50); }
     .fact span { color: #a3a3a3; }
+
+    /* Pricing: a receipt of what the same setup costs elsewhere, crossed out, beside the one plan */
+    .pricing-grid { display: grid; grid-template-columns: 5fr 7fr; gap: var(--s-500); align-items: center; }
+    .mono { font-variant-numeric: tabular-nums; }
+    .receipt { position: relative; padding: var(--s-400); border-radius: var(--r-2xl); background: var(--base); border: 1px solid var(--line); box-shadow: var(--shadow); will-change: transform; }
+    .rc-head { display: grid; gap: var(--s-50); padding-bottom: var(--s-300); margin-bottom: var(--s-100); border-bottom: 1px dashed #d4d4d4; }
+    .rc-head .caption-5 { color: var(--muted); }
+    .rc-line { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-200); padding: var(--s-200) 0; }
+    .rc-line .what span { display: block; color: var(--muted); }
+    .rc-total { margin-top: var(--s-100); padding-top: var(--s-300); border-top: 1px dashed #d4d4d4; align-items: center; }
+    .rc-amt { position: relative; white-space: nowrap; }
+    .strike { position: absolute; left: -4px; right: -4px; top: 50%; height: 2px; margin-top: -1px; border-radius: var(--r-full); background: var(--accent); transform-origin: 0 50%; }
+    .rc-missing { margin-top: var(--s-300); padding: var(--s-200); border-radius: var(--r-xl); background: var(--soft); border: 1px solid var(--line); display: grid; gap: var(--s-100); }
+    .rc-missing > span { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+    .rc-missing ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-100); }
+    .rc-missing li { display: grid; grid-template-columns: auto 1fr auto; gap: var(--s-75); align-items: start; color: var(--ink-2); }
+    .rc-missing .ph { width: 18px; height: 18px; color: #dc2626; margin-top: var(--s-25); }
+    .rc-missing em { color: var(--muted); white-space: nowrap; margin-top: var(--s-25); }
+    .rc-missing li span { text-wrap: balance; }
+    .rc-note { margin-top: var(--s-300); color: var(--muted); }
+    .stamp { position: absolute; right: calc(var(--s-200) * -1); top: calc(var(--s-300) * -1); padding: var(--s-75) var(--s-100); border: 2px solid var(--accent); border-radius: var(--r-lg);
+      color: var(--accent); background: rgba(255, 255, 255, .92); text-transform: uppercase; letter-spacing: .08em; transform: rotate(-8deg); pointer-events: none; }
+
+    .plan { position: relative; padding: var(--s-500); border-radius: var(--r-3xl); background: var(--base); border: 1px solid #c7d2fe;
+      box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow); transition: box-shadow 500ms var(--ease); }
+    .plan-top { display: flex; justify-content: space-between; align-items: center; gap: var(--s-200); flex-wrap: wrap; }
+    .plan-badge { display: inline-flex; align-items: center; gap: var(--s-50); padding: var(--s-50) var(--s-100); border-radius: var(--r-full); background: var(--accent-soft); color: var(--accent); }
+    .plan-badge .ph { width: 16px; height: 16px; }
+    .plan > p.body-3 { color: var(--ink-2); margin-top: var(--s-75); }
+    .price-row { display: flex; align-items: baseline; gap: var(--s-100) var(--s-200); flex-wrap: wrap; margin-top: var(--s-400); }
+    .price-old { flex-basis: 100%; color: var(--muted); }
+    .price-old s { position: relative; text-decoration: none; }
+    .price-old .strike { background: var(--muted); }
+    .price-now { letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+    .price-unit { color: var(--muted); }
+    .price-sub { margin-top: var(--s-75); color: var(--ink-2); }
+    .save { display: inline-flex; align-items: center; gap: var(--s-50); margin-top: var(--s-200); padding: var(--s-50) var(--s-100); border-radius: var(--r-full);
+      background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .save .ph { width: 16px; height: 16px; }
+    .plan-list { list-style: none; margin: var(--s-400) 0; padding: var(--s-400) 0 0; border-top: 1px solid var(--line);
+      display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-100) var(--s-300); }
+    .plan-list li { display: flex; gap: var(--s-75); color: var(--ink-2); }
+    .plan-list .ph { color: var(--accent); width: 18px; height: 18px; margin-top: var(--s-25); }
+    .plan-cta { display: flex; align-items: center; gap: var(--s-200); flex-wrap: wrap; }
+    .plan-cta span { color: var(--muted); }
+    .trust { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-300); margin-top: var(--s-700); }
+    .trust div { display: flex; gap: var(--s-100); }
+    .trust .ph { color: var(--accent); margin-top: var(--s-25); }
+    .trust p { color: var(--ink-2); }
+    .trust strong { display: block; color: var(--ink); margin-bottom: var(--s-50); }
 
     /* FAQ */
     .faq { max-width: 784px; margin: 0 auto; display: grid; gap: var(--s-100); }
@@ -240,18 +374,21 @@
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
       .reveal, .mobile-panel a { transform: none !important; transition: opacity 300ms linear; }
-      .reveal { opacity: 1; }
-      .tagline .w { opacity: 1; transition: none; }
-      .btn:hover, .benefit:hover { transform: none; }
+      .reveal, .reveal .list li { opacity: 1; transform: none; transition: none; }
+      .tagline .w { opacity: 1; transform: none; transition: none; }
+      .btn:hover { transform: none; }
     }
+    @media (max-width: 1100px) { .node { display: none; } }
 
     @media (max-width: 1024px) {
       .benefits { grid-template-columns: 1fr 1fr; }
       .benefit, .benefit:nth-child(4), .benefit:nth-child(5) { grid-column: auto; }
+      .frame-stage { perspective: 1200px; }
       .benefit:nth-child(5) { grid-column: span 2; }
       .spot, .spot.rev { grid-template-columns: 1fr; gap: var(--s-400); }
       .spot.rev .spot-copy { order: 0; }
       .stats, .facts { grid-template-columns: 1fr 1fr; }
+      .pricing-grid { grid-template-columns: 1fr; max-width: 680px; margin: 0 auto; }
       .heading-1 { font-size: 48px; line-height: 48px; }
     }
     @media (max-width: 860px) {
@@ -268,10 +405,19 @@
       .heading-4 { font-size: 24px; line-height: 32px; }
       .br-lg, .hide-sm { display: none; }
       section.block, .tagline { padding: var(--s-700) 0; }
-      .compare, .benefits, .steps, .assure, .stats, .facts { grid-template-columns: 1fr; }
+      .compare, .benefits, .assure, .stats, .facts { grid-template-columns: 1fr; }
       .benefit:nth-child(5) { grid-column: auto; }
-      .panel, .benefit, .step, .case { padding: var(--s-300); }
-      .frame { margin-top: var(--s-500); }
+      .panel, .benefit-card, .case, .stack-inner { padding: var(--s-300); }
+      .stack-inner { grid-template-columns: 1fr auto; gap: var(--s-200); min-height: 240px; }
+      .stack-num { font-size: 36px; line-height: 40px; }
+      .stack-copy { grid-column: 1 / -1; }
+      .motion .stack-card { top: calc(var(--s-800) + var(--s-200) + var(--i) * var(--s-200)); }
+      .pricing-grid, .trust, .plan-list { grid-template-columns: 1fr; }
+      .plan, .receipt { padding: var(--s-300); }
+      .stamp { right: var(--s-200); top: calc(var(--s-500) * -1); }
+      .receipt { margin-top: var(--s-400); }
+      .price-now { font-size: 48px; line-height: 48px; }
+      .frame-stage { margin-top: var(--s-500); }
       .cta { padding: var(--s-600) var(--s-200); }
     }
   </style>
@@ -314,9 +460,10 @@
 <symbol id="ph-x-circle" viewBox="0 0 256 256" fill="currentColor"><path d="M165.66,101.66,139.31,128l26.35,26.34a8,8,0,0,1-11.32,11.32L128,139.31l-26.34,26.35a8,8,0,0,1-11.32-11.32L116.69,128,90.34,101.66a8,8,0,0,1,11.32-11.32L128,116.69l26.34-26.35a8,8,0,0,1,11.32,11.32ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"/></symbol>
 </svg>
   <a class="skip button-sm" href="#main">Skip to content</a>
+  <div class="progress" aria-hidden="true"><span></span></div>
 
   <header class="nav" id="nav">
-    <a href="/welcome/" class="brand title-3" aria-label="CMS Analytics Studio home">
+    <a href="/" class="brand title-3" aria-label="CMS Analytics Studio home">
       <span class="brand-mark"><svg class="ph"><use href="#ph-stack"/></svg></span>
       CMS Analytics Studio
     </a>
@@ -324,6 +471,7 @@
       <a href="#features">Features</a>
       <a href="#how">How it works</a>
       <a href="#results">Results</a>
+      <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
       <a href="/manual/">Manual</a>
     </nav>
@@ -334,6 +482,7 @@
     <a class="heading-5" href="#features">Features</a>
     <a class="heading-5" href="#how">How it works</a>
     <a class="heading-5" href="#results">Results</a>
+    <a class="heading-5" href="#pricing">Pricing</a>
     <a class="heading-5" href="#faq">FAQ</a>
     <a class="heading-5" href="/manual/">User manual</a>
     <a class="btn btn-primary button-md" href="/login">Sign in to your studio</a>
@@ -342,18 +491,31 @@
   <main id="main">
     <!-- 1. Hero -->
     <section class="hero">
+      <div class="hero-fx" aria-hidden="true">
+        <canvas id="heroCanvas" data-intro></canvas>
+        <span class="node" data-node data-at="0.32" data-depth="1.4" data-rgb="225,48,108" style="--x:15%;--y:236px;--c:#E1306C"><span class="node-chip" data-intro><svg class="ph"><use href="#ph-instagram-logo"/></svg></span></span>
+        <span class="node" data-node data-at="0.16" data-depth="0.8" data-rgb="24,119,242" style="--x:8%;--y:448px;--c:#1877F2"><span class="node-chip" data-intro><svg class="ph"><use href="#ph-facebook-logo"/></svg></span></span>
+        <span class="node" data-node data-at="0.68" data-depth="1.2" data-rgb="255,0,51" style="--x:86%;--y:264px;--c:#FF0033"><span class="node-chip" data-intro><svg class="ph"><use href="#ph-youtube-logo"/></svg></span></span>
+        <span class="node" data-node data-at="0.84" data-depth="0.7" data-rgb="10,102,194" style="--x:92%;--y:472px;--c:#0A66C2"><span class="node-chip" data-intro><svg class="ph"><use href="#ph-linkedin-logo"/></svg></span></span>
+      </div>
       <div class="wrap">
-        <span class="badge caption-1">
+        <div class="hero-copy">
+        <span class="badge caption-1" data-intro>
           <span class="dots"><svg class="ph"><use href="#ph-instagram-logo"/></svg><svg class="ph"><use href="#ph-facebook-logo"/></svg><svg class="ph"><use href="#ph-youtube-logo"/></svg><svg class="ph"><use href="#ph-linkedin-logo"/></svg></span>
           For creators and brands<span class="hide-sm"> on four platforms</span>
         </span>
-        <h1 class="heading-1">Grow on four platforms<br class="br-lg"> without four dashboards</h1>
-        <p class="lead title-2">See what works on Instagram, Facebook, YouTube and LinkedIn in one place.<br class="br-lg"> Get a plan for what to post next, publish everywhere at once, and let “link” comments answer themselves.</p>
-        <a class="btn btn-primary button-md" href="/login">Sign in to your studio <svg class="ph ph-move"><use href="#ph-arrow-right"/></svg></a>
-        <div><span class="hero-proof caption-2"><svg class="ph"><use href="#ph-chart-line-up"/></svg>Chang Research Base reach: 5,706 in 30 days, up&nbsp;1,340.9%</span></div>
-        <div class="frame reveal">
-          <div class="frame-inner">
-            <img src="img/hero.webp" width="1440" height="900" alt="Overview dashboard comparing views, interactions and new followers across Instagram, YouTube, LinkedIn and Facebook" fetchpriority="high" />
+        <h1 class="heading-1"><span class="line"><span>Grow on four platforms</span></span> <span class="line"><span>without four dashboards</span></span></h1>
+        <p class="lead title-2" data-intro>See what works on Instagram, Facebook, YouTube and LinkedIn in one place.<br class="br-lg"> Get a plan for what to post next, publish everywhere at once, and let “link” comments answer themselves.</p>
+        <div class="hero-cta" data-intro>
+          <a class="btn btn-primary button-md magnetic" href="/login">Sign in to your studio <svg class="ph ph-move"><use href="#ph-arrow-right"/></svg></a>
+          <div><span class="hero-proof caption-2"><svg class="ph"><use href="#ph-chart-line-up"/></svg>Chang Research Base reach: 5,706 in 30 days, up&nbsp;1,340.9%</span></div>
+        </div>
+        </div>
+        <div class="frame-stage" data-intro>
+          <div class="frame">
+            <div class="frame-inner">
+              <img src="/welcome/img/hero.webp" width="1440" height="900" alt="Overview dashboard comparing views, interactions and new followers across Instagram, YouTube, LinkedIn and Facebook" fetchpriority="high" />
+            </div>
           </div>
         </div>
       </div>
@@ -403,8 +565,10 @@
 
     <!-- 3. Tagline reveal -->
     <section class="tagline" aria-label="Our promise">
-      <div class="wrap">
-        <p class="heading-3" id="tagline">Stop guessing what to post.<br class="br-lg"> Read your numbers, follow the plan,<br class="br-lg"> and let the replies send themselves.</p>
+      <div class="tagline-sticky">
+        <div class="wrap">
+          <p class="heading-3" id="tagline">Stop guessing what to post.<br class="br-lg"> Read your numbers, follow the plan,<br class="br-lg"> and let the replies send themselves.</p>
+        </div>
       </div>
     </section>
 
@@ -417,38 +581,39 @@
           <p class="body-3">Every feature answers one question: what should you do next?</p>
         </div>
         <div class="benefits">
-          <article class="benefit reveal">
+          <article class="benefit"><div class="benefit-card">
             <div class="icon-box"><svg class="ph"><use href="#ph-target"/></svg></div>
             <h3 class="heading-6">Know what to post next</h3>
             <p class="body-6">The Strategy tab ranks fixes by priority from your own reels, posts and videos, and shows the numbers behind each one.</p>
-          </article>
-          <article class="benefit reveal">
+          </div></article>
+          <article class="benefit"><div class="benefit-card">
             <div class="icon-box"><svg class="ph"><use href="#ph-chart-line-up"/></svg></div>
             <h3 class="heading-6">Compare every channel at a glance</h3>
             <p class="body-6">Views, interactions and new followers for every account, side by side, against the previous 7, 14 or 30 days.</p>
-          </article>
-          <article class="benefit reveal">
+          </div></article>
+          <article class="benefit"><div class="benefit-card">
             <div class="icon-box"><svg class="ph"><use href="#ph-paper-plane-tilt"/></svg></div>
             <h3 class="heading-6">Publish once, not four times</h3>
             <p class="body-6">Images, carousels, reels, stories, videos, documents and polls from one wizard. Schedule it or post now.</p>
-          </article>
-          <article class="benefit reveal">
+          </div></article>
+          <article class="benefit"><div class="benefit-card">
             <div class="icon-box"><svg class="ph"><use href="#ph-chat-circle-dots"/></svg></div>
             <h3 class="heading-6">Turn comments into clicks</h3>
             <p class="body-6">Someone comments “link” on a reel and gets your URL by DM. Give each reel its own keyword, message and link, and see every reply in the activity log.</p>
-          </article>
-          <article class="benefit reveal">
-            <div class="icon-box"><svg class="ph"><use href="#ph-database"/></svg></div>
-            <h3 class="heading-6">Keep the history platforms delete</h3>
-            <p class="body-6">Daily numbers are saved to your own database every night at 2:30 AM IST. Download any table as CSV or print the Overview as PDF.</p>
-          </article>
+          </div></article>
+          <article class="benefit"><div class="benefit-card">
+            <div class="icon-box"><svg class="ph"><use href="#ph-shield-check"/></svg></div>
+            <h3 class="heading-6">Set up without sharing a password</h3>
+            <p class="body-6">Every account connects through the official Instagram, Facebook, Google and LinkedIn sign in. Your social passwords never reach the studio or anyone who helps you post.</p>
+          </div></article>
         </div>
       </div>
     </section>
 
     <!-- Product tour -->
-    <section class="block" id="tour" aria-label="Product tour">
-      <div class="wrap">
+    <section class="block story" id="tour" aria-label="Product tour">
+      <div class="wrap story-grid">
+        <div class="story-steps">
         <div class="spot reveal">
           <div class="spot-copy">
             <span class="kicker caption-3">Strategy</span>
@@ -460,7 +625,7 @@
               <li><svg class="ph"><use href="#ph-check-circle"/></svg>Reels, carousels and images compared on one scorecard</li>
             </ul>
           </div>
-          <div class="shot"><img src="img/strategy.webp" width="1440" height="900" loading="lazy" alt="Instagram Strategy tab with a prioritised action plan" /></div>
+          <div class="shot"><div class="shot-clip"><img src="/welcome/img/strategy.webp" width="1440" height="900" loading="lazy" alt="Instagram Strategy tab with a prioritised action plan" /></div></div>
         </div>
 
         <div class="spot rev reveal">
@@ -474,7 +639,7 @@
               <li><svg class="ph"><use href="#ph-check-circle"/></svg>Drafts save automatically</li>
             </ul>
           </div>
-          <div class="shot"><img src="img/publish.webp" width="1440" height="1150" loading="lazy" alt="Social Post wizard, content step with shared fields and an Instagram preview" /></div>
+          <div class="shot"><div class="shot-clip"><img src="/welcome/img/publish.webp" width="1440" height="1150" loading="lazy" alt="Social Post wizard, content step with shared fields and an Instagram preview" /></div></div>
         </div>
 
         <div class="spot reveal">
@@ -488,7 +653,19 @@
               <li><svg class="ph"><use href="#ph-check-circle"/></svg>A test tool that sends nothing to anyone</li>
             </ul>
           </div>
-          <div class="shot"><img src="img/autoreply.webp" width="1440" height="900" loading="lazy" alt="Auto replies page listing keyword rules for each reel" /></div>
+          <div class="shot"><div class="shot-clip"><img src="/welcome/img/autoreply.webp" width="1440" height="900" loading="lazy" alt="Auto replies page listing keyword rules for each reel" /></div></div>
+        </div>
+        </div>
+        <!-- Pinned screenshot for wide screens; the copies inside each story above are used on narrow screens -->
+        <div class="story-stage">
+          <div class="story-sticky">
+            <div class="story-device">
+              <div class="story-shot shot"><div class="shot-clip"><img src="/welcome/img/strategy.webp" width="1440" height="900" loading="lazy" alt="Instagram Strategy tab with a prioritised action plan" /></div></div>
+              <div class="story-shot shot"><div class="shot-clip"><img src="/welcome/img/publish.webp" width="1440" height="1150" loading="lazy" alt="Social Post wizard, content step with shared fields and an Instagram preview" /></div></div>
+              <div class="story-shot shot"><div class="shot-clip"><img src="/welcome/img/autoreply.webp" width="1440" height="900" loading="lazy" alt="Auto replies page listing keyword rules for each reel" /></div></div>
+            </div>
+            <div class="story-meta caption-3" aria-hidden="true"><span class="story-count">01</span><span class="story-bar"><span></span></span><span>03</span></div>
+          </div>
         </div>
       </div>
     </section>
@@ -500,23 +677,38 @@
           <span class="kicker caption-3">How it works</span>
           <h2 class="heading-2">Set up once, then just check in</h2>
         </div>
-        <div class="steps">
-          <div class="step reveal">
-            <div class="step-num body-1">1</div>
-            <h3 class="heading-6">Connect your accounts</h3>
-            <p class="body-6">Sign in with Instagram, Facebook, Google and LinkedIn from the Accounts page. You do this once.</p>
-          </div>
-          <div class="step reveal">
-            <div class="step-num body-1">2</div>
-            <h3 class="heading-6">Press Update data</h3>
-            <p class="body-6">Your latest numbers load in seconds. From then on every account refreshes on its own each night.</p>
-          </div>
-          <div class="step reveal">
-            <div class="step-num body-1">3</div>
-            <h3 class="heading-6">Follow the plan</h3>
-            <p class="body-6">Act on the top tip, publish your next post everywhere, and let auto replies handle the comments.</p>
-          </div>
-        </div>
+        <ol class="stack" role="list">
+          <li class="stack-card" style="--i:0">
+            <article class="stack-inner">
+              <span class="stack-num heading-1" aria-hidden="true">01</span>
+              <div class="stack-copy">
+                <h3 class="heading-4">Connect your accounts</h3>
+                <p class="body-3">Sign in with Instagram, Facebook, Google and LinkedIn from the Accounts page. You do this once.</p>
+              </div>
+              <span class="stack-icon"><svg class="ph"><use href="#ph-plugs-connected"/></svg></span>
+            </article>
+          </li>
+          <li class="stack-card" style="--i:1">
+            <article class="stack-inner">
+              <span class="stack-num heading-1" aria-hidden="true">02</span>
+              <div class="stack-copy">
+                <h3 class="heading-4">Press Update data</h3>
+                <p class="body-3">Your latest numbers load in seconds. From then on every account refreshes on its own each night.</p>
+              </div>
+              <span class="stack-icon"><svg class="ph"><use href="#ph-arrows-clockwise"/></svg></span>
+            </article>
+          </li>
+          <li class="stack-card" style="--i:2">
+            <article class="stack-inner">
+              <span class="stack-num heading-1" aria-hidden="true">03</span>
+              <div class="stack-copy">
+                <h3 class="heading-4">Follow the plan</h3>
+                <p class="body-3">Act on the top tip, publish your next post everywhere, and let auto replies handle the comments.</p>
+              </div>
+              <span class="stack-icon"><svg class="ph"><use href="#ph-lightbulb"/></svg></span>
+            </article>
+          </li>
+        </ol>
       </div>
     </section>
 
@@ -528,7 +720,7 @@
           <h2 class="heading-2">Numbers from a real account</h2>
           <p class="body-3">Chang Research Base runs its Instagram from the studio. This is its Overview card.</p>
         </div>
-        <div class="case reveal">
+        <div class="case">
           <div class="case-head">
             <div class="who">
               <span class="avatar"><svg class="ph"><use href="#ph-instagram-logo"/></svg></span>
@@ -552,6 +744,85 @@
       </div>
     </section>
 
+    <!-- Pricing -->
+    <section class="block soft" id="pricing">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker caption-3">Pricing</span>
+          <h2 class="heading-2">One plan. Every feature. Priced in rupees.</h2>
+          <p class="body-3">Most creators pay for two tools to do what the studio does in one.</p>
+        </div>
+
+        <div class="pricing-grid">
+          <!-- What the same setup costs elsewhere -->
+          <div class="receipt" aria-label="Typical yearly cost of two separate tools: 40,090 rupees">
+            <div class="rc-head">
+              <span class="title-3">What the same setup costs elsewhere</span>
+              <span class="caption-5">Per year, one creator, four accounts</span>
+            </div>
+            <div class="rc-line">
+              <div class="what"><span class="title-4" style="color:var(--ink)">Analytics and scheduling tool</span><span class="caption-5">Metricool Starter, 5 brands</span></div>
+              <span class="rc-amt mono body-4">₹22,800<i class="strike" aria-hidden="true"></i></span>
+            </div>
+            <div class="rc-line">
+              <div class="what"><span class="title-4" style="color:var(--ink)">Instagram comment to DM tool</span><span class="caption-5">LinkDM Pro, yearly</span></div>
+              <span class="rc-amt mono body-4">₹17,290<i class="strike" aria-hidden="true"></i></span>
+            </div>
+            <div class="rc-line rc-total">
+              <span class="title-2">Total elsewhere</span>
+              <span class="rc-amt mono heading-6">₹40,090<i class="strike" aria-hidden="true"></i></span>
+            </div>
+            <div class="rc-missing">
+              <span class="caption-3">Still missing, even with both</span>
+              <ul class="body-6">
+                <li><svg class="ph"><use href="#ph-x-circle"/></svg><span>Analytics, posting and auto replies in one place</span><em class="caption-4">Two apps</em></li>
+                <li><svg class="ph"><use href="#ph-x-circle"/></svg><span>Reel hook score and a ranked action plan</span><em class="caption-4">Not offered</em></li>
+                <li><svg class="ph"><use href="#ph-x-circle"/></svg><span>One bill in rupees</span><em class="caption-4">Two bills in dollars</em></li>
+              </ul>
+            </div>
+            <p class="rc-note caption-5">Public annual prices, November 2026, at ₹95 to the US dollar, before GST.</p>
+            <span class="stamp caption-3" aria-hidden="true">Replaced by one plan</span>
+          </div>
+
+          <!-- The plan -->
+          <article class="plan" data-tilt>
+            <div class="plan-top">
+              <h3 class="heading-5">Creator</h3>
+              <span class="plan-badge caption-3"><svg class="ph"><use href="#ph-check-circle"/></svg>Everything included</span>
+            </div>
+            <p class="body-3">One brand on Instagram, Facebook, YouTube and LinkedIn.</p>
+            <div class="price-row">
+              <span class="price-old mono body-6" aria-hidden="true">Two tools elsewhere: <s>₹40,090<i class="strike"></i></s></span>
+              <span class="heading-1"><span aria-hidden="true">₹</span><span class="price-now" aria-label="7,999 rupees">7,999</span></span>
+              <span class="price-unit body-6">per year, plus GST</span>
+            </div>
+            <p class="price-sub body-6">About ₹667 a month for every feature below.</p>
+            <span class="save caption-1"><svg class="ph"><use href="#ph-arrow-up"/></svg>You keep ₹32,091 a year, 80% less</span>
+            <ul class="plan-list body-6">
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Overview of every account</li>
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Strategy action plan</li>
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Social Post to four platforms</li>
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Scheduled posting</li>
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Instagram auto replies by keyword</li>
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Stories saved every 6 hours</li>
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Nightly history in your database</li>
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>CSV and PDF export</li>
+            </ul>
+            <div class="plan-cta">
+              <a class="btn btn-primary button-md magnetic" href="/login">Sign in to your studio <svg class="ph ph-move"><use href="#ph-arrow-right"/></svg></a>
+              <span class="caption-2">No per account fees</span>
+            </div>
+          </article>
+        </div>
+
+        <div class="trust">
+          <div class="reveal"><svg class="ph"><use href="#ph-shield-check"/></svg><p class="body-6"><strong class="title-3">Official sign in only</strong>Accounts connect through Instagram, Facebook, Google and LinkedIn login. The studio never sees your passwords.</p></div>
+          <div class="reveal"><svg class="ph"><use href="#ph-file-csv"/></svg><p class="body-6"><strong class="title-3">Your data leaves with you</strong>Every table downloads as CSV and the Overview saves as PDF, whenever you want.</p></div>
+          <div class="reveal"><svg class="ph"><use href="#ph-chart-line-up"/></svg><p class="body-6"><strong class="title-3">Proof from a live account</strong>The results above come from Chang Research Base, which runs on the studio today.</p></div>
+        </div>
+      </div>
+    </section>
+
     <!-- 7. FAQ -->
     <section class="block" id="faq">
       <div class="wrap">
@@ -560,6 +831,7 @@
           <h2 class="heading-2">Questions, answered</h2>
         </div>
         <div class="faq">
+          <details><summary class="title-3">How much does the studio cost? <svg class="ph"><use href="#ph-plus"/></svg></summary><p class="body-3">₹7,999 a year plus GST for one brand on Instagram, Facebook, YouTube and LinkedIn. Every feature is included and there are no per account fees.</p></details>
           <details><summary class="title-3">Which accounts can I connect? <svg class="ph"><use href="#ph-plus"/></svg></summary><p class="body-3">Instagram Professional accounts (Business or Creator), Facebook Pages, YouTube channels and LinkedIn company pages. You can connect several of each.</p></details>
           <details><summary class="title-3">How fresh are the numbers? <svg class="ph"><use href="#ph-plus"/></svg></summary><p class="body-3">Every account is refreshed every night at 2:30 AM IST. Press <b>Update data</b> at any time to load the latest numbers in a few seconds.</p></details>
           <details><summary class="title-3">How do Instagram auto replies work? <svg class="ph"><use href="#ph-plus"/></svg></summary><p class="body-3">You create a rule with keywords, a message and a link. When someone comments or sends a DM with that keyword, the studio replies automatically. Instagram allows one private reply per comment within 7 days, and DM replies within 24 hours.</p></details>
@@ -580,10 +852,10 @@
           <div class="reveal"><svg class="ph"><use href="#ph-plugs-connected"/></svg><p class="body-6"><strong class="title-3">Disconnect any time</strong>Remove an account from the Accounts page with one click.</p></div>
           <div class="reveal"><svg class="ph"><use href="#ph-database"/></svg><p class="body-6"><strong class="title-3">Your numbers stay yours</strong>History is saved in your own database, and every table downloads as CSV.</p></div>
         </div>
-        <div class="cta reveal">
+        <div class="cta">
           <h2 class="heading-2">Grow on four platforms<br class="br-lg"> without four dashboards</h2>
           <p class="title-2">Sign in and press Update data. Your Overview is ready in seconds.</p>
-          <a class="btn btn-primary button-md" href="/login">Sign in to your studio <svg class="ph ph-move"><use href="#ph-arrow-right"/></svg></a>
+          <a class="btn btn-primary button-md magnetic" href="/login">Sign in to your studio <svg class="ph ph-move"><use href="#ph-arrow-right"/></svg></a>
           <span class="alt caption-2">New here? <a href="/manual/">Read the user manual</a> first.</span>
         </div>
       </div>
@@ -596,6 +868,7 @@
       <nav class="caption-1" aria-label="Footer">
         <a href="#features">Features</a>
         <a href="#how">How it works</a>
+        <a href="#pricing">Pricing</a>
         <a href="#faq">FAQ</a>
         <a href="/manual/">User manual</a>
         <a href="/login">Sign in</a>
@@ -648,6 +921,8 @@
         entries.forEach((en) => { en.target.classList.toggle('on', en.boundingClientRect.top < window.innerHeight * 0.6 || en.isIntersecting); });
       }, { rootMargin: '0px 0px -40% 0px', threshold: 0 });
       words.forEach((w) => wordObserver.observe(w));
+      // The motion script swaps this for scroll progress once the tagline becomes sticky.
+      window.taglineObserver = wordObserver;
     }
 
     // Mark the nav link of the section on screen

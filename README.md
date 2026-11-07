@@ -9,7 +9,7 @@ Instagram and YouTube analytics in one dashboard, plus keyword auto-replies for 
 📘 **New users:** see the [User Guide](docs/user-guide/README.md) for how to use the app.
 
 Public pages (served from `public/`, live after deploy):
-- **Landing page:** `/welcome/` (`public/welcome/index.html`)
+- **Landing page:** `/` (`welcome/index.html`, motion in `src/welcome/`; images in `public/welcome/img/`; `/welcome/` redirects here)
 - **User manual:** `/manual/` (`public/manual/index.html`, built from the guide with `node scripts/build-user-manual-html.cjs`; needs pandoc)
 
 ## Run locally
