@@ -4,6 +4,8 @@ CMS Analytics Studio puts your **Instagram, Facebook, YouTube and LinkedIn** num
 
 Web address: **https://cms.changtechs.com**
 
+> 📄 **Word version:** [CMS-Analytics-Studio-User-Guide.docx](CMS-Analytics-Studio-User-Guide.docx)
+
 > **How to read this guide:** every screenshot has **red numbered labels**. The table under each picture explains what each number is and what to do with it. Example: *"Figure 4 → ③"* means label number 3 in Figure 4.
 
 ---
