@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CMS Analytics Studio — Social analytics, publishing and auto-replies</title>
+  <meta name="description" content="Instagram, Facebook, YouTube and LinkedIn analytics in one dashboard. Publish to every platform at once and auto-reply to Instagram comments with your link." />
+  <meta property="og:title" content="CMS Analytics Studio" />
+  <meta property="og:description" content="All your social analytics, posting and Instagram auto-replies in one studio." />
+  <meta property="og:image" content="/welcome/img/hero.webp" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0f172a;
+      --ink-2: #334155;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --bg: #ffffff;
+      --bg-soft: #f8fafc;
+      --accent: #4f46e5;
+      --accent-ink: #4338ca;
+      --accent-soft: #eef2ff;
+      --grad: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+      --ig: #c2347f; --fb: #1877f2; --yt: #d92d20; --li: #0a66c2;
+      --radius: 18px;
+      --shadow: 0 1px 2px rgba(15, 23, 42, .06), 0 12px 40px -12px rgba(15, 23, 42, .18);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    img { max-width: 100%; height: auto; display: block; }
+    a { color: inherit; text-decoration: none; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+    h1, h2, h3 { font-family: Outfit, Inter, sans-serif; line-height: 1.15; margin: 0; letter-spacing: -0.02em; }
+
+    /* Nav */
+    .nav { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,.85); backdrop-filter: saturate(180%) blur(12px); border-bottom: 1px solid transparent; transition: border-color .2s; }
+    .nav.scrolled { border-bottom-color: var(--line); }
+    .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 68px; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-family: Outfit, sans-serif; font-weight: 700; font-size: 19px; }
+    .brand-mark { width: 34px; height: 34px; border-radius: 10px; background: var(--grad); display: grid; place-items: center; color: #fff; box-shadow: 0 6px 16px -6px #a855f7; }
+    .nav-links { display: flex; gap: 28px; font-size: 15px; color: var(--ink-2); font-weight: 500; }
+    .nav-links a:hover { color: var(--accent); }
+    .nav-cta { display: flex; gap: 10px; align-items: center; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 12px; font-weight: 600; font-size: 15px; transition: transform .15s, box-shadow .15s, background .15s; white-space: nowrap; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 8px 20px -8px var(--accent); }
+    .btn-primary:hover { background: var(--accent-ink); }
+    .btn-ghost { background: #fff; border: 1px solid var(--line); color: var(--ink); }
+    .btn-ghost:hover { border-color: #cbd5e1; }
+    .btn-lg { padding: 14px 26px; font-size: 16px; border-radius: 14px; }
+    .menu-btn { display: none; background: none; border: 0; padding: 8px; cursor: pointer; color: var(--ink); }
+
+    /* Hero */
+    .hero { position: relative; padding: 72px 0 40px; overflow: hidden; }
+    .hero::before { content: ""; position: absolute; inset: -40% -10% auto; height: 760px; background: radial-gradient(closest-side, rgba(168, 85, 247, .16), transparent 70%), radial-gradient(closest-side at 70% 40%, rgba(99, 102, 241, .14), transparent 70%); z-index: -1; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); font-size: 13px; font-weight: 600; }
+    .hero-copy { text-align: center; max-width: 860px; margin: 0 auto; }
+    .hero h1 { font-size: clamp(38px, 6vw, 64px); font-weight: 800; margin: 20px 0 18px; }
+    .grad-text { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero p.lead { font-size: clamp(17px, 2vw, 20px); color: var(--ink-2); max-width: 680px; margin: 0 auto 30px; }
+    .hero-ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .hero-note { margin-top: 16px; font-size: 13px; color: var(--muted); }
+    .frame { margin: 56px auto 0; max-width: 1080px; border-radius: 16px; background: #fff; border: 1px solid var(--line); box-shadow: 0 40px 80px -30px rgba(79, 70, 229, .35), var(--shadow); overflow: hidden; }
+    .frame-bar { display: flex; align-items: center; gap: 7px; padding: 11px 14px; border-bottom: 1px solid var(--line); background: var(--bg-soft); }
+    .frame-bar i { width: 11px; height: 11px; border-radius: 50%; background: #e2e8f0; }
+    .frame-bar i:nth-child(1) { background: #fca5a5; } .frame-bar i:nth-child(2) { background: #fcd34d; } .frame-bar i:nth-child(3) { background: #86efac; }
+    .frame-bar span { margin-left: 12px; font-size: 12px; color: var(--muted); background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 3px 12px; }
+
+    /* Platforms */
+    .platforms { padding: 36px 0 12px; text-align: center; }
+    .platforms p { color: var(--muted); font-size: 14px; font-weight: 500; margin: 0 0 18px; }
+    .platform-row { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+    .chip { display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; border: 1px solid var(--line); border-radius: 999px; font-weight: 600; font-size: 15px; background: #fff; }
+    .chip svg { width: 20px; height: 20px; }
+
+    /* Sections */
+    section.block { padding: 96px 0; }
+    .soft { background: var(--bg-soft); }
+    .section-head { text-align: center; max-width: 720px; margin: 0 auto 56px; }
+    .section-head h2 { font-size: clamp(30px, 4vw, 44px); font-weight: 700; margin: 14px 0 14px; }
+    .section-head p { color: var(--ink-2); font-size: 18px; margin: 0; }
+    .kicker { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 28px; transition: transform .2s, box-shadow .2s; }
+    .card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+    .icon { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 18px; }
+    .icon svg { width: 22px; height: 22px; }
+    .card h3 { font-size: 20px; margin-bottom: 8px; }
+    .card p { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+    .spot { display: grid; grid-template-columns: 1fr 1.25fr; gap: 64px; align-items: center; margin-bottom: 110px; }
+    .spot:last-child { margin-bottom: 0; }
+    .spot.rev .spot-copy { order: 2; }
+    .spot h3 { font-size: clamp(26px, 3vw, 34px); margin: 12px 0 14px; }
+    .spot p { color: var(--ink-2); font-size: 17px; margin: 0 0 18px; }
+    .ticks { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+    .ticks li { position: relative; padding-left: 30px; color: var(--ink-2); }
+    .ticks li::before { content: ""; position: absolute; left: 0; top: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center/11px no-repeat; }
+    .shot { border-radius: 14px; border: 1px solid var(--line); box-shadow: var(--shadow); overflow: hidden; background: #fff; }
+
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; counter-reset: step; }
+    .step { position: relative; padding: 30px 28px; border-radius: var(--radius); background: #fff; border: 1px solid var(--line); }
+    .step::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--grad); color: #fff; font-family: Outfit, sans-serif; font-weight: 700; font-size: 18px; margin-bottom: 18px; }
+    .step h3 { font-size: 20px; margin-bottom: 8px; }
+    .step p { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+    .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .fact { padding: 26px; border-radius: var(--radius); background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); }
+    .fact strong { display: block; font-family: Outfit, sans-serif; font-size: 30px; font-weight: 700; color: #fff; }
+    .fact span { color: #c7d2fe; font-size: 15px; }
+    .dark { background: #1e1b4b; background-image: radial-gradient(circle at 15% 0%, rgba(168,85,247,.35), transparent 45%), radial-gradient(circle at 90% 100%, rgba(236,72,153,.25), transparent 40%); color: #fff; }
+    .dark .section-head p { color: #c7d2fe; }
+    .dark .kicker { color: #f0abfc; }
+
+    .faq { max-width: 800px; margin: 0 auto; display: grid; gap: 12px; }
+    details { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px 22px; }
+    details[open] { box-shadow: var(--shadow); }
+    summary { cursor: pointer; font-weight: 600; font-size: 17px; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; font-size: 22px; line-height: 1; color: var(--accent); transition: transform .2s; }
+    details[open] summary::after { transform: rotate(45deg); }
+    details p { margin: 12px 0 0; color: var(--ink-2); }
+
+    .cta { text-align: center; padding: 72px 32px; border-radius: 28px; background: var(--grad); color: #fff; position: relative; overflow: hidden; }
+    .cta h2 { font-size: clamp(28px, 4vw, 42px); margin-bottom: 12px; }
+    .cta p { font-size: 18px; opacity: .92; margin: 0 auto 28px; max-width: 560px; }
+    .cta .btn-primary { background: #fff; color: var(--accent-ink); box-shadow: 0 10px 30px -10px rgba(0,0,0,.4); }
+    .cta .btn-ghost { background: transparent; color: #fff; border-color: rgba(255,255,255,.6); }
+
+    footer { padding: 48px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+    footer .wrap { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: center; }
+    footer nav { display: flex; gap: 22px; flex-wrap: wrap; }
+    footer a:hover { color: var(--accent); }
+
+    .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } html { scroll-behavior: auto; } }
+
+    @media (max-width: 960px) {
+      .grid, .steps { grid-template-columns: 1fr 1fr; }
+      .facts { grid-template-columns: 1fr 1fr; }
+      .spot, .spot.rev { grid-template-columns: 1fr; gap: 28px; margin-bottom: 72px; }
+      .spot.rev .spot-copy { order: 0; }
+    }
+    @media (max-width: 760px) {
+      .nav-links { display: none; position: absolute; top: 68px; left: 0; right: 0; flex-direction: column; gap: 0; background: #fff; border-bottom: 1px solid var(--line); padding: 8px 24px 16px; }
+      .nav-links.open { display: flex; }
+      .nav-links a { padding: 12px 0; border-bottom: 1px solid var(--line); }
+      .menu-btn { display: block; }
+      .nav-cta .btn-ghost { display: none; }
+      .grid, .steps, .facts { grid-template-columns: 1fr; }
+      section.block { padding: 64px 0; }
+      .hero { padding-top: 48px; }
+      .wrap { padding: 0 16px; }
+      .cta { padding: 48px 20px; border-radius: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav" id="nav">
+    <div class="wrap">
+      <a href="/welcome/" class="brand" aria-label="CMS Analytics Studio home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </span>
+        CMS Analytics Studio
+      </a>
+      <nav class="nav-links" id="navLinks" aria-label="Main">
+        <a href="#features">Features</a>
+        <a href="#tour">Tour</a>
+        <a href="#how">How it works</a>
+        <a href="#faq">FAQ</a>
+        <a href="/manual/">User manual</a>
+      </nav>
+      <div class="nav-cta">
+        <a class="btn btn-ghost" href="/manual/">Manual</a>
+        <a class="btn btn-primary" href="/login">Sign in</a>
+        <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap">
+        <div class="hero-copy">
+          <span class="eyebrow">Instagram · Facebook · YouTube · LinkedIn</span>
+          <h1>All your social analytics, posting and auto-replies in <span class="grad-text">one studio</span></h1>
+          <p class="lead">See what's working on every platform, get a clear action plan for what to post next, publish everywhere at once, and send your link automatically to everyone who comments "link".</p>
+          <div class="hero-ctas">
+            <a class="btn btn-primary btn-lg" href="/login">Sign in to dashboard →</a>
+            <a class="btn btn-ghost btn-lg" href="/manual/">Read the user manual</a>
+          </div>
+          <p class="hero-note">Numbers refresh every night at 2:30 AM IST · All times in India Standard Time</p>
+        </div>
+        <div class="frame reveal">
+          <div class="frame-bar" aria-hidden="true"><i></i><i></i><i></i><span>cms.changtechs.com/overview</span></div>
+          <img src="img/hero.webp" width="1440" height="900" alt="Overview dashboard comparing views, interactions and followers across Instagram, YouTube, LinkedIn and Facebook" />
+        </div>
+      </div>
+    </section>
+
+    <div class="platforms">
+      <div class="wrap">
+        <p>Connect once. Connections renew themselves.</p>
+        <div class="platform-row">
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="#c2347f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>Instagram</span>
+          <span class="chip"><svg viewBox="0 0 24 24" fill="#1877f2"><path d="M24 12.07C24 5.41 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.04V9.41c0-3.02 1.8-4.7 4.54-4.7 1.31 0 2.68.24 2.68.24v2.97h-1.5c-1.5 0-1.96.93-1.96 1.89v2.26h3.32l-.53 3.5h-2.8V24C19.62 23.1 24 18.1 24 12.07z"/></svg>Facebook Pages</span>
+          <span class="chip"><svg viewBox="0 0 24 24" fill="#d92d20"><path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.5 3.55 12 3.55 12 3.55s-7.5 0-9.38.5A3.02 3.02 0 0 0 .5 6.19C0 8.07 0 12 0 12s0 3.93.5 5.81a3.02 3.02 0 0 0 2.12 2.14c1.87.5 9.38.5 9.38.5s7.5 0 9.38-.5a3.02 3.02 0 0 0 2.12-2.14C24 15.93 24 12 24 12s0-3.93-.5-5.81zM9.55 15.57V8.43L15.82 12l-6.27 3.57z"/></svg>YouTube</span>
+          <span class="chip"><svg viewBox="0 0 24 24" fill="#0a66c2"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg>LinkedIn pages</span>
+        </div>
+      </div>
+    </div>
+
+    <section class="block" id="features">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker">Features</span>
+          <h2>Everything you need to grow, in one place</h2>
+          <p>Stop switching between four apps. Compare platforms, learn what works, and act on it.</p>
+        </div>
+        <div class="grid">
+          <article class="card reveal">
+            <div class="icon" style="background:#eef2ff;color:#4f46e5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg></div>
+            <h3>One overview for every account</h3>
+            <p>Views, interactions and new followers across all platforms, with the change versus the previous period and plain-language insights.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon" style="background:#fdf2f8;color:#c2347f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg></div>
+            <h3>Action plan, not just charts</h3>
+            <p>Recommendations from your own results, ranked by priority: fix weak reel hooks, post on your best day, use the format that wins.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon" style="background:#ecfdf5;color:#059669"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg></div>
+            <h3>Write once, publish everywhere</h3>
+            <p>Images, carousels, reels, stories, videos, documents and polls. Schedule ahead or post now, with a live preview per platform.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon" style="background:#fff7ed;color:#ea580c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <h3>Instagram auto-replies</h3>
+            <p>Someone comments "link"? They get your URL by DM automatically. Give every reel its own keyword, message and link.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon" style="background:#eff6ff;color:#0a66c2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>
+            <h3>Research tools</h3>
+            <p>Compare with a competitor's public account, research hashtags before you use them, and find posts that tag you.</p>
+          </article>
+          <article class="card reveal">
+            <div class="icon" style="background:#f5f3ff;color:#7c3aed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+            <h3>Your data, your history</h3>
+            <p>Daily numbers saved in your own database every night. Stories saved before Instagram deletes them. Export to CSV or PDF anytime.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="block soft" id="tour">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker">Product tour</span>
+          <h2>See it in action</h2>
+          <p>Real screens from the studio.</p>
+        </div>
+
+        <div class="spot reveal">
+          <div class="spot-copy">
+            <span class="kicker">Strategy</span>
+            <h3>Know exactly what to post next</h3>
+            <p>The Strategy tab reads your results and tells you what to change, with the numbers behind each tip.</p>
+            <ul class="ticks">
+              <li>Reel hook score: see which openings lose viewers in 3 seconds</li>
+              <li>Best day and time to post, from your own audience</li>
+              <li>Format scorecard: reels vs carousels vs images</li>
+            </ul>
+          </div>
+          <div class="shot"><img src="img/strategy.webp" width="1440" height="900" loading="lazy" alt="Instagram Strategy tab with a prioritised action plan" /></div>
+        </div>
+
+        <div class="spot rev reveal">
+          <div class="spot-copy">
+            <span class="kicker">Social Post</span>
+            <h3>One post. Four platforms. Five steps.</h3>
+            <p>Fill the shared fields once and they flow into every platform tab, trimmed to each platform's limits.</p>
+            <ul class="ticks">
+              <li>Instagram, Facebook Page, LinkedIn and YouTube (Shorts included)</li>
+              <li>Schedule for later or publish now, with live progress and one-click retry</li>
+              <li>Drafts save automatically</li>
+            </ul>
+          </div>
+          <div class="shot"><img src="img/publish.webp" width="1440" height="1150" loading="lazy" alt="Social Post wizard, content step with shared fields and Instagram preview" /></div>
+        </div>
+
+        <div class="spot reveal">
+          <div class="spot-copy">
+            <span class="kicker">Auto-replies</span>
+            <h3>Turn comments into clicks, automatically</h3>
+            <p>Set a keyword, a message and a link. The studio replies by DM within seconds, and logs every attempt.</p>
+            <ul class="ticks">
+              <li>Rules for everything, all reels, all posts, or one specific reel</li>
+              <li>Optional public reply under the comment</li>
+              <li>Safe "Try it" test that sends nothing</li>
+            </ul>
+          </div>
+          <div class="shot"><img src="img/autoreply.webp" width="1440" height="900" loading="lazy" alt="Auto-replies page listing keyword rules per reel" /></div>
+        </div>
+
+        <div class="spot rev reveal">
+          <div class="spot-copy">
+            <span class="kicker">Content &amp; audience</span>
+            <h3>Every post, every number</h3>
+            <p>Search, sort and filter every post by views, engagement, saves, shares or skip rate. Then see who your audience is and when they're online.</p>
+            <ul class="ticks">
+              <li>Followers vs new people reached</li>
+              <li>Comment insights for each post</li>
+              <li>YouTube and LinkedIn workspaces work the same way</li>
+            </ul>
+          </div>
+          <div class="shot"><img src="img/content.webp" width="1440" height="900" loading="lazy" alt="Instagram Content tab with post cards and metrics" /></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="how">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker">How it works</span>
+          <h2>Up and running in three steps</h2>
+        </div>
+        <div class="steps">
+          <div class="step reveal">
+            <h3>Connect your accounts</h3>
+            <p>Sign in with Instagram, Facebook, Google and LinkedIn once from the Accounts page. Connections renew on their own.</p>
+          </div>
+          <div class="step reveal">
+            <h3>Press Update data</h3>
+            <p>Your latest numbers load in seconds. After that the studio refreshes every account automatically every night.</p>
+          </div>
+          <div class="step reveal">
+            <h3>Act on the insights</h3>
+            <p>Follow the action plan, publish your next post to every platform, and let auto-replies handle the "link please" comments.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block dark">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker">Always up to date</span>
+          <h2>Runs while you sleep</h2>
+          <p>Scheduled jobs keep your history complete without you lifting a finger.</p>
+        </div>
+        <div class="facts">
+          <div class="fact reveal"><strong>2:30 AM</strong><span>Nightly refresh of every account (IST)</span></div>
+          <div class="fact reveal"><strong>6 hrs</strong><span>Instagram stories captured before they expire</span></div>
+          <div class="fact reveal"><strong>1 min</strong><span>Scheduled posts checked and sent on time</span></div>
+          <div class="fact reveal"><strong>CSV · PDF</strong><span>Export your numbers whenever you need them</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="faq">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker">FAQ</span>
+          <h2>Questions, answered</h2>
+        </div>
+        <div class="faq">
+          <details>
+            <summary>Which accounts can I connect?</summary>
+            <p>Instagram Professional (Business or Creator) accounts, Facebook Pages, YouTube channels and LinkedIn company pages. You can connect several of each.</p>
+          </details>
+          <details>
+            <summary>How fresh is the data?</summary>
+            <p>Every account is refreshed every night at 2:30 AM IST. You can also press <strong>Update data</strong> anytime to load the latest numbers in a few seconds.</p>
+          </details>
+          <details>
+            <summary>How do Instagram auto-replies work?</summary>
+            <p>You create a rule with keywords, a message and a link. When someone comments or sends a DM with that keyword, the studio replies automatically. Instagram allows one private reply per comment within 7 days, and DM replies within 24 hours.</p>
+          </details>
+          <details>
+            <summary>Can I schedule posts?</summary>
+            <p>Yes. Set a schedule time in the Social Post wizard, or leave it empty to publish immediately. Facebook scheduled posts must be 10 minutes to 30 days ahead.</p>
+          </details>
+          <details>
+            <summary>Why are my audience demographics empty?</summary>
+            <p>Instagram only shares demographics and "best time to post" for accounts with at least 100 followers.</p>
+          </details>
+          <details>
+            <summary>Where can I learn every feature?</summary>
+            <p>The <a href="/manual/" style="color:var(--accent);font-weight:600">user manual</a> walks through every screen with labelled screenshots.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" style="padding-top:0">
+      <div class="wrap">
+        <div class="cta reveal">
+          <h2>Ready to see what's working?</h2>
+          <p>Sign in to your studio, or read the manual to learn every feature in a few minutes.</p>
+          <div class="hero-ctas">
+            <a class="btn btn-primary btn-lg" href="/login">Sign in to dashboard →</a>
+            <a class="btn btn-ghost btn-lg" href="/manual/">Open the user manual</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>© 2026 CMS Analytics Studio · A product of <a href="https://changtechs.com/" style="font-weight:600">changtechs.com</a></span>
+      <nav aria-label="Footer">
+        <a href="#features">Features</a>
+        <a href="/manual/">User manual</a>
+        <a href="/login">Sign in</a>
+        <a href="https://changtechs.com/">changtechs.com</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    const nav = document.getElementById('nav');
+    const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 8);
+    window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+    const btn = document.getElementById('menuBtn'), links = document.getElementById('navLinks');
+    btn.addEventListener('click', () => { const open = links.classList.toggle('open'); btn.setAttribute('aria-expanded', open); });
+    links.addEventListener('click', (e) => { if (e.target.tagName === 'A') { links.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); } });
+
+    const io = 'IntersectionObserver' in window ? new IntersectionObserver((entries) => {
+      entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+    }, { threshold: 0.12 }) : null;
+    document.querySelectorAll('.reveal').forEach((el) => io ? io.observe(el) : el.classList.add('in'));
+  </script>
+</body>
+</html>

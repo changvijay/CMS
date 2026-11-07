@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Manual — CMS Analytics Studio</title>
+  <meta name="description" content="Step-by-step user manual for CMS Analytics Studio with labelled screenshots: analytics, Social Post publishing, Instagram auto-replies and connected accounts." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0f172a; --ink-2: #334155; --muted: #64748b; --line: #e2e8f0;
+      --bg: #ffffff; --bg-soft: #f8fafc; --accent: #4f46e5; --accent-ink: #4338ca; --accent-soft: #eef2ff;
+      --label: #e11d48; --grad: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+      --header: 64px; --side: 290px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: calc(var(--header) + 16px); }
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); }
+    h1, h2, h3 { font-family: Outfit, Inter, sans-serif; letter-spacing: -0.01em; line-height: 1.2; }
+
+    .topbar { position: fixed; inset: 0 0 auto; height: var(--header); z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 20px; background: rgba(255,255,255,.9); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: center; gap: 10px; font-family: Outfit, sans-serif; font-weight: 700; font-size: 17px; color: var(--ink); text-decoration: none; }
+    .brand-mark { width: 32px; height: 32px; border-radius: 9px; background: var(--grad); display: grid; place-items: center; color: #fff; }
+    .brand small { font-family: Inter, sans-serif; font-weight: 600; font-size: 12px; color: var(--accent-ink); background: var(--accent-soft); padding: 2px 8px; border-radius: 999px; }
+    .top-actions { display: flex; gap: 8px; align-items: center; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; font-weight: 600; font-size: 14px; text-decoration: none; border: 1px solid var(--line); color: var(--ink); background: #fff; white-space: nowrap; cursor: pointer; font-family: inherit; }
+    .btn:hover { border-color: #cbd5e1; }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-ink); }
+    .toc-toggle { display: none; }
+
+    .sidebar { position: fixed; top: var(--header); bottom: 0; left: 0; width: var(--side); overflow-y: auto; padding: 20px 16px 40px; border-right: 1px solid var(--line); background: var(--bg-soft); }
+    .search { position: relative; margin-bottom: 14px; }
+    .search input { width: 100%; padding: 10px 12px 10px 36px; border: 1px solid var(--line); border-radius: 10px; font: inherit; font-size: 14px; background: #fff; }
+    .search input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+    .search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+    .toc { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+    .toc > li { margin: 2px 0; }
+    .toc a { display: block; padding: 6px 10px; border-radius: 8px; color: var(--ink-2); text-decoration: none; }
+    .toc > li > a { font-weight: 600; color: var(--ink); }
+    .toc a:hover { background: #fff; color: var(--accent); }
+    .toc a.active { background: var(--accent-soft); color: var(--accent-ink); }
+    .toc ul { list-style: none; margin: 0 0 6px; padding: 0 0 0 12px; border-left: 1px solid var(--line); margin-left: 12px; }
+    .toc ul a { font-size: 13px; padding: 4px 10px; }
+    .toc li.hidden { display: none; }
+    .no-results { display: none; padding: 10px; color: var(--muted); font-size: 14px; }
+
+    main { margin-left: var(--side); padding: calc(var(--header) + 40px) 48px 80px; }
+    .content { max-width: 920px; margin: 0 auto; }
+    .hero { padding: 36px; border-radius: 20px; background: var(--grad); color: #fff; margin-bottom: 40px; }
+    .hero h1 { margin: 0 0 10px; font-size: clamp(28px, 4vw, 40px); }
+    .hero p { margin: 0 0 8px; opacity: .95; font-size: 17px; }
+    .hero a { color: #fff; font-weight: 600; }
+    .hero .hero-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+    .hero .btn { border-color: rgba(255,255,255,.55); background: transparent; color: #fff; }
+    .hero .btn-primary { background: #fff; color: var(--accent-ink); border-color: #fff; }
+    .intro > p { color: var(--ink-2); }
+
+    blockquote { margin: 20px 0; padding: 14px 18px; border-left: 4px solid var(--accent); background: var(--accent-soft); border-radius: 0 12px 12px 0; color: var(--ink-2); }
+    blockquote p { margin: 0; }
+
+    .doc-section { padding-top: 12px; margin-bottom: 40px; border-top: 1px solid var(--line); }
+    .doc-section:first-of-type { border-top: 0; }
+    .doc-section.hidden { display: none; }
+    .doc-section h2 { font-size: 30px; margin: 28px 0 14px; }
+    .doc-section h3 { font-size: 20px; margin: 30px 0 10px; }
+    .doc-section p, .doc-section li { color: var(--ink-2); }
+    code { font-family: 'JetBrains Mono', Consolas, monospace; font-size: .9em; background: #f1f5f9; padding: 1px 6px; border-radius: 6px; color: var(--accent-ink); }
+
+    figure { margin: 22px 0 10px; }
+    .zoom { display: block; width: 100%; padding: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #fff; cursor: zoom-in; box-shadow: 0 1px 2px rgba(15,23,42,.05), 0 10px 30px -14px rgba(15,23,42,.25); }
+    .zoom img { display: block; width: 100%; height: auto; }
+    figcaption { text-align: center; color: var(--muted); font-size: 14px; font-style: italic; margin-top: 10px; }
+
+    .table-wrap { overflow-x: auto; margin: 14px 0 22px; border: 1px solid var(--line); border-radius: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    th { text-align: left; background: var(--bg-soft); font-weight: 600; color: var(--ink); padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-2); }
+    tr:last-child td { border-bottom: 0; }
+    table.legend th:first-child, table.legend td:first-child { width: 52px; text-align: center; }
+    table.legend td:nth-child(2) { font-weight: 600; color: var(--ink); white-space: nowrap; }
+    table.legend tbody tr:hover { background: #fff1f2; }
+    .num { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 999px; background: var(--label); color: #fff; font-weight: 700; font-size: 13px; line-height: 1; font-style: normal; }
+    .num.sm { min-width: 20px; height: 20px; font-size: 11px; vertical-align: 1px; }
+
+    .lightbox { position: fixed; inset: 0; z-index: 100; background: rgba(15, 23, 42, .88); display: none; align-items: flex-start; justify-content: center; overflow: auto; padding: 56px 20px 20px; cursor: zoom-out; }
+    .lightbox.open { display: flex; }
+    .lightbox img { max-width: min(1440px, 100%); height: auto; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+    .lightbox .close { position: fixed; top: 14px; right: 18px; background: #fff; border: 0; border-radius: 999px; width: 38px; height: 38px; font-size: 22px; cursor: pointer; }
+
+    .to-top { position: fixed; right: 20px; bottom: 20px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: #fff; box-shadow: 0 6px 20px -6px rgba(15,23,42,.3); cursor: pointer; display: none; place-items: center; z-index: 30; }
+    .to-top.show { display: grid; }
+    .page-foot { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+    @media (max-width: 1000px) {
+      .toc-toggle { display: inline-flex; }
+      .sidebar { transform: translateX(-100%); transition: transform .25s; z-index: 35; width: min(320px, 88vw); }
+      body.toc-open .sidebar { box-shadow: 10px 0 30px -10px rgba(15,23,42,.3); }
+      body.toc-open .sidebar { transform: none; }
+      main { margin-left: 0; padding: calc(var(--header) + 24px) 16px 64px; }
+      .top-actions .hide-sm { display: none; }
+      .hero { padding: 24px; }
+      table.legend td:nth-child(2) { white-space: normal; }
+    }
+    @media (max-width: 520px) { .brand small { display: none; } .brand span.name { font-size: 15px; } }
+    @media print {
+      .topbar, .sidebar, .to-top { display: none; }
+      main { margin: 0; padding: 0; }
+      .doc-section { break-before: page; }
+      .zoom { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn toc-toggle" id="tocToggle" aria-controls="sidebar" aria-expanded="false">☰ Contents</button>
+      <a class="brand" href="/welcome/">
+        <span class="brand-mark" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></span>
+        <span class="name">CMS Analytics Studio</span> <small>User Manual</small>
+      </a>
+    </div>
+    <div class="top-actions">
+      <a class="btn hide-sm" href="{{DOCX}}" download>⬇ Word version</a>
+      <a class="btn hide-sm" href="/welcome/">Home</a>
+      <a class="btn btn-primary" href="/login">Sign in</a>
+    </div>
+  </header>
+
+  <aside class="sidebar" id="sidebar" aria-label="Manual contents">
+    <label class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="search" id="search" placeholder="Search the manual…" aria-label="Search the manual" />
+    </label>
+    <ul class="toc" id="toc">
+{{TOC}}
+    </ul>
+    <p class="no-results" id="noResults">No sections match.</p>
+  </aside>
+
+  <main>
+    <div class="content">
+      <div class="hero">
+        <h1>User Manual</h1>
+        <p>Everything in CMS Analytics Studio, screen by screen: analytics for Instagram, Facebook, YouTube and LinkedIn, the Social Post wizard, Instagram auto-replies and connected accounts.</p>
+        <p>Each screenshot has red numbered labels (like <span class="num sm">1</span>), explained in the table underneath. Click any screenshot to enlarge it.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#1-signing-in">Start reading →</a>
+          <a class="btn" href="{{DOCX}}" download>Download Word (.docx)</a>
+          <button class="btn" type="button" onclick="window.print()">Print / PDF</button>
+        </div>
+      </div>
+      <div class="intro">{{INTRO}}</div>
+{{CONTENT}}
+      <div class="page-foot">
+        <span>© 2026 CMS Analytics Studio · A product of <a href="https://changtechs.com/">changtechs.com</a></span>
+        <span>All times are India Standard Time (IST)</span>
+      </div>
+    </div>
+  </main>
+
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Enlarged screenshot">
+    <button class="close" type="button" aria-label="Close">×</button>
+    <img alt="" />
+  </div>
+  <button class="to-top" id="toTop" type="button" aria-label="Back to top">↑</button>
+
+  <script>
+    // Contents drawer on small screens
+    const body = document.body, toggle = document.getElementById('tocToggle');
+    toggle.addEventListener('click', () => { const open = body.classList.toggle('toc-open'); toggle.setAttribute('aria-expanded', open); });
+    document.getElementById('toc').addEventListener('click', (e) => { if (e.target.tagName === 'A') { body.classList.remove('toc-open'); toggle.setAttribute('aria-expanded', 'false'); } });
+
+    // Highlight the section being read
+    const links = [...document.querySelectorAll('.toc a')];
+    const targets = links.map((a) => document.getElementById(a.dataset.target)).filter(Boolean);
+    const setActive = () => {
+      let current = targets[0];
+      for (const t of targets) if (t.getBoundingClientRect().top < 120) current = t;
+      links.forEach((a) => a.classList.toggle('active', current && a.dataset.target === current.id));
+      document.getElementById('toTop').classList.toggle('show', window.scrollY > 800);
+    };
+    window.addEventListener('scroll', setActive, { passive: true }); setActive();
+    document.getElementById('toTop').addEventListener('click', () => window.scrollTo({ top: 0 }));
+
+    // Search: hide sections (and their contents entries) that don't match
+    const sections = [...document.querySelectorAll('.doc-section')];
+    const tocItems = [...document.querySelectorAll('#toc > li')];
+    document.getElementById('search').addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      let shown = 0;
+      sections.forEach((s, i) => {
+        const hit = !q || s.textContent.toLowerCase().includes(q);
+        s.classList.toggle('hidden', !hit);
+        if (tocItems[i]) tocItems[i].classList.toggle('hidden', !hit);
+        if (hit) shown++;
+      });
+      document.getElementById('noResults').style.display = shown ? 'none' : 'block';
+    });
+
+    // Click a screenshot to see it full size
+    const lb = document.getElementById('lightbox'), lbImg = lb.querySelector('img');
+    document.querySelectorAll('.zoom').forEach((b) => b.addEventListener('click', () => {
+      const img = b.querySelector('img'); lbImg.src = img.src; lbImg.alt = img.alt; lb.classList.add('open'); lb.querySelector('.close').focus();
+    }));
+    const closeLb = () => lb.classList.remove('open');
+    lb.addEventListener('click', closeLb);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeLb(); body.classList.remove('toc-open'); } });
+  </script>
+</body>
+</html>
