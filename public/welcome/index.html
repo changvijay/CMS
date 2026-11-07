@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CMS Analytics Studio · Instagram, Facebook, YouTube and LinkedIn in one dashboard</title>
+  <meta name="description" content="See what works on Instagram, Facebook, YouTube and LinkedIn in one dashboard, get an action plan for what to post next, publish everywhere at once and auto reply to link comments." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="CMS Analytics Studio" />
+  <meta property="og:description" content="Grow on four platforms without four dashboards." />
+  <meta property="og:image" content="/welcome/img/hero.webp" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "Which accounts can I connect?", "acceptedAnswer": { "@type": "Answer", "text": "Instagram Professional accounts (Business or Creator), Facebook Pages, YouTube channels and LinkedIn company pages. You can connect several of each." } },
+      { "@type": "Question", "name": "How fresh are the numbers?", "acceptedAnswer": { "@type": "Answer", "text": "Every account is refreshed every night at 2:30 AM IST. Press Update data at any time to load the latest numbers in a few seconds." } },
+      { "@type": "Question", "name": "How do Instagram auto replies work?", "acceptedAnswer": { "@type": "Answer", "text": "You create a rule with keywords, a message and a link. When someone comments or sends a DM with that keyword, the studio replies automatically. Instagram allows one private reply per comment within 7 days, and DM replies within 24 hours." } },
+      { "@type": "Question", "name": "Can I schedule posts?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Pick a schedule time in the Social Post wizard, or leave it empty to publish right away. Facebook scheduled posts must be 10 minutes to 30 days ahead." } },
+      { "@type": "Question", "name": "Why are my audience demographics empty?", "acceptedAnswer": { "@type": "Answer", "text": "Instagram only shares demographics and best time to post for accounts with at least 100 followers." } },
+      { "@type": "Question", "name": "What happens when a connection expires?", "acceptedAnswer": { "@type": "Answer", "text": "Connections renew themselves. If a platform refuses the renewal, the Accounts page shows it and you press Update token or Reconnect." } },
+      { "@type": "Question", "name": "Can I export my data?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Every platform has a Data tab with a CSV download, and the Overview page can be printed or saved as a PDF." } },
+      { "@type": "Question", "name": "Where can I learn every feature?", "acceptedAnswer": { "@type": "Answer", "text": "The user manual walks through every screen with labelled screenshots, and is also available as a Word file." } }
+    ]
+  }
+  </script>
+  <style>
+    /* ---------- Tokens ---------- */
+    :root {
+      --s-25: 2px; --s-50: 4px; --s-75: 8px; --s-100: 12px; --s-200: 16px; --s-300: 24px;
+      --s-400: 32px; --s-500: 40px; --s-600: 48px; --s-700: 64px; --s-800: 80px; --s-900: 96px;
+      --r-md: 6px; --r-lg: 8px; --r-xl: 12px; --r-2xl: 16px; --r-3xl: 24px; --r-full: 9999px;
+      --ink: #0a0a0a; --ink-2: #404040; --muted: #737373; --line: #e5e5e5;
+      --base: #ffffff; --soft: #fafafa; --dark: #181818; --dark-2: #272727;
+      --accent: #4f46e5; --accent-hover: #4338ca; --accent-soft: #eef2ff;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --shadow: 0 1px 2px rgba(10, 10, 10, .04), 0 12px 32px rgba(10, 10, 10, .08);
+    }
+
+    /* ---------- Text styles ---------- */
+    .heading-1 { font-size: 60px; line-height: 60px; font-weight: 600; }
+    .heading-2 { font-size: 48px; line-height: 48px; font-weight: 600; }
+    .heading-3 { font-size: 36px; line-height: 40px; font-weight: 600; }
+    .heading-4 { font-size: 30px; line-height: 36px; font-weight: 600; }
+    .heading-5 { font-size: 24px; line-height: 32px; font-weight: 600; }
+    .heading-6 { font-size: 20px; line-height: 28px; font-weight: 600; }
+    .title-1 { font-size: 20px; line-height: 28px; font-weight: 500; }
+    .title-2 { font-size: 18px; line-height: 28px; font-weight: 500; }
+    .title-3 { font-size: 16px; line-height: 24px; font-weight: 500; }
+    .title-4 { font-size: 14px; line-height: 20px; font-weight: 500; }
+    .body-1 { font-size: 16px; line-height: 24px; font-weight: 600; }
+    .body-3 { font-size: 16px; line-height: 24px; font-weight: 400; }
+    .body-6 { font-size: 14px; line-height: 20px; font-weight: 400; }
+    .button-md { font-size: 16px; line-height: 24px; font-weight: 600; }
+    .button-sm { font-size: 14px; line-height: 20px; font-weight: 600; }
+    .caption-1 { font-size: 14px; line-height: 20px; font-weight: 500; }
+    .caption-2 { font-size: 14px; line-height: 20px; font-weight: 400; }
+    .caption-3 { font-size: 12px; line-height: 16px; font-weight: 600; }
+    .caption-5 { font-size: 12px; line-height: 16px; font-weight: 400; }
+
+    /* ---------- Base ---------- */
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: var(--s-900); }
+    body { margin: 0; font-family: Geist, system-ui, sans-serif; color: var(--ink); background: var(--base); -webkit-font-smoothing: antialiased; }
+    h1, h2, h3, h4 { margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+    p { margin: 0; text-wrap: pretty; }
+    em, i { font-style: normal; }
+    img { display: block; max-width: 100%; height: auto; }
+    a { color: inherit; text-decoration: none; }
+    .ph { width: 20px; height: 20px; flex: none; }
+    .ph-lg { width: 24px; height: 24px; }
+    .wrap { max-width: 1184px; margin: 0 auto; padding: 0 var(--s-300); }
+    .skip { position: absolute; left: var(--s-200); top: -100px; z-index: 100; background: var(--ink); color: #fff; padding: var(--s-75) var(--s-100); border-radius: var(--r-lg); }
+    .skip:focus { top: var(--s-200); }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-md); }
+
+    /* ---------- Buttons ---------- */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-75); padding: var(--s-75) var(--s-100); border-radius: var(--r-lg); border: 1px solid transparent; cursor: pointer; white-space: nowrap; font-family: inherit;
+      transition: transform 300ms var(--ease), background-color 300ms var(--ease), border-color 300ms var(--ease), opacity 300ms var(--ease); }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { background: var(--base); color: var(--ink); border-color: var(--line); }
+    .btn-secondary:hover { background: var(--soft); border-color: #d4d4d4; }
+    .btn .ph { width: 16px; height: 16px; transition: transform 300ms var(--ease); }
+    .btn:hover .ph-move { transform: translateX(2px); }
+
+    /* ---------- Floating nav ---------- */
+    .nav { position: fixed; top: var(--s-200); left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: var(--s-300);
+      padding: var(--s-75); padding-left: var(--s-200); border-radius: var(--r-2xl); border: 1px solid rgba(229, 229, 229, .8);
+      background: rgba(255, 255, 255, .72); backdrop-filter: saturate(180%) blur(16px); -webkit-backdrop-filter: saturate(180%) blur(16px); box-shadow: var(--shadow); max-width: calc(100% - var(--s-400)); }
+    .brand { display: flex; align-items: center; gap: var(--s-75); white-space: nowrap; }
+    .brand-mark { width: 32px; height: 32px; border-radius: var(--r-lg); background: var(--accent); color: #fff; display: grid; place-items: center; }
+    .brand-mark .ph { width: 18px; height: 18px; }
+    .nav-links { display: flex; gap: var(--s-50); }
+    .nav-links a { white-space: nowrap; padding: var(--s-75) var(--s-100); border-radius: var(--r-lg); color: var(--ink-2); transition: background-color 300ms var(--ease), color 300ms var(--ease); }
+    .nav-links a:hover { background: rgba(10, 10, 10, .04); color: var(--ink); }
+    .nav-links a[aria-current="true"] { color: var(--ink); background: rgba(10, 10, 10, .06); }
+    .menu-btn { display: none; width: 40px; height: 40px; border: 0; background: transparent; border-radius: var(--r-lg); cursor: pointer; position: relative; }
+    .menu-btn span { position: absolute; left: var(--s-100); width: 16px; height: 2px; border-radius: var(--r-full); background: var(--ink); transition: transform 500ms var(--ease), opacity 300ms var(--ease); }
+    .menu-btn span:nth-child(1) { transform: translateY(-4px); }
+    .menu-btn span:nth-child(2) { transform: translateY(4px); }
+    .menu-open .menu-btn span:nth-child(1) { transform: rotate(45deg); }
+    .menu-open .menu-btn span:nth-child(2) { transform: rotate(-45deg); }
+    .mobile-panel { position: fixed; inset: 0; z-index: 55; background: rgba(255, 255, 255, .94); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      padding: calc(var(--s-900) + var(--s-200)) var(--s-300) var(--s-400); display: flex; flex-direction: column; gap: var(--s-75);
+      opacity: 0; pointer-events: none; transition: opacity 500ms var(--ease); }
+    .menu-open .mobile-panel { opacity: 1; pointer-events: auto; }
+    .mobile-panel a { padding: var(--s-100) 0; opacity: 0; transform: translateY(var(--s-300)); transition: opacity 500ms var(--ease), transform 500ms var(--ease); }
+    .menu-open .mobile-panel a { opacity: 1; transform: none; }
+    .mobile-panel .btn { margin-top: var(--s-200); }
+
+    /* ---------- Hero ---------- */
+    .hero { padding: calc(var(--s-900) + var(--s-700)) 0 var(--s-800); text-align: center; }
+    .badge { display: inline-flex; align-items: center; gap: var(--s-75); padding: var(--s-50) var(--s-100); border-radius: var(--r-full); border: 1px solid var(--line); background: var(--base); color: var(--ink-2); }
+    .badge .dots { display: flex; gap: var(--s-50); color: var(--muted); }
+    .badge .ph { width: 16px; height: 16px; }
+    .hero h1 { max-width: 680px; margin: var(--s-300) auto var(--s-300);
+      background: linear-gradient(90deg, #000000, #666666); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero .lead { max-width: 680px; margin: 0 auto var(--s-400); color: var(--ink-2); }
+    .hero-proof { display: inline-block; margin-top: var(--s-300); color: var(--muted); }
+    .hero-proof .ph { color: #16a34a; width: 16px; height: 16px; vertical-align: -3px; margin-right: var(--s-75); }
+    .frame { margin: var(--s-700) auto 0; max-width: 1080px; padding: var(--s-75); border-radius: var(--r-3xl); background: var(--soft); border: 1px solid var(--line); box-shadow: var(--shadow); }
+    .frame-inner { border-radius: var(--r-2xl); overflow: hidden; border: 1px solid var(--line); background: #f4f4f5; }
+
+    .platforms { padding: 0 0 var(--s-900); text-align: center; }
+    .platforms p { color: var(--muted); margin-bottom: var(--s-200); }
+    .chips { display: flex; justify-content: center; flex-wrap: wrap; gap: var(--s-100); }
+    .chip { display: inline-flex; align-items: center; gap: var(--s-75); padding: var(--s-75) var(--s-200); border-radius: var(--r-full); border: 1px solid var(--line); color: var(--ink); }
+    .chip .ph { color: var(--muted); }
+
+    /* ---------- Sections ---------- */
+    section.block { padding: var(--s-900) 0; }
+    .soft { background: var(--soft); }
+    .section-head { max-width: 680px; margin: 0 auto var(--s-700); text-align: center; }
+    .section-head h2 { margin: var(--s-100) 0 var(--s-200); }
+    .section-head p { color: var(--ink-2); }
+    .kicker { color: var(--accent); }
+
+    .compare { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-300); }
+    .panel { padding: var(--s-400); border-radius: var(--r-2xl); border: 1px solid var(--line); background: var(--base); }
+    .panel.after { border-color: #c7d2fe; background: var(--accent-soft); }
+    .panel h3 { margin-bottom: var(--s-300); display: flex; align-items: center; gap: var(--s-75); }
+    .list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-200); }
+    .list li { display: flex; gap: var(--s-100); color: var(--ink-2); }
+    .list .ph { margin-top: var(--s-25); }
+    .before .ph { color: #a3a3a3; }
+    .after .ph { color: var(--accent); }
+
+    /* Tagline reveal */
+    .tagline { padding: var(--s-900) 0; }
+    .tagline p { max-width: 680px; margin: 0 auto; text-align: center; color: var(--ink); text-wrap: balance; }
+    .tagline .w { opacity: 0.3; transition: opacity 500ms var(--ease); }
+    .tagline .w.on { opacity: 1; }
+
+    .benefits { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--s-300); }
+    .benefit { grid-column: span 2; padding: var(--s-400); border-radius: var(--r-2xl); border: 1px solid var(--line); background: var(--base);
+      transition: transform 500ms var(--ease), box-shadow 500ms var(--ease); }
+    .benefit:nth-child(4), .benefit:nth-child(5) { grid-column: span 3; }
+    .benefit:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .icon-box { width: 40px; height: 40px; border-radius: var(--r-xl); display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); margin-bottom: var(--s-300); }
+    .benefit h3 { margin-bottom: var(--s-75); }
+    .benefit p { color: var(--ink-2); }
+
+    .spot { display: grid; grid-template-columns: 5fr 7fr; gap: var(--s-700); align-items: center; }
+    .spot + .spot { margin-top: var(--s-900); }
+    .spot.rev .spot-copy { order: 2; }
+    .spot-copy h3 { margin: var(--s-100) 0 var(--s-200); }
+    .spot-copy > p { color: var(--ink-2); margin-bottom: var(--s-300); }
+    .shot { padding: var(--s-75); border-radius: var(--r-2xl); background: var(--base); border: 1px solid var(--line); box-shadow: var(--shadow); }
+    .shot img { border-radius: var(--r-lg); background: #f4f4f5; }
+
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-300); }
+    .step { padding: var(--s-400); border-radius: var(--r-2xl); border: 1px solid var(--line); background: var(--base); }
+    .step-num { width: 40px; height: 40px; border-radius: var(--r-xl); display: grid; place-items: center; background: var(--ink); color: #fff; margin-bottom: var(--s-300); }
+    .step h3 { margin-bottom: var(--s-75); }
+    .step p { color: var(--ink-2); }
+
+    /* Results band (dark, flat) */
+    .dark { background: var(--dark); color: #fff; }
+    .dark .section-head p { color: #a3a3a3; }
+    .dark .kicker { color: #a5b4fc; }
+    .case { padding: var(--s-400); border-radius: var(--r-3xl); background: var(--dark-2); border: 1px solid #313131; }
+    .case-head { display: flex; justify-content: space-between; align-items: center; gap: var(--s-200); flex-wrap: wrap; margin-bottom: var(--s-400); }
+    .case-head .who { display: flex; align-items: center; gap: var(--s-100); }
+    .case-head .avatar { width: 40px; height: 40px; border-radius: var(--r-full); background: #313131; display: grid; place-items: center; color: #fff; }
+    .case-head span.meta { color: #a3a3a3; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-200); }
+    .stat { padding: var(--s-300); border-radius: var(--r-xl); background: #1f1f1f; border: 1px solid #313131; }
+    .stat .label { color: #a3a3a3; }
+    .stat .value { margin: var(--s-75) 0 var(--s-50); }
+    .stat .delta { color: #4ade80; display: inline-flex; align-items: center; gap: var(--s-50); }
+    .case-note { margin-top: var(--s-300); color: #a3a3a3; }
+    .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-200); margin-top: var(--s-300); }
+    .fact { padding: var(--s-300); border-radius: var(--r-xl); border: 1px solid #313131; }
+    .fact .ph { color: #a5b4fc; margin-bottom: var(--s-200); }
+    .fact strong { display: block; margin-bottom: var(--s-50); }
+    .fact span { color: #a3a3a3; }
+
+    /* FAQ */
+    .faq { max-width: 784px; margin: 0 auto; display: grid; gap: var(--s-100); }
+    details { border-radius: var(--r-xl); border: 1px solid var(--line); background: var(--base); transition: box-shadow 300ms var(--ease); }
+    details[open] { box-shadow: var(--shadow); }
+    summary { list-style: none; cursor: pointer; padding: var(--s-200) var(--s-300); display: flex; justify-content: space-between; align-items: center; gap: var(--s-200); border-radius: var(--r-xl); }
+    summary::-webkit-details-marker { display: none; }
+    summary .ph { color: var(--muted); transition: transform 500ms var(--ease); }
+    details[open] summary .ph { transform: rotate(45deg); }
+    details p { padding: 0 var(--s-300) var(--s-300); color: var(--ink-2); }
+    details a { color: var(--accent); }
+
+    /* Risk reversal + final CTA */
+    .assure { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-300); margin-bottom: var(--s-700); }
+    .assure div { display: flex; gap: var(--s-100); }
+    .assure .ph { color: var(--accent); margin-top: var(--s-25); }
+    .assure p { color: var(--ink-2); }
+    .assure strong { display: block; color: var(--ink); margin-bottom: var(--s-50); }
+    .cta { text-align: center; padding: var(--s-800) var(--s-300); border-radius: var(--r-3xl); background: var(--soft); border: 1px solid var(--line); }
+    .cta h2 { max-width: 680px; margin: 0 auto var(--s-200); }
+    .cta p { max-width: 680px; margin: 0 auto var(--s-400); color: var(--ink-2); }
+    .cta .alt { display: block; margin-top: var(--s-200); color: var(--muted); }
+    .cta .alt a { color: var(--accent); }
+
+    footer { padding: var(--s-600) 0; border-top: 1px solid var(--line); color: var(--muted); }
+    footer .wrap { display: flex; justify-content: space-between; gap: var(--s-300); flex-wrap: wrap; align-items: center; }
+    footer nav { display: flex; gap: var(--s-300); flex-wrap: wrap; }
+    footer a { transition: color 300ms var(--ease); }
+    footer a:hover { color: var(--ink); }
+
+    /* Reveal */
+    .reveal { opacity: 0; transform: translateY(var(--s-400)); transition: opacity 700ms var(--ease), transform 700ms var(--ease); }
+    .reveal.in { opacity: 1; transform: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .reveal, .mobile-panel a { transform: none !important; transition: opacity 300ms linear; }
+      .reveal { opacity: 1; }
+      .tagline .w { opacity: 1; transition: none; }
+      .btn:hover, .benefit:hover { transform: none; }
+    }
+
+    @media (max-width: 1024px) {
+      .benefits { grid-template-columns: 1fr 1fr; }
+      .benefit, .benefit:nth-child(4), .benefit:nth-child(5) { grid-column: auto; }
+      .benefit:nth-child(5) { grid-column: span 2; }
+      .spot, .spot.rev { grid-template-columns: 1fr; gap: var(--s-400); }
+      .spot.rev .spot-copy { order: 0; }
+      .stats, .facts { grid-template-columns: 1fr 1fr; }
+      .heading-1 { font-size: 48px; line-height: 48px; }
+    }
+    @media (max-width: 860px) {
+      .nav-links, .nav .btn-primary { display: none; }
+      .menu-btn { display: block; }
+      .nav { left: var(--s-200); right: var(--s-200); transform: none; max-width: none; justify-content: space-between; }
+    }
+    @media (max-width: 720px) {
+      .wrap { padding: 0 var(--s-200); }
+      .hero { padding: calc(var(--s-900) + var(--s-300)) 0 var(--s-600); }
+      .heading-1 { font-size: 36px; line-height: 40px; }
+      .heading-2 { font-size: 30px; line-height: 36px; }
+      .heading-3 { font-size: 24px; line-height: 32px; }
+      .heading-4 { font-size: 24px; line-height: 32px; }
+      .br-lg, .hide-sm { display: none; }
+      section.block, .tagline { padding: var(--s-700) 0; }
+      .compare, .benefits, .steps, .assure, .stats, .facts { grid-template-columns: 1fr; }
+      .benefit:nth-child(5) { grid-column: auto; }
+      .panel, .benefit, .step, .case { padding: var(--s-300); }
+      .frame { margin-top: var(--s-500); }
+      .cta { padding: var(--s-600) var(--s-200); }
+    }
+  </style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<symbol id="ph-chart-line-up" viewBox="0 0 256 256" fill="currentColor"><path d="M232,208a8,8,0,0,1-8,8H32a8,8,0,0,1-8-8V48a8,8,0,0,1,16,0V156.69l50.34-50.35a8,8,0,0,1,11.32,0L128,132.69,180.69,80H160a8,8,0,0,1,0-16h40a8,8,0,0,1,8,8v40a8,8,0,0,1-16,0V91.31l-58.34,58.35a8,8,0,0,1-11.32,0L96,123.31l-56,56V200H224A8,8,0,0,1,232,208Z"/></symbol>
+<symbol id="ph-target" viewBox="0 0 256 256" fill="currentColor"><path d="M221.87,83.16A104.1,104.1,0,1,1,195.67,49l22.67-22.68a8,8,0,0,1,11.32,11.32l-96,96a8,8,0,0,1-11.32-11.32l27.72-27.72a40,40,0,1,0,17.87,31.09,8,8,0,1,1,16-.9,56,56,0,1,1-22.38-41.65L184.3,60.39a87.88,87.88,0,1,0,23.13,29.67,8,8,0,0,1,14.44-6.9Z"/></symbol>
+<symbol id="ph-paper-plane-tilt" viewBox="0 0 256 256" fill="currentColor"><path d="M227.32,28.68a16,16,0,0,0-15.66-4.08l-.15,0L19.57,82.84a16,16,0,0,0-2.49,29.8L102,154l41.3,84.87A15.86,15.86,0,0,0,157.74,248q.69,0,1.38-.06a15.88,15.88,0,0,0,14-11.51l58.2-191.94c0-.05,0-.1,0-.15A16,16,0,0,0,227.32,28.68ZM157.83,231.85l-.05.14,0-.07-40.06-82.3,48-48a8,8,0,0,0-11.31-11.31l-48,48L24.08,98.25l-.07,0,.14,0L216,40Z"/></symbol>
+<symbol id="ph-chat-circle-dots" viewBox="0 0 256 256" fill="currentColor"><path d="M140,128a12,12,0,1,1-12-12A12,12,0,0,1,140,128ZM84,116a12,12,0,1,0,12,12A12,12,0,0,0,84,116Zm88,0a12,12,0,1,0,12,12A12,12,0,0,0,172,116Zm60,12A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Zm-16,0A88,88,0,1,0,51.81,172.06a8,8,0,0,1,.66,6.54L40,216,77.4,203.53a7.85,7.85,0,0,1,2.53-.42,8,8,0,0,1,4,1.08A88,88,0,0,0,216,128Z"/></symbol>
+<symbol id="ph-magnifying-glass" viewBox="0 0 256 256" fill="currentColor"><path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/></symbol>
+<symbol id="ph-database" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24C74.17,24,32,48.6,32,80v96c0,31.4,42.17,56,96,56s96-24.6,96-56V80C224,48.6,181.83,24,128,24Zm80,104c0,9.62-7.88,19.43-21.61,26.92C170.93,163.35,150.19,168,128,168s-42.93-4.65-58.39-13.08C55.88,147.43,48,137.62,48,128V111.36c17.06,15,46.23,24.64,80,24.64s62.94-9.68,80-24.64ZM69.61,53.08C85.07,44.65,105.81,40,128,40s42.93,4.65,58.39,13.08C200.12,60.57,208,70.38,208,80s-7.88,19.43-21.61,26.92C170.93,115.35,150.19,120,128,120s-42.93-4.65-58.39-13.08C55.88,99.43,48,89.62,48,80S55.88,60.57,69.61,53.08ZM186.39,202.92C170.93,211.35,150.19,216,128,216s-42.93-4.65-58.39-13.08C55.88,195.43,48,185.62,48,176V159.36c17.06,15,46.23,24.64,80,24.64s62.94-9.68,80-24.64V176C208,185.62,200.12,195.43,186.39,202.92Z"/></symbol>
+<symbol id="ph-instagram-logo" viewBox="0 0 256 256" fill="currentColor"><path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160ZM176,24H80A56.06,56.06,0,0,0,24,80v96a56.06,56.06,0,0,0,56,56h96a56.06,56.06,0,0,0,56-56V80A56.06,56.06,0,0,0,176,24Zm40,152a40,40,0,0,1-40,40H80a40,40,0,0,1-40-40V80A40,40,0,0,1,80,40h96a40,40,0,0,1,40,40ZM192,76a12,12,0,1,1-12-12A12,12,0,0,1,192,76Z"/></symbol>
+<symbol id="ph-facebook-logo" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm8,191.63V152h24a8,8,0,0,0,0-16H136V112a16,16,0,0,1,16-16h16a8,8,0,0,0,0-16H152a32,32,0,0,0-32,32v24H96a8,8,0,0,0,0,16h24v63.63a88,88,0,1,1,16,0Z"/></symbol>
+<symbol id="ph-youtube-logo" viewBox="0 0 256 256" fill="currentColor"><path d="M164.44,121.34l-48-32A8,8,0,0,0,104,96v64a8,8,0,0,0,12.44,6.66l48-32a8,8,0,0,0,0-13.32ZM120,145.05V111l25.58,17ZM234.33,69.52a24,24,0,0,0-14.49-16.4C185.56,39.88,131,40,128,40s-57.56-.12-91.84,13.12a24,24,0,0,0-14.49,16.4C19.08,79.5,16,97.74,16,128s3.08,48.5,5.67,58.48a24,24,0,0,0,14.49,16.41C69,215.56,120.4,216,127.34,216h1.32c6.94,0,58.37-.44,91.18-13.11a24,24,0,0,0,14.49-16.41c2.59-10,5.67-28.22,5.67-58.48S236.92,79.5,234.33,69.52Zm-15.49,113a8,8,0,0,1-4.77,5.49c-31.65,12.22-85.48,12-86,12H128c-.54,0-54.33.2-86-12a8,8,0,0,1-4.77-5.49C34.8,173.39,32,156.57,32,128s2.8-45.39,5.16-54.47A8,8,0,0,1,41.93,68c30.52-11.79,81.66-12,85.85-12h.27c.54,0,54.38-.18,86,12a8,8,0,0,1,4.77,5.49C221.2,82.61,224,99.43,224,128S221.2,173.39,218.84,182.47Z"/></symbol>
+<symbol id="ph-linkedin-logo" viewBox="0 0 256 256" fill="currentColor"><path d="M216,24H40A16,16,0,0,0,24,40V216a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V40A16,16,0,0,0,216,24Zm0,192H40V40H216V216ZM96,112v64a8,8,0,0,1-16,0V112a8,8,0,0,1,16,0Zm88,28v36a8,8,0,0,1-16,0V140a20,20,0,0,0-40,0v36a8,8,0,0,1-16,0V112a8,8,0,0,1,15.79-1.78A36,36,0,0,1,184,140ZM100,84A12,12,0,1,1,88,72,12,12,0,0,1,100,84Z"/></symbol>
+<symbol id="ph-arrow-right" viewBox="0 0 256 256" fill="currentColor"><path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"/></symbol>
+<symbol id="ph-check-circle" viewBox="0 0 256 256" fill="currentColor"><path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"/></symbol>
+<symbol id="ph-clock" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"/></symbol>
+<symbol id="ph-list" viewBox="0 0 256 256" fill="currentColor"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM40,72H216a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16ZM216,184H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z"/></symbol>
+<symbol id="ph-x" viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+<symbol id="ph-plus" viewBox="0 0 256 256" fill="currentColor"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/></symbol>
+<symbol id="ph-sign-in" viewBox="0 0 256 256" fill="currentColor"><path d="M141.66,133.66l-40,40a8,8,0,0,1-11.32-11.32L116.69,136H24a8,8,0,0,1,0-16h92.69L90.34,93.66a8,8,0,0,1,11.32-11.32l40,40A8,8,0,0,1,141.66,133.66ZM200,32H136a8,8,0,0,0,0,16h56V208H136a8,8,0,0,0,0,16h64a8,8,0,0,0,8-8V40A8,8,0,0,0,200,32Z"/></symbol>
+<symbol id="ph-book-open" viewBox="0 0 256 256" fill="currentColor"><path d="M232,48H160a40,40,0,0,0-32,16A40,40,0,0,0,96,48H24a8,8,0,0,0-8,8V200a8,8,0,0,0,8,8H96a24,24,0,0,1,24,24,8,8,0,0,0,16,0,24,24,0,0,1,24-24h72a8,8,0,0,0,8-8V56A8,8,0,0,0,232,48ZM96,192H32V64H96a24,24,0,0,1,24,24V200A39.81,39.81,0,0,0,96,192Zm128,0H160a39.81,39.81,0,0,0-24,8V88a24,24,0,0,1,24-24h64Z"/></symbol>
+<symbol id="ph-download-simple" viewBox="0 0 256 256" fill="currentColor"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"/></symbol>
+<symbol id="ph-printer" viewBox="0 0 256 256" fill="currentColor"><path d="M214.67,72H200V40a8,8,0,0,0-8-8H64a8,8,0,0,0-8,8V72H41.33C27.36,72,16,82.77,16,96v80a8,8,0,0,0,8,8H56v32a8,8,0,0,0,8,8H192a8,8,0,0,0,8-8V184h32a8,8,0,0,0,8-8V96C240,82.77,228.64,72,214.67,72ZM72,48H184V72H72ZM184,208H72V160H184Zm40-40H200V152a8,8,0,0,0-8-8H64a8,8,0,0,0-8,8v16H32V96c0-4.41,4.19-8,9.33-8H214.67c5.14,0,9.33,3.59,9.33,8Zm-24-52a12,12,0,1,1-12-12A12,12,0,0,1,200,116Z"/></symbol>
+<symbol id="ph-arrow-up" viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/></symbol>
+<symbol id="ph-caret-down" viewBox="0 0 256 256" fill="currentColor"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></symbol>
+<symbol id="ph-shield-check" viewBox="0 0 256 256" fill="currentColor"><path d="M208,40H48A16,16,0,0,0,32,56v56c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.26,47,25.53a8,8,0,0,0,4.2,0c1-.27,23.91-6.67,47-25.53C198.48,196.67,224,164.72,224,112V56A16,16,0,0,0,208,40Zm0,72c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,223.62a128.25,128.25,0,0,1-38.92-21.81C61.82,179.51,48,149.3,48,112l0-56,160,0ZM82.34,141.66a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32l-56,56a8,8,0,0,1-11.32,0Z"/></symbol>
+<symbol id="ph-plugs-connected" viewBox="0 0 256 256" fill="currentColor"><path d="M237.66,18.34a8,8,0,0,0-11.32,0l-52.4,52.41-5.37-5.38a32.05,32.05,0,0,0-45.26,0L100,88.69l-6.34-6.35A8,8,0,0,0,82.34,93.66L88.69,100,65.37,123.31a32,32,0,0,0,0,45.26l5.38,5.37-52.41,52.4a8,8,0,0,0,11.32,11.32l52.4-52.41,5.37,5.38a32,32,0,0,0,45.26,0L156,167.31l6.34,6.35a8,8,0,0,0,11.32-11.32L167.31,156l23.32-23.31a32,32,0,0,0,0-45.26l-5.38-5.37,52.41-52.4A8,8,0,0,0,237.66,18.34Zm-116.29,161a16,16,0,0,1-22.62,0L76.69,157.25a16,16,0,0,1,0-22.62L100,111.31,144.69,156Zm57.94-57.94L156,144.69,111.31,100l23.32-23.31a16,16,0,0,1,22.62,0l22.06,22A16,16,0,0,1,179.31,121.37ZM88.57,35A8,8,0,0,1,103.43,29l8,20A8,8,0,0,1,96.57,55ZM24.57,93A8,8,0,0,1,35,88.57l20,8A8,8,0,0,1,49,111.43l-20-8A8,8,0,0,1,24.57,93ZM231.43,163a8,8,0,0,1-10.4,4.46l-20-8A8,8,0,1,1,207,144.57l20,8A8,8,0,0,1,231.43,163Zm-64,58.06A8,8,0,0,1,152.57,227l-8-20A8,8,0,0,1,159.43,201Z"/></symbol>
+<symbol id="ph-arrows-clockwise" viewBox="0 0 256 256" fill="currentColor"><path d="M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z"/></symbol>
+<symbol id="ph-lightning" viewBox="0 0 256 256" fill="currentColor"><path d="M215.79,118.17a8,8,0,0,0-5-5.66L153.18,90.9l14.66-73.33a8,8,0,0,0-13.69-7l-112,120a8,8,0,0,0,3,13l57.63,21.61L88.16,238.43a8,8,0,0,0,13.69,7l112-120A8,8,0,0,0,215.79,118.17ZM109.37,214l10.47-52.38a8,8,0,0,0-5-9.06L62,132.71l84.62-90.66L136.16,94.43a8,8,0,0,0,5,9.06l52.8,19.8Z"/></symbol>
+<symbol id="ph-file-csv" viewBox="0 0 256 256" fill="currentColor"><path d="M48,180c0,11,7.18,20,16,20a14.24,14.24,0,0,0,10.22-4.66A8,8,0,0,1,85.78,206.4,30.06,30.06,0,0,1,64,216c-17.65,0-32-16.15-32-36s14.35-36,32-36a30.06,30.06,0,0,1,21.78,9.6,8,8,0,0,1-11.56,11.06A14.24,14.24,0,0,0,64,160C55.18,160,48,169,48,180Zm79.6-8.69c-4-1.16-8.14-2.35-10.45-3.84-1.25-.81-1.23-1-1.12-1.9a4.57,4.57,0,0,1,2-3.67c4.6-3.12,15.34-1.73,19.82-.56A8,8,0,0,0,142,145.86c-2.12-.55-21-5.22-32.84,2.76a20.58,20.58,0,0,0-9,14.95c-2,15.88,13.65,20.41,23,23.11,12.06,3.49,13.12,4.92,12.78,7.59-.31,2.41-1.26,3.34-2.14,3.93-4.6,3.06-15.17,1.56-19.55.36A8,8,0,0,0,109.94,214a61.34,61.34,0,0,0,15.19,2c5.82,0,12.3-1,17.49-4.46a20.82,20.82,0,0,0,9.19-15.23C154,179,137.49,174.17,127.6,171.31Zm83.09-26.84a8,8,0,0,0-10.23,4.84L188,184.21l-12.47-34.9a8,8,0,0,0-15.07,5.38l20,56a8,8,0,0,0,15.07,0l20-56A8,8,0,0,0,210.69,144.47ZM216,88v24a8,8,0,0,1-16,0V96H152a8,8,0,0,1-8-8V40H56v72a8,8,0,0,1-16,0V40A16,16,0,0,1,56,24h96a8,8,0,0,1,5.66,2.34l56,56A8,8,0,0,1,216,88Zm-27.31-8L160,51.31V80Z"/></symbol>
+<symbol id="ph-stack" viewBox="0 0 256 256" fill="currentColor"><path d="M230.91,172A8,8,0,0,1,228,182.91l-96,56a8,8,0,0,1-8.06,0l-96-56A8,8,0,0,1,36,169.09l92,53.65,92-53.65A8,8,0,0,1,230.91,172ZM220,121.09l-92,53.65L36,121.09A8,8,0,0,0,28,134.91l96,56a8,8,0,0,0,8.06,0l96-56A8,8,0,1,0,220,121.09ZM24,80a8,8,0,0,1,4-6.91l96-56a8,8,0,0,1,8.06,0l96,56a8,8,0,0,1,0,13.82l-96,56a8,8,0,0,1-8.06,0l-96-56A8,8,0,0,1,24,80Zm23.88,0L128,126.74,208.12,80,128,33.26Z"/></symbol>
+<symbol id="ph-warning-circle" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z"/></symbol>
+<symbol id="ph-lightbulb" viewBox="0 0 256 256" fill="currentColor"><path d="M176,232a8,8,0,0,1-8,8H88a8,8,0,0,1,0-16h80A8,8,0,0,1,176,232Zm40-128a87.55,87.55,0,0,1-33.64,69.21A16.24,16.24,0,0,0,176,186v6a16,16,0,0,1-16,16H96a16,16,0,0,1-16-16v-6a16,16,0,0,0-6.23-12.66A87.59,87.59,0,0,1,40,104.49C39.74,56.83,78.26,17.14,125.88,16A88,88,0,0,1,216,104Zm-16,0a72,72,0,0,0-73.74-72c-39,.92-70.47,33.39-70.26,72.39a71.65,71.65,0,0,0,27.64,56.3A32,32,0,0,1,96,186v6h64v-6a32.15,32.15,0,0,1,12.47-25.35A71.65,71.65,0,0,0,200,104Zm-16.11-9.34a57.6,57.6,0,0,0-46.56-46.55,8,8,0,0,0-2.66,15.78c16.57,2.79,30.63,16.85,33.44,33.45A8,8,0,0,0,176,104a9,9,0,0,0,1.35-.11A8,8,0,0,0,183.89,94.66Z"/></symbol>
+<symbol id="ph-calendar-check" viewBox="0 0 256 256" fill="currentColor"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-38.34-85.66a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L116,164.69l42.34-42.35A8,8,0,0,1,169.66,122.34Z"/></symbol>
+<symbol id="ph-moon-stars" viewBox="0 0 256 256" fill="currentColor"><path d="M240,96a8,8,0,0,1-8,8H216v16a8,8,0,0,1-16,0V104H184a8,8,0,0,1,0-16h16V72a8,8,0,0,1,16,0V88h16A8,8,0,0,1,240,96ZM144,56h8v8a8,8,0,0,0,16,0V56h8a8,8,0,0,0,0-16h-8V32a8,8,0,0,0-16,0v8h-8a8,8,0,0,0,0,16Zm72.77,97a8,8,0,0,1,1.43,8A96,96,0,1,1,95.07,37.8a8,8,0,0,1,10.6,9.06A88.07,88.07,0,0,0,209.14,150.33,8,8,0,0,1,216.77,153Zm-19.39,14.88c-1.79.09-3.59.14-5.38.14A104.11,104.11,0,0,1,88,64c0-1.79,0-3.59.14-5.38A80,80,0,1,0,197.38,167.86Z"/></symbol>
+<symbol id="ph-magnifying-glass-plus" viewBox="0 0 256 256" fill="currentColor"><path d="M152,112a8,8,0,0,1-8,8H120v24a8,8,0,0,1-16,0V120H80a8,8,0,0,1,0-16h24V80a8,8,0,0,1,16,0v24h24A8,8,0,0,1,152,112Zm77.66,117.66a8,8,0,0,1-11.32,0l-50.06-50.07a88.11,88.11,0,1,1,11.31-11.31l50.07,50.06A8,8,0,0,1,229.66,229.66ZM112,184a72,72,0,1,0-72-72A72.08,72.08,0,0,0,112,184Z"/></symbol>
+<symbol id="ph-x-circle" viewBox="0 0 256 256" fill="currentColor"><path d="M165.66,101.66,139.31,128l26.35,26.34a8,8,0,0,1-11.32,11.32L128,139.31l-26.34,26.35a8,8,0,0,1-11.32-11.32L116.69,128,90.34,101.66a8,8,0,0,1,11.32-11.32L128,116.69l26.34-26.35a8,8,0,0,1,11.32,11.32ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"/></symbol>
+</svg>
+  <a class="skip button-sm" href="#main">Skip to content</a>
+
+  <header class="nav" id="nav">
+    <a href="/welcome/" class="brand title-3" aria-label="CMS Analytics Studio home">
+      <span class="brand-mark"><svg class="ph"><use href="#ph-stack"/></svg></span>
+      CMS Analytics Studio
+    </a>
+    <nav class="nav-links title-4" aria-label="Main">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#results">Results</a>
+      <a href="#faq">FAQ</a>
+      <a href="/manual/">Manual</a>
+    </nav>
+    <a class="btn btn-primary button-sm" href="/login">Sign in</a>
+    <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="mobilePanel"><span></span><span></span></button>
+  </header>
+  <div class="mobile-panel" id="mobilePanel" aria-hidden="true">
+    <a class="heading-5" href="#features">Features</a>
+    <a class="heading-5" href="#how">How it works</a>
+    <a class="heading-5" href="#results">Results</a>
+    <a class="heading-5" href="#faq">FAQ</a>
+    <a class="heading-5" href="/manual/">User manual</a>
+    <a class="btn btn-primary button-md" href="/login">Sign in to your studio</a>
+  </div>
+
+  <main id="main">
+    <!-- 1. Hero -->
+    <section class="hero">
+      <div class="wrap">
+        <span class="badge caption-1">
+          <span class="dots"><svg class="ph"><use href="#ph-instagram-logo"/></svg><svg class="ph"><use href="#ph-facebook-logo"/></svg><svg class="ph"><use href="#ph-youtube-logo"/></svg><svg class="ph"><use href="#ph-linkedin-logo"/></svg></span>
+          For creators and brands<span class="hide-sm"> on four platforms</span>
+        </span>
+        <h1 class="heading-1">Grow on four platforms<br class="br-lg"> without four dashboards</h1>
+        <p class="lead title-2">See what works on Instagram, Facebook, YouTube and LinkedIn in one place.<br class="br-lg"> Get a plan for what to post next, publish everywhere at once, and let “link” comments answer themselves.</p>
+        <a class="btn btn-primary button-md" href="/login">Sign in to your studio <svg class="ph ph-move"><use href="#ph-arrow-right"/></svg></a>
+        <div><span class="hero-proof caption-2"><svg class="ph"><use href="#ph-chart-line-up"/></svg>Chang Research Base reach: 5,706 in 30 days, up&nbsp;1,340.9%</span></div>
+        <div class="frame reveal">
+          <div class="frame-inner">
+            <img src="img/hero.webp" width="1440" height="900" alt="Overview dashboard comparing views, interactions and new followers across Instagram, YouTube, LinkedIn and Facebook" fetchpriority="high" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="platforms">
+      <div class="wrap">
+        <p class="caption-1">Connect each account once. Connections renew themselves.</p>
+        <div class="chips title-4">
+          <span class="chip"><svg class="ph"><use href="#ph-instagram-logo"/></svg>Instagram</span>
+          <span class="chip"><svg class="ph"><use href="#ph-facebook-logo"/></svg>Facebook Pages</span>
+          <span class="chip"><svg class="ph"><use href="#ph-youtube-logo"/></svg>YouTube</span>
+          <span class="chip"><svg class="ph"><use href="#ph-linkedin-logo"/></svg>LinkedIn pages</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Problem to solution -->
+    <section class="block soft">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker caption-3">The problem</span>
+          <h2 class="heading-2">Four apps tell you what happened.<br class="br-lg"> None tell you what to do next.</h2>
+        </div>
+        <div class="compare">
+          <div class="panel before reveal">
+            <h3 class="heading-6"><svg class="ph"><use href="#ph-x-circle"/></svg>Without the studio</h3>
+            <ul class="list body-3">
+              <li><svg class="ph"><use href="#ph-x"/></svg>Four logins and four reports, each counting views a different way</li>
+              <li><svg class="ph"><use href="#ph-x"/></svg>Story numbers disappear from Instagram after 24 hours</li>
+              <li><svg class="ph"><use href="#ph-x"/></svg>The same caption pasted into four upload forms</li>
+              <li><svg class="ph"><use href="#ph-x"/></svg>Every “link please” comment answered by hand</li>
+            </ul>
+          </div>
+          <div class="panel after reveal">
+            <h3 class="heading-6"><svg class="ph"><use href="#ph-check-circle"/></svg>With CMS Analytics Studio</h3>
+            <ul class="list body-3">
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>One Overview with every account and the change from last period</li>
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Stories saved every 6 hours, history kept every night</li>
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Write once in Social Post and publish to all four</li>
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Keyword rules send your link by DM automatically</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Tagline reveal -->
+    <section class="tagline" aria-label="Our promise">
+      <div class="wrap">
+        <p class="heading-3" id="tagline">Stop guessing what to post.<br class="br-lg"> Read your numbers, follow the plan,<br class="br-lg"> and let the replies send themselves.</p>
+      </div>
+    </section>
+
+    <!-- 4. Benefits -->
+    <section class="block soft" id="features">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker caption-3">What you get</span>
+          <h2 class="heading-2">Less reporting. More posting that works.</h2>
+          <p class="body-3">Every feature answers one question: what should you do next?</p>
+        </div>
+        <div class="benefits">
+          <article class="benefit reveal">
+            <div class="icon-box"><svg class="ph"><use href="#ph-target"/></svg></div>
+            <h3 class="heading-6">Know what to post next</h3>
+            <p class="body-6">The Strategy tab ranks fixes by priority from your own reels, posts and videos, and shows the numbers behind each one.</p>
+          </article>
+          <article class="benefit reveal">
+            <div class="icon-box"><svg class="ph"><use href="#ph-chart-line-up"/></svg></div>
+            <h3 class="heading-6">Compare every channel at a glance</h3>
+            <p class="body-6">Views, interactions and new followers for every account, side by side, against the previous 7, 14 or 30 days.</p>
+          </article>
+          <article class="benefit reveal">
+            <div class="icon-box"><svg class="ph"><use href="#ph-paper-plane-tilt"/></svg></div>
+            <h3 class="heading-6">Publish once, not four times</h3>
+            <p class="body-6">Images, carousels, reels, stories, videos, documents and polls from one wizard. Schedule it or post now.</p>
+          </article>
+          <article class="benefit reveal">
+            <div class="icon-box"><svg class="ph"><use href="#ph-chat-circle-dots"/></svg></div>
+            <h3 class="heading-6">Turn comments into clicks</h3>
+            <p class="body-6">Someone comments “link” on a reel and gets your URL by DM. Give each reel its own keyword, message and link, and see every reply in the activity log.</p>
+          </article>
+          <article class="benefit reveal">
+            <div class="icon-box"><svg class="ph"><use href="#ph-database"/></svg></div>
+            <h3 class="heading-6">Keep the history platforms delete</h3>
+            <p class="body-6">Daily numbers are saved to your own database every night at 2:30 AM IST. Download any table as CSV or print the Overview as PDF.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Product tour -->
+    <section class="block" id="tour" aria-label="Product tour">
+      <div class="wrap">
+        <div class="spot reveal">
+          <div class="spot-copy">
+            <span class="kicker caption-3">Strategy</span>
+            <h3 class="heading-4">An action plan built from your own results</h3>
+            <p class="body-3">Each tip comes with the numbers that triggered it, so you know why it matters.</p>
+            <ul class="list body-3 after">
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Reel hook score: which openings lose viewers in 3 seconds</li>
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Your best day and time to post</li>
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Reels, carousels and images compared on one scorecard</li>
+            </ul>
+          </div>
+          <div class="shot"><img src="img/strategy.webp" width="1440" height="900" loading="lazy" alt="Instagram Strategy tab with a prioritised action plan" /></div>
+        </div>
+
+        <div class="spot rev reveal">
+          <div class="spot-copy">
+            <span class="kicker caption-3">Social Post</span>
+            <h3 class="heading-4">One post, four platforms, five steps</h3>
+            <p class="body-3">Fill the shared fields once. They flow into every platform tab, trimmed to each platform’s limits.</p>
+            <ul class="list body-3 after">
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Instagram, Facebook Page, LinkedIn and YouTube Shorts</li>
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Live progress per platform, with retry if one fails</li>
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Drafts save automatically</li>
+            </ul>
+          </div>
+          <div class="shot"><img src="img/publish.webp" width="1440" height="1150" loading="lazy" alt="Social Post wizard, content step with shared fields and an Instagram preview" /></div>
+        </div>
+
+        <div class="spot reveal">
+          <div class="spot-copy">
+            <span class="kicker caption-3">Auto replies</span>
+            <h3 class="heading-4">Your link, sent the moment they ask</h3>
+            <p class="body-3">Set a keyword, a message and a link. The studio replies by DM and logs every attempt with Instagram’s own error code if one fails.</p>
+            <ul class="list body-3 after">
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Rules for all content, all reels, all posts, or one reel</li>
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>Optional public reply under the comment</li>
+              <li><svg class="ph"><use href="#ph-check-circle"/></svg>A test tool that sends nothing to anyone</li>
+            </ul>
+          </div>
+          <div class="shot"><img src="img/autoreply.webp" width="1440" height="900" loading="lazy" alt="Auto replies page listing keyword rules for each reel" /></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. How it works -->
+    <section class="block soft" id="how">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker caption-3">How it works</span>
+          <h2 class="heading-2">Set up once, then just check in</h2>
+        </div>
+        <div class="steps">
+          <div class="step reveal">
+            <div class="step-num body-1">1</div>
+            <h3 class="heading-6">Connect your accounts</h3>
+            <p class="body-6">Sign in with Instagram, Facebook, Google and LinkedIn from the Accounts page. You do this once.</p>
+          </div>
+          <div class="step reveal">
+            <div class="step-num body-1">2</div>
+            <h3 class="heading-6">Press Update data</h3>
+            <p class="body-6">Your latest numbers load in seconds. From then on every account refreshes on its own each night.</p>
+          </div>
+          <div class="step reveal">
+            <div class="step-num body-1">3</div>
+            <h3 class="heading-6">Follow the plan</h3>
+            <p class="body-6">Act on the top tip, publish your next post everywhere, and let auto replies handle the comments.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Proof -->
+    <section class="block dark" id="results">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker caption-3">Results</span>
+          <h2 class="heading-2">Numbers from a real account</h2>
+          <p class="body-3">Chang Research Base runs its Instagram from the studio. This is its Overview card.</p>
+        </div>
+        <div class="case reveal">
+          <div class="case-head">
+            <div class="who">
+              <span class="avatar"><svg class="ph"><use href="#ph-instagram-logo"/></svg></span>
+              <div><div class="title-2">Chang Research Base</div><span class="meta caption-2">Instagram · Stock market and investing</span></div>
+            </div>
+            <span class="meta caption-2">30 days to 6 Nov 2026, compared with the 30 days before</span>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="label caption-1">Reach</div><div class="value heading-3">5,706</div><span class="delta caption-1"><svg class="ph"><use href="#ph-arrow-up"/></svg>1,340.9%</span></div>
+            <div class="stat"><div class="label caption-1">Views</div><div class="value heading-3">7,964</div><span class="delta caption-1"><svg class="ph"><use href="#ph-arrow-up"/></svg>71.9%</span></div>
+            <div class="stat"><div class="label caption-1">Net followers</div><div class="value heading-3">42</div><span class="delta caption-1"><svg class="ph"><use href="#ph-arrow-up"/></svg>600%</span></div>
+            <div class="stat"><div class="label caption-1">Engagement rate</div><div class="value heading-3">5.3%</div><span class="delta caption-1"><svg class="ph"><use href="#ph-arrow-up"/></svg>51.4%</span></div>
+          </div>
+        </div>
+        <div class="facts">
+          <div class="fact reveal"><svg class="ph ph-lg"><use href="#ph-moon-stars"/></svg><strong class="title-2">2:30 AM IST</strong><span class="caption-2">Every account refreshed nightly</span></div>
+          <div class="fact reveal"><svg class="ph ph-lg"><use href="#ph-clock"/></svg><strong class="title-2">Every 6 hours</strong><span class="caption-2">Instagram stories captured before they expire</span></div>
+          <div class="fact reveal"><svg class="ph ph-lg"><use href="#ph-calendar-check"/></svg><strong class="title-2">Every minute</strong><span class="caption-2">Scheduled posts checked and sent on time</span></div>
+          <div class="fact reveal"><svg class="ph ph-lg"><use href="#ph-file-csv"/></svg><strong class="title-2">CSV and PDF</strong><span class="caption-2">Export your numbers whenever you need them</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. FAQ -->
+    <section class="block" id="faq">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker caption-3">FAQ</span>
+          <h2 class="heading-2">Questions, answered</h2>
+        </div>
+        <div class="faq">
+          <details><summary class="title-3">Which accounts can I connect? <svg class="ph"><use href="#ph-plus"/></svg></summary><p class="body-3">Instagram Professional accounts (Business or Creator), Facebook Pages, YouTube channels and LinkedIn company pages. You can connect several of each.</p></details>
+          <details><summary class="title-3">How fresh are the numbers? <svg class="ph"><use href="#ph-plus"/></svg></summary><p class="body-3">Every account is refreshed every night at 2:30 AM IST. Press <b>Update data</b> at any time to load the latest numbers in a few seconds.</p></details>
+          <details><summary class="title-3">How do Instagram auto replies work? <svg class="ph"><use href="#ph-plus"/></svg></summary><p class="body-3">You create a rule with keywords, a message and a link. When someone comments or sends a DM with that keyword, the studio replies automatically. Instagram allows one private reply per comment within 7 days, and DM replies within 24 hours.</p></details>
+          <details><summary class="title-3">Can I schedule posts? <svg class="ph"><use href="#ph-plus"/></svg></summary><p class="body-3">Yes. Pick a schedule time in the Social Post wizard, or leave it empty to publish right away. Facebook scheduled posts must be 10 minutes to 30 days ahead.</p></details>
+          <details><summary class="title-3">Why are my audience demographics empty? <svg class="ph"><use href="#ph-plus"/></svg></summary><p class="body-3">Instagram only shares demographics and best time to post for accounts with at least 100 followers.</p></details>
+          <details><summary class="title-3">What happens when a connection expires? <svg class="ph"><use href="#ph-plus"/></svg></summary><p class="body-3">Connections renew themselves. If a platform refuses the renewal, the Accounts page shows it and you press <b>Update token</b> or <b>Reconnect</b>.</p></details>
+          <details><summary class="title-3">Can I export my data? <svg class="ph"><use href="#ph-plus"/></svg></summary><p class="body-3">Yes. Every platform has a Data tab with a CSV download, and the Overview page can be printed or saved as a PDF.</p></details>
+          <details><summary class="title-3">Where can I learn every feature? <svg class="ph"><use href="#ph-plus"/></svg></summary><p class="body-3">The <a href="/manual/">user manual</a> walks through every screen with labelled screenshots, and is also available as a Word file.</p></details>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. Risk reversal + final CTA -->
+    <section class="block" style="padding-top:0">
+      <div class="wrap">
+        <div class="assure">
+          <div class="reveal"><svg class="ph"><use href="#ph-shield-check"/></svg><p class="body-6"><strong class="title-3">Test before it goes live</strong>The Try it tool shows exactly which reply would be sent. Nothing reaches a follower.</p></div>
+          <div class="reveal"><svg class="ph"><use href="#ph-plugs-connected"/></svg><p class="body-6"><strong class="title-3">Disconnect any time</strong>Remove an account from the Accounts page with one click.</p></div>
+          <div class="reveal"><svg class="ph"><use href="#ph-database"/></svg><p class="body-6"><strong class="title-3">Your numbers stay yours</strong>History is saved in your own database, and every table downloads as CSV.</p></div>
+        </div>
+        <div class="cta reveal">
+          <h2 class="heading-2">Grow on four platforms<br class="br-lg"> without four dashboards</h2>
+          <p class="title-2">Sign in and press Update data. Your Overview is ready in seconds.</p>
+          <a class="btn btn-primary button-md" href="/login">Sign in to your studio <svg class="ph ph-move"><use href="#ph-arrow-right"/></svg></a>
+          <span class="alt caption-2">New here? <a href="/manual/">Read the user manual</a> first.</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span class="caption-2">© 2026 CMS Analytics Studio · A product of <a href="https://changtechs.com/">changtechs.com</a></span>
+      <nav class="caption-1" aria-label="Footer">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#faq">FAQ</a>
+        <a href="/manual/">User manual</a>
+        <a href="/login">Sign in</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Mobile menu: full height panel, links arrive one after another (60ms apart, 400ms cap)
+    const body = document.body, menuBtn = document.getElementById('menuBtn'), panel = document.getElementById('mobilePanel');
+    const panelLinks = [...panel.querySelectorAll('a')];
+    panelLinks.forEach((a, i) => { a.style.transitionDelay = Math.min(i * 60, 400) + 'ms'; });
+    const setMenu = (open) => {
+      body.classList.toggle('menu-open', open);
+      menuBtn.setAttribute('aria-expanded', open);
+      menuBtn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+      panel.setAttribute('aria-hidden', !open);
+    };
+    menuBtn.addEventListener('click', () => setMenu(!body.classList.contains('menu-open')));
+    panelLinks.forEach((a) => a.addEventListener('click', () => setMenu(false)));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
+
+    // Scroll reveals, once each
+    const revealer = new IntersectionObserver((entries) => {
+      entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); revealer.unobserve(en.target); } });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.reveal').forEach((el) => reduce ? el.classList.add('in') : revealer.observe(el));
+
+    // Tagline: each word lights up as it crosses a line 60% down the screen
+    const tagline = document.getElementById('tagline');
+    if (!reduce) {
+      const walk = (node) => {
+        [...node.childNodes].forEach((n) => {
+          if (n.nodeType === 3) {
+            const frag = document.createDocumentFragment();
+            n.textContent.split(/(\s+)/).forEach((part) => {
+              if (!part) return;
+              if (/^\s+$/.test(part)) frag.appendChild(document.createTextNode(part));
+              else { const s = document.createElement('span'); s.className = 'w'; s.textContent = part; frag.appendChild(s); }
+            });
+            n.replaceWith(frag);
+          }
+        });
+      };
+      walk(tagline);
+      const words = [...tagline.querySelectorAll('.w')];
+      const wordObserver = new IntersectionObserver((entries) => {
+        entries.forEach((en) => { en.target.classList.toggle('on', en.boundingClientRect.top < window.innerHeight * 0.6 || en.isIntersecting); });
+      }, { rootMargin: '0px 0px -40% 0px', threshold: 0 });
+      words.forEach((w) => wordObserver.observe(w));
+    }
+
+    // Mark the nav link of the section on screen
+    const navLinks = [...document.querySelectorAll('.nav-links a[href^="#"]')];
+    const sectionObserver = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (!en.isIntersecting) return;
+        navLinks.forEach((a) => a.setAttribute('aria-current', a.getAttribute('href') === '#' + en.target.id ? 'true' : 'false'));
+      });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    navLinks.forEach((a) => { const s = document.querySelector(a.getAttribute('href')); if (s) sectionObserver.observe(s); });
+  </script>
+</body>
+</html>

@@ -8,7 +8,20 @@ export default defineConfig(({ mode }) => {
   const allowedHosts = (env.DEV_ALLOWED_HOSTS || '.trycloudflare.com').split(',').map((h) => h.trim()).filter(Boolean)
 
   return {
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Dev only: serve public/welcome and public/manual for their folder URLs, as Express does in production.
+    {
+      name: 'static-page-folders',
+      configureServer(server) {
+        server.middlewares.use((req, _res, next) => {
+          const m = req.url?.match(/^\/(welcome|manual)\/?(\?.*)?$/)
+          if (m) req.url = `/${m[1]}/index.html${m[2] ?? ''}`
+          next()
+        })
+      },
+    },
+  ],
   // Agent worktrees under .claude/ hold copies of the repo; their tests are not this checkout's.
   test: { exclude: ['**/node_modules/**', '**/dist/**', '.claude/**'] },
   server: {

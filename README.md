@@ -6,6 +6,12 @@ Instagram and YouTube analytics in one dashboard, plus keyword auto-replies for 
 - **Backend:** Express (`server/`), PostgreSQL, node-cron jobs
 - **Data:** Instagram API (Instagram Login), YouTube Data + Analytics APIs
 
+📘 **New users:** see the [User Guide](docs/user-guide/README.md) for how to use the app.
+
+Public pages (served from `public/`, live after deploy):
+- **Landing page:** `/welcome/` (`public/welcome/index.html`)
+- **User manual:** `/manual/` (`public/manual/index.html`, built from the guide with `node scripts/build-user-manual-html.cjs`; needs pandoc)
+
 ## Run locally
 
 ```bash
