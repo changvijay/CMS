@@ -1,6 +1,6 @@
 import { LIMITS, PLATFORM_LABEL, nativelyScheduled, postTypeInfo } from './platforms';
 import { charCount, countHashtags, countMentions, getValue, mediaForType } from './mapping';
-import { checkMedia, checkThumbnail } from './mediaRules';
+import { checkMedia, checkThumbnail, isShortsCandidate } from './mediaRules';
 import type { AutoReplySettings, Issue, MediaItem, Platform, PlatformDraft, SharedFields } from './types';
 
 /** Everything wrong with one platform tab, in the same words the server would use. */
@@ -65,7 +65,12 @@ export function validateDraft(platform: Platform, draft: PlatformDraft, shared: 
     if (charCount(description) > LIMITS.ytDescription) err(`Description is over ${LIMITS.ytDescription} characters.`);
     if (/[<>]/.test(title + description)) err('YouTube does not allow < or > in the title or description.');
     if (v('made_for_kids') === null || v('made_for_kids') === undefined) err('Choose whether the video is made for kids (required by law).');
-    issues.push(...checkThumbnail('youtube', v<MediaItem | null>('thumbnail')));
+    if (draft.postType === 'short') {
+      if (media[0]?.kind === 'video' && media[0].duration == null) issues.push({ level: 'warn', message: 'Could not read the video length. A Short must be 3 minutes or less.' });
+    } else {
+      issues.push(...checkThumbnail('youtube', v<MediaItem | null>('thumbnail')));
+      if (isShortsCandidate(media[0])) issues.push({ level: 'warn', message: 'This video is vertical and 3 minutes or less, so YouTube will show it as a Short. Pick "Short" if that is what you want.' });
+    }
   }
   return issues;
 }

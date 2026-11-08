@@ -53,7 +53,8 @@ export const POST_TYPES: Record<Platform, PostTypeInfo[]> = {
     { id: 'poll', label: 'Poll', hint: 'A question with 2 to 4 options', media: 'none' },
   ],
   youtube: [
-    { id: 'video', label: 'Video', hint: 'Vertical videos of 3 minutes or less become Shorts', media: 'video', min: 1, max: 1 },
+    { id: 'video', label: 'Full video', hint: 'Regular horizontal video, any length', media: 'video', min: 1, max: 1 },
+    { id: 'short', label: 'Short', hint: 'Vertical video, 3 minutes or less', media: 'video', min: 1, max: 1 },
   ],
 };
 

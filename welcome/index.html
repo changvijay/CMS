@@ -430,6 +430,31 @@
     .trust p { color: var(--ink-2); }
     .trust strong { display: block; color: var(--ink); margin-bottom: var(--s-50); }
 
+    /* Comparison table: the studio against popular tools, priced per year in rupees */
+    /* position: relative keeps the hidden screen reader labels inside the scroll box, so they never widen the page */
+    .cmp-wrap { position: relative; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r-2xl); background: var(--base); box-shadow: var(--shadow); }
+    .cmp { width: 100%; min-width: 820px; border-collapse: collapse; }
+    .cmp th, .cmp td { padding: var(--s-100) var(--s-200); text-align: left; vertical-align: middle; border-bottom: 1px solid var(--line); }
+    .cmp tbody tr:last-child > * { border-bottom: 0; }
+    .cmp thead th { background: var(--soft); color: var(--muted); white-space: nowrap; }
+    .cmp tbody th { position: sticky; left: 0; z-index: 1; background: var(--base); min-width: 180px; }
+    .cmp tr.ours > * { background: var(--accent-soft); }
+    .cmp-name { display: block; color: var(--ink); }
+    .cmp tr.ours .cmp-name { color: var(--accent); }
+    .cmp-plan { display: block; color: var(--muted); }
+    .cmp-price { min-width: 200px; }
+    .cmp-price .mono { display: block; color: var(--ink); }
+    .cmp-bar { display: block; height: 6px; margin-top: var(--s-50); border-radius: var(--r-full); background: var(--soft); overflow: hidden; }
+    .cmp-bar i { display: block; height: 100%; width: var(--w); border-radius: var(--r-full); background: #c4c7d6; transform-origin: 0 50%; }
+    .cmp tr.ours .cmp-bar i { background: var(--accent); }
+    .ck { display: inline-flex; align-items: center; }
+    .ck .ph { width: 20px; height: 20px; }
+    .ck.yes { color: var(--accent); }
+    .ck.no { color: #c4c4c4; }
+    .ck.part { color: #a15c07; white-space: nowrap; }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .cmp-note { margin-top: var(--s-200); color: var(--muted); max-width: 784px; }
+
     /* FAQ */
     .faq { max-width: 784px; margin: 0 auto; display: grid; gap: var(--s-100); }
     details { border-radius: var(--r-xl); border: 1px solid var(--line); background: var(--base); transition: box-shadow 300ms var(--ease); }
@@ -915,6 +940,144 @@
           <div class="reveal"><svg class="ph"><use href="#ph-file-csv"/></svg><p class="body-6"><strong class="title-3">Your data leaves with you</strong>Every table downloads as CSV and the Overview saves as PDF, whenever you want.</p></div>
           <div class="reveal"><svg class="ph"><use href="#ph-chart-line-up"/></svg><p class="body-6"><strong class="title-3">Proof from a live account</strong>The results above come from Chang Research Base, which runs on the studio today.</p></div>
         </div>
+      </div>
+    </section>
+
+    <!-- Comparison -->
+    <section class="block" id="compare">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="kicker caption-3">How we compare</span>
+          <h2 class="heading-2">All three jobs in one tool. Less than any scheduler on its own.</h2>
+          <p class="body-3">Analytics, posting and Instagram auto replies. Most tools do one or two, and charge more for it.</p>
+        </div>
+        <div class="cmp-wrap" role="region" aria-label="Comparison table, scrolls sideways on small screens" tabindex="0">
+          <table class="cmp">
+            <caption class="sr">Yearly price and features of CMS Analytics Studio compared with popular social media tools</caption>
+            <thead>
+              <tr class="caption-3">
+                <th scope="col">Tool</th>
+                <th scope="col">Price per year</th>
+                <th scope="col">Analytics</th>
+                <th scope="col">Scheduling</th>
+                <th scope="col">Comment to DM</th>
+                <th scope="col">YouTube</th>
+                <th scope="col">LinkedIn</th>
+              </tr>
+            </thead>
+            <tbody class="body-6">
+              <tr class="ours">
+                <th scope="row"><span class="cmp-name title-4">CMS Analytics Studio</span><span class="cmp-plan caption-5">Creator, every feature</span></th>
+                <td class="cmp-price"><span class="mono body-4">₹7,999</span><span class="cmp-bar"><i style="--w:7.1%"></i></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="cmp-name title-4">SuperProfile</span><span class="cmp-plan caption-5">Creator</span></th>
+                <td class="cmp-price"><span class="mono body-4">≈ ₹5,988</span><span class="cmp-bar"><i style="--w:5.3%"></i></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="cmp-name title-4">Zoho Social</span><span class="cmp-plan caption-5">Standard</span></th>
+                <td class="cmp-price"><span class="mono body-4">≈ ₹11,400</span><span class="cmp-bar"><i style="--w:10.1%"></i></span></td>
+                <td><span class="ck part caption-4">Summary only</span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="cmp-name title-4">LinkDM</span><span class="cmp-plan caption-5">Pro</span></th>
+                <td class="cmp-price"><span class="mono body-4">≈ ₹17,290</span><span class="cmp-bar"><i style="--w:15.3%"></i></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="cmp-name title-4">Publer</span><span class="cmp-plan caption-5">Professional, 4 accounts</span></th>
+                <td class="cmp-price"><span class="mono body-4">≈ ₹19,380</span><span class="cmp-bar"><i style="--w:17.2%"></i></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="cmp-name title-4">Later</span><span class="cmp-plan caption-5">Starter</span></th>
+                <td class="cmp-price"><span class="mono body-4">≈ ₹21,375</span><span class="cmp-bar"><i style="--w:18.9%"></i></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="cmp-name title-4">Buffer</span><span class="cmp-plan caption-5">Essentials, 4 channels</span></th>
+                <td class="cmp-price"><span class="mono body-4">≈ ₹22,800</span><span class="cmp-bar"><i style="--w:20.2%"></i></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="cmp-name title-4">Metricool</span><span class="cmp-plan caption-5">Starter</span></th>
+                <td class="cmp-price"><span class="mono body-4">≈ ₹22,800</span><span class="cmp-bar"><i style="--w:20.2%"></i></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="cmp-name title-4">SocialPilot</span><span class="cmp-plan caption-5">Essentials</span></th>
+                <td class="cmp-price"><span class="mono body-4">≈ ₹29,070</span><span class="cmp-bar"><i style="--w:25.8%"></i></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="cmp-name title-4">ManyChat</span><span class="cmp-plan caption-5">Pro, 2,500 contacts</span></th>
+                <td class="cmp-price"><span class="mono body-4">≈ ₹33,060 and up</span><span class="cmp-bar"><i style="--w:29.3%"></i></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+                <td><span class="ck no"><svg class="ph"><use href="#ph-x"/></svg><span class="sr">No</span></span></td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="cmp-name title-4">Statusbrew</span><span class="cmp-plan caption-5">Lite</span></th>
+                <td class="cmp-price"><span class="mono body-4">≈ ₹78,660</span><span class="cmp-bar"><i style="--w:69.7%"></i></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck part caption-4">Comment rules</span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+              </tr>
+              <tr>
+                <th scope="row"><span class="cmp-name title-4">Hootsuite</span><span class="cmp-plan caption-5">Standard, 1 user</span></th>
+                <td class="cmp-price"><span class="mono body-4">≈ ₹1,12,860</span><span class="cmp-bar"><i style="--w:100%"></i></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck part caption-4">Higher plans</span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+                <td><span class="ck yes"><svg class="ph"><use href="#ph-check-circle"/></svg><span class="sr">Yes</span></span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="cmp-note caption-5">Lowest plan of each tool that covers one creator with four accounts. Public yearly prices, November 2026, converted at ₹95 to the US dollar, before GST. Buffer and Publer are priced for four channels; ManyChat is billed by contacts and costs up to ₹44,460 at this size; the SuperProfile price is as reported by third party guides. Prices change, so check each tool's own pricing page.</p>
       </div>
     </section>
 

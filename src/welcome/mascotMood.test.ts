@@ -82,6 +82,7 @@ describe('lineFor', () => {
 describe('sectionFromId', () => {
   it('maps known ids and falls back to other', () => {
     expect(sectionFromId('pricing')).toBe('pricing');
+    expect(sectionFromId('compare')).toBe('pricing');
     expect(sectionFromId('main')).toBe('other');
   });
 });

@@ -83,12 +83,33 @@ describe('media rules', () => {
     expect(isShortsCandidate(vid('v', { duration: 240 }))).toBe(false);
     expect(isShortsCandidate(vid('v', { width: 1920, height: 1080 }))).toBe(false);
   });
+
+  it('checks YouTube Shorts are vertical and 3 minutes or less', () => {
+    expect(checkMedia('youtube', 'short', [vid('v', { duration: 60 })])).toEqual([]);
+    expect(checkMedia('youtube', 'short', [vid('v', { duration: 240 })])[0].message).toMatch(/longer than 3 min/);
+    expect(checkMedia('youtube', 'short', [vid('v', { width: 1920, height: 1080 })])[0].level).toBe('error');
+  });
+});
+
+describe('YouTube Shorts', () => {
+  it('sends the video shape and no thumbnail for a Short', () => {
+    const draft = { ...emptyDraft('youtube'), postType: 'short' as const };
+    const f = buildFields('youtube', draft, shared({ media: [vid()], thumbnail: img('t') }));
+    expect(f.thumbnail).toBeNull();
+    expect((f.media as { width: number; height: number; duration: number }[])[0]).toMatchObject({ width: 1080, height: 1920, duration: 30 });
+  });
+
+  it('warns when a full video looks like a Short', () => {
+    const issues = validateDraft('youtube', emptyDraft('youtube'), shared({ media: [vid()] }));
+    expect(issues.some((i) => /show it as a Short/.test(i.message))).toBe(true);
+  });
 });
 
 describe('validation', () => {
-  it('requires the made-for-kids answer on YouTube', () => {
-    const issues = validateDraft('youtube', emptyDraft('youtube'), shared({ media: [vid()] }));
-    expect(issues.some((i) => /made for kids/.test(i.message))).toBe(true);
+  it('defaults YouTube to not made for kids, and still requires an answer if it is cleared', () => {
+    expect(validateDraft('youtube', emptyDraft('youtube'), shared({ media: [vid()] })).some((i) => /made for kids/.test(i.message))).toBe(false);
+    const cleared = { ...emptyDraft('youtube'), values: { made_for_kids: null } };
+    expect(validateDraft('youtube', cleared, shared({ media: [vid()] })).some((i) => /made for kids/.test(i.message))).toBe(true);
   });
 
   it('checks LinkedIn polls', () => {

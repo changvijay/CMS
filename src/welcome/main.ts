@@ -144,6 +144,23 @@ mm.add(MOTION, () => {
     restore.push(() => { el.textContent = final })
   })
 
+  // ---------- Comparison: rows appear and the price bars grow, cheapest first in the table ----------
+  // Rows only fade (no move), so the sticky tool column keeps working while they animate.
+  const cmpRows = $$('.cmp tbody tr')
+  const cmpBars = $$('.cmp-bar i')
+  if (cmpRows.length) {
+    gsap.set(cmpRows, { opacity: 0 })
+    gsap.set(cmpBars, { scaleX: 0 })
+    ScrollTrigger.create({
+      trigger: '.cmp', start: 'top 75%', once: true,
+      onEnter: () => {
+        gsap.to(cmpRows, { opacity: 1, duration: 0.5, ease: EASE, stagger: 0.05 })
+        gsap.to(cmpBars, { scaleX: 1, duration: 1, ease: 'power3.out', stagger: 0.06, delay: 0.15 })
+      },
+    })
+    restore.push(() => gsap.set([...cmpRows, ...cmpBars], { clearProps: 'all' }))
+  }
+
   // ---------- Final call to action zooms into place ----------
   gsap.fromTo('.cta', { scale: 0.9, opacity: 0.4, y: 48 }, {
     scale: 1, opacity: 1, y: 0, ease: 'none',

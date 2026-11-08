@@ -4,7 +4,7 @@ export type Platform = 'instagram' | 'facebook' | 'linkedin' | 'youtube';
 export type IgType = 'image' | 'carousel' | 'reel' | 'story';
 export type FbType = 'text' | 'link' | 'photo' | 'multi_photo' | 'video' | 'reel' | 'story';
 export type LiType = 'none' | 'image' | 'multi_image' | 'video' | 'document' | 'article' | 'poll';
-export type YtType = 'video';
+export type YtType = 'video' | 'short';
 export type PostType = IgType | FbType | LiType | YtType;
 
 /** One uploaded (or uploading) file. `url` is the public storage link once the upload has finished. */

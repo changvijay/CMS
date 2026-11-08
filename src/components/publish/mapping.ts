@@ -26,7 +26,7 @@ export function defaultValues(platform: Platform): Record<string, unknown> {
     case 'linkedin':
       return { visibility: 'PUBLIC', reshare_disabled: false, lifecycle: 'PUBLISHED', document_title: '', article_thumbnail: null, poll: { question: '', options: ['', ''], duration: 'THREE_DAYS' } };
     case 'youtube':
-      return { category_id: '22', privacy: 'public', made_for_kids: null, embeddable: true, license: 'youtube', public_stats_viewable: true, default_language: '', playlist_id: '', notify_subscribers: true };
+      return { category_id: '22', privacy: 'public', made_for_kids: false, embeddable: true, license: 'youtube', public_stats_viewable: true, default_language: '', playlist_id: '', notify_subscribers: true };
   }
 }
 
@@ -188,7 +188,7 @@ export function mediaForType(platform: Platform, postType: string, items: MediaI
   switch (`${platform}:${postType}`) {
     case 'instagram:image': case 'facebook:photo': case 'linkedin:image': return images.slice(0, 1);
     case 'instagram:carousel': return items.filter((m) => m.kind !== 'document').slice(0, 10);
-    case 'instagram:reel': case 'facebook:video': case 'facebook:reel': case 'linkedin:video': case 'youtube:video': return videos.slice(0, 1);
+    case 'instagram:reel': case 'facebook:video': case 'facebook:reel': case 'linkedin:video': case 'youtube:video': case 'youtube:short': return videos.slice(0, 1);
     case 'instagram:story': case 'facebook:story': return items.filter((m) => m.kind !== 'document').slice(0, 1);
     case 'facebook:multi_photo': return images.slice(0, 30);
     case 'linkedin:multi_image': return images.slice(0, 20);
@@ -249,12 +249,16 @@ export function buildFields(platform: Platform, draft: PlatformDraft, shared: Sh
       poll: draft.postType === 'poll' ? v('poll') : undefined,
     };
   }
+  const short = draft.postType === 'short';
+  const video = mediaForType(platform, draft.postType, ready(v('media')))[0];
   return {
     title: v('title'),
     description: v('description'),
     tags: v('tags'),
-    media,
-    thumbnail: asFile(v('thumbnail') as MediaItem),
+    // Shorts also send the video's shape and length so the server can check it is really a Short.
+    media: short && video ? media.map((m) => ({ ...m, width: video.width, height: video.height, duration: video.duration })) : media,
+    // Shorts don't show custom thumbnails, so none is sent.
+    thumbnail: short ? null : asFile(v('thumbnail') as MediaItem),
     category_id: v('category_id'),
     privacy: v('privacy'),
     made_for_kids: v('made_for_kids'),

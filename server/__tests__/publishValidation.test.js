@@ -34,6 +34,14 @@ describe('validateTarget', () => {
     expect(validateTarget({ platform: 'youtube', postType: 'video', fields: { title: 'ok', made_for_kids: false, media: [vid] } })).toEqual([]);
   });
 
+  it('checks YouTube Shorts are vertical and 3 minutes or less', () => {
+    const fields = (m) => ({ title: 'ok', made_for_kids: false, media: [{ ...vid, ...m }] });
+    expect(validateTarget({ platform: 'youtube', postType: 'short', fields: fields({ width: 1080, height: 1920, duration: 60 }) })).toEqual([]);
+    expect(validateTarget({ platform: 'youtube', postType: 'short', fields: fields({ width: 1920, height: 1080, duration: 60 }) })).toContain('YouTube: a Short must be vertical or square.');
+    expect(validateTarget({ platform: 'youtube', postType: 'short', fields: fields({ width: 1080, height: 1920, duration: 240 }) })).toContain('YouTube: a Short must be 3 minutes or less.');
+    expect(validateTarget({ platform: 'youtube', postType: 'live', fields: fields({}) })).toEqual(['YouTube: unknown post type "live".']);
+  });
+
   it('needs a title for LinkedIn documents', () => {
     expect(validateTarget({ platform: 'linkedin', postType: 'document', fields: { media: [{ url: 'https://cdn/a.pdf', mime: 'application/pdf' }] } })).toContain('LinkedIn: a document post needs a title.');
   });

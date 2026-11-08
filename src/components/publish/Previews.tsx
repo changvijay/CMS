@@ -84,10 +84,11 @@ export function Preview({ platform, draft, shared, account }: Props) {
       </div>
     );
   }
-  const thumb = v<MediaItem | null>('thumbnail');
+  const short = draft.postType === 'short';
+  const thumb = short ? null : v<MediaItem | null>('thumbnail');
   return (
     <div className="pv pv-yt">
-      <div className="pv-media yt">
+      <div className={`pv-media yt${short ? ' tall' : ''}`}>
         {thumb ? <img src={mediaSrc(thumb)} alt="" /> : media[0] ? <video src={mediaSrc(media[0])} muted playsInline preload="metadata" /> : <div className="pv-empty">No video yet</div>}
         {media[0]?.duration ? <span className="pv-duration">{Math.floor(media[0].duration / 60)}:{String(Math.round(media[0].duration % 60)).padStart(2, '0')}</span> : null}
       </div>

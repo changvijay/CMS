@@ -164,6 +164,7 @@ textarea.pf-input { resize: vertical; min-height: 80px; line-height: 1.45; }
 .pv-media { position: relative; background: #000; aspect-ratio: 4 / 5; display: grid; place-items: center; }
 .pv-media.tall { aspect-ratio: 9 / 16; }
 .pv-media.yt { aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; }
+.pv-media.yt.tall { aspect-ratio: 9 / 16; max-width: 280px; margin: 0 auto; }
 .pv-media img, .pv-media video { width: 100%; height: 100%; object-fit: cover; }
 .pv-count { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,.6); color: #fff; border-radius: 999px; padding: 2px 8px; font-size: 0.72rem; }
 .pv-duration { position: absolute; bottom: 6px; right: 6px; background: rgba(0,0,0,.8); color: #fff; border-radius: 4px; padding: 1px 5px; font-size: 0.72rem; }

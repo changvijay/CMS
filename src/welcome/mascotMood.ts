@@ -114,7 +114,8 @@ export function sectionFromId(id: string): Section {
     case 'tour': return 'tour';
     case 'how': return 'how';
     case 'results': return 'results';
-    case 'pricing': return 'pricing';
+    case 'pricing':
+    case 'compare': return 'pricing';
     case 'faq': return 'faq';
     case 'hero': return 'hero';
     default: return 'other';

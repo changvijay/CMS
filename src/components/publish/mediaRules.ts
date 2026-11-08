@@ -32,6 +32,8 @@ const LI_IMAGE: Spec = { formats: ['image/jpeg', 'image/png', 'image/gif'], maxB
 const LI_VIDEO: Spec = { formats: ['video/mp4'], maxBytes: 500 * MB, minSeconds: 3, maxSeconds: 30 * 60, label: 'LinkedIn video' };
 const LI_DOC: Spec = { formats: ['application/pdf'], maxBytes: 100 * MB, label: 'LinkedIn document' };
 const YT_VIDEO: Spec = { formats: ['video/'], maxBytes: 256 * 1024 * MB, maxSeconds: 12 * 60 * 60, label: 'YouTube video' };
+// Shorts must be vertical or square; a wider video uploads as a normal video.
+const YT_SHORT: Spec = { formats: ['video/'], maxBytes: 256 * 1024 * MB, maxSeconds: 180, maxRatio: 1, label: 'YouTube Short' };
 
 export const THUMBNAIL_RULES: Partial<Record<Platform, Spec>> = {
   youtube: { formats: ['image/jpeg', 'image/png'], maxBytes: 2 * MB, minRatio: 16 / 9 - 0.02, maxRatio: 16 / 9 + 0.02, ratioIsWarning: true, minWidth: 640, label: 'YouTube thumbnail' },
@@ -56,6 +58,7 @@ export function specFor(platform: Platform, postType: PostType, item: MediaItem)
     case 'linkedin:video': return LI_VIDEO;
     case 'linkedin:document': return LI_DOC;
     case 'youtube:video': return YT_VIDEO;
+    case 'youtube:short': return YT_SHORT;
     default: return null;
   }
 }

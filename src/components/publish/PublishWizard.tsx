@@ -12,6 +12,7 @@ import { PostProgress, StepReview } from './StepReview';
 import { PlatformIcon } from './PlatformIcon';
 import { PLATFORM_LABEL } from './platforms';
 import { buildFields, emptyDraft } from './mapping';
+import { applyLastChoices, rememberChoices } from './lastChoices';
 import { hasErrors, scheduleIso, validateAutoReply, validateDraft, validateSchedule } from './validate';
 import type { AutoReplySettings, Issue, MediaItem, Platform, PlatformDraft, PublishAccount, SharedFields, StepId, WizardState } from './types';
 import { SectionSkeleton } from '../Skeleton';
@@ -20,6 +21,8 @@ const STEP_TITLE: Record<StepId, string> = { platforms: 'Platform', accounts: 'A
 
 const emptyShared = (): SharedFields => ({ title: '', description: '', hashtags: [], keywords: [], media: [], thumbnail: null, link: '', location: null, scheduleAt: '' });
 const initialState = (): WizardState => ({ step: 'platforms', platforms: [], accounts: {}, shared: emptyShared(), drafts: {}, autoReply: defaultAutoReply() });
+/** A brand-new post starts with the choices from the last one the user published. */
+const freshState = (): WizardState => applyLastChoices(initialState());
 
 type Action =
   | { type: 'load'; state: WizardState }
@@ -114,7 +117,7 @@ function Stepper({ steps, current, onGo, reachable }: { steps: StepId[]; current
 export default function PublishWizard({ token }: { token: string }) {
   const { postId } = useParams();
   const navigate = useNavigate();
-  const [state, dispatch] = useReducer(reducer, undefined, initialState);
+  const [state, dispatch] = useReducer(reducer, undefined, postId ? initialState : freshState);
   const [mode, setMode] = useState<'loading' | 'wizard' | 'progress'>(postId ? 'loading' : 'wizard');
   const [accounts, setAccounts] = useState<Partial<Record<Platform, PublishAccount[]>>>({});
   const [blockers, setBlockers] = useState<Issue[]>([]);
@@ -130,7 +133,7 @@ export default function PublishWizard({ token }: { token: string }) {
     if (window.location.search) window.history.replaceState(null, '', window.location.pathname);
     if (!postId) {
       // "New post" from a finished post: start over.
-      if (loadedFor.current !== null) { dispatch({ type: 'load', state: initialState() }); draftId.current = null; }
+      if (loadedFor.current !== null) { dispatch({ type: 'load', state: freshState() }); draftId.current = null; }
       loadedFor.current = '';
       return;
     }
@@ -236,6 +239,7 @@ export default function PublishWizard({ token }: { token: string }) {
         ? { ...ar, active_from: scheduleIso(ar.active_from), active_until: scheduleIso(ar.active_until), quick_replies: ar.quick_replies.map((title) => ({ title })) }
         : null;
       await submitPost(token, String(id), { targets, scheduleAt: scheduleIso(state.shared.scheduleAt), timezone: timezoneName(), autoReply, wizard });
+      rememberChoices(state);
       loadedFor.current = String(id);
       setMode('progress');
       navigate(`/publish/${id}`, { replace: true });
@@ -284,12 +288,15 @@ export default function PublishWizard({ token }: { token: string }) {
                   onChange={(a) => dispatch({ type: 'patch', patch: { accounts: a } })}
                   onLoaded={(loaded) => {
                     setAccounts(loaded);
-                    // Pre-select when a platform has exactly one working account.
+                    // Drop remembered accounts that are gone, then pre-select when a platform has exactly one working account.
                     const auto = { ...state.accounts };
                     let changed = false;
                     for (const p of state.platforms) {
-                      const ok = (loaded[p] ?? []).filter((x) => x.tokenStatus === 'ok');
-                      if (!(auto[p] ?? []).length && ok.length === 1) { auto[p] = [ok[0].id]; changed = true; }
+                      const all = loaded[p] ?? [];
+                      const kept = (auto[p] ?? []).filter((id) => all.some((x) => x.id === id));
+                      if (kept.length !== (auto[p] ?? []).length) { auto[p] = kept; changed = true; }
+                      const ok = all.filter((x) => x.tokenStatus === 'ok');
+                      if (!kept.length && ok.length === 1) { auto[p] = [ok[0].id]; changed = true; }
                     }
                     if (changed) dispatch({ type: 'patch', patch: { accounts: auto } });
                   }}

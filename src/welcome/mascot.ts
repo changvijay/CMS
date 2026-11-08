@@ -8,7 +8,7 @@
 import { CLICK_MS, SLEEP_MS, isShake, lineFor, pickMood, sectionFromId, type Mood, type Section } from './mascotMood';
 
 const OLD_HIDE_KEY = 'pixel-hidden'; // set by the removed × button; cleared so Pixel comes back
-const SECTION_IDS = ['hero', 'features', 'tour', 'how', 'results', 'pricing', 'faq'];
+const SECTION_IDS = ['hero', 'features', 'tour', 'how', 'results', 'pricing', 'compare', 'faq'];
 
 const GAP = 10; // px between the cursor and Pixel's edge
 const PERCH_SCALE = 1.5; // size while sitting on the hero screenshot

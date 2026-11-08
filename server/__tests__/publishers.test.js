@@ -144,6 +144,17 @@ describe('YouTube', () => {
     expect(r.status).toMatchObject({ privacyStatus: 'private', publishAt: '2026-11-05T05:30:00.000Z', selfDeclaredMadeForKids: false, embeddable: true, license: 'youtube' });
     expect(r.snippet.tags).toEqual(['ipo']);
   });
+
+  it('adds #Shorts once to Shorts and leaves full videos alone', () => {
+    expect(videoResource({ title: 'IPO in 60s' }, null, 'short').snippet.title).toBe('IPO in 60s #Shorts');
+    expect(videoResource({ title: 'IPO #shorts' }, null, 'short').snippet.title).toBe('IPO #shorts');
+    expect(videoResource({ title: 'IPO in 60s' }, null, 'video').snippet.title).toBe('IPO in 60s');
+    // No room in the title, so it goes to the description instead.
+    const long = 'x'.repeat(98);
+    const r = videoResource({ title: long, description: 'Hi' }, null, 'short');
+    expect(r.snippet.title).toBe(long);
+    expect(r.snippet.description).toBe('#Shorts\n\nHi');
+  });
 });
 
 describe('runner', () => {

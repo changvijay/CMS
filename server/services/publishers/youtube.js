@@ -6,7 +6,8 @@ import { PublishError, fetchBytes } from './common.js';
  */
 const API = 'https://www.googleapis.com/youtube/v3';
 const UPLOAD = 'https://www.googleapis.com/upload/youtube/v3';
-export const YT_LIMITS = { title: 100, description: 5000, tagsTotal: 500, thumbnailBytes: 2 * 1024 * 1024 };
+export const YT_LIMITS = { title: 100, description: 5000, tagsTotal: 500, thumbnailBytes: 2 * 1024 * 1024, shortSeconds: 180 };
+export const YT_TYPES = ['video', 'short'];
 export const YT_PRIVACY = ['public', 'unlisted', 'private'];
 export const YT_LICENSES = ['youtube', 'creativeCommon'];
 
@@ -35,13 +36,26 @@ export function fitTags(tags, limit = YT_LIMITS.tagsTotal) {
   return out;
 }
 
+const SHORTS_TAG = /#shorts\b/i;
+
+/** Adds #Shorts to the title, or to the start of the description if the title has no room. */
+export function withShortsTag(f) {
+  const title = String(f.title || '').trim();
+  const description = String(f.description || '');
+  if (SHORTS_TAG.test(title) || SHORTS_TAG.test(description)) return { title, description };
+  const tagged = `${title} #Shorts`;
+  if ([...tagged].length <= YT_LIMITS.title) return { title: tagged, description };
+  return { title, description: description ? `#Shorts\n\n${description}` : '#Shorts' };
+}
+
 /** The videos.insert body. Pure, so it is unit-tested. */
-export function videoResource(f, scheduleAt) {
+export function videoResource(f, scheduleAt, postType = 'video') {
+  const { title, description } = postType === 'short' ? withShortsTag(f) : { title: f.title, description: f.description };
   const privacy = scheduleAt ? 'private' : (YT_PRIVACY.includes(f.privacy) ? f.privacy : 'public');
   return {
     snippet: {
-      title: String(f.title || '').slice(0, YT_LIMITS.title) || 'Untitled',
-      description: String(f.description || '').slice(0, YT_LIMITS.description),
+      title: String(title || '').slice(0, YT_LIMITS.title) || 'Untitled',
+      description: String(description || '').slice(0, YT_LIMITS.description),
       tags: fitTags(f.tags),
       categoryId: f.category_id ? String(f.category_id) : undefined,
       defaultLanguage: f.default_language || undefined,
@@ -58,7 +72,7 @@ export function videoResource(f, scheduleAt) {
   };
 }
 
-export async function publishYoutube({ fields: f, scheduleAt }, { accessToken }, onStep = () => {}, deps = {}) {
+export async function publishYoutube({ postType = 'video', fields: f, scheduleAt }, { accessToken }, onStep = () => {}, deps = {}) {
   const fetchImpl = deps.fetch || fetch;
   const auth = { Authorization: `Bearer ${accessToken}` };
   const video = (f.media || [])[0];
@@ -75,7 +89,7 @@ export async function publishYoutube({ fields: f, scheduleAt }, { accessToken },
   const init = await fetchImpl(`${UPLOAD}/videos?uploadType=resumable&part=snippet,status&notifySubscribers=${f.notify_subscribers === false ? 'false' : 'true'}`, {
     method: 'POST',
     headers: { ...auth, 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Type': mime, ...(size ? { 'X-Upload-Content-Length': String(size) } : {}) },
-    body: JSON.stringify(videoResource(f, scheduleAt)),
+    body: JSON.stringify(videoResource(f, scheduleAt, postType)),
   });
   if (!init.ok) throw await ytError(init, 'upload');
   const sessionUrl = init.headers.get('location');
@@ -92,7 +106,8 @@ export async function publishYoutube({ fields: f, scheduleAt }, { accessToken },
 
   onStep('publish');
   const notes = [];
-  if (f.thumbnail?.url) {
+  // Shorts don't show custom thumbnails, so none is set for them.
+  if (f.thumbnail?.url && postType !== 'short') {
     const bytes = await fetchBytes(f.thumbnail.url, { fetchImpl });
     const r = await fetchImpl(`${UPLOAD}/thumbnails/set?videoId=${encodeURIComponent(videoId)}&uploadType=media`, { method: 'POST', headers: { ...auth, 'Content-Type': f.thumbnail.mime || 'image/jpeg' }, body: bytes });
     // A failed thumbnail must not undo a successful upload, so it is reported as a note instead.

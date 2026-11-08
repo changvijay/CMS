@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { getYoutubeCategories, getYoutubePlaylists } from '../../../services/api';
 import { ChipsInput, Field, MediaPicker, Segmented, Select, SingleMedia, TextField, Toggle } from '../fields';
-import { LIMITS, YT_LANGUAGES } from '../platforms';
+import { LIMITS, POST_TYPES, YT_LANGUAGES } from '../platforms';
 import { mediaForType, youtubeTagCost } from '../mapping';
 import { isShortsCandidate } from '../mediaRules';
 import { useTab, type TabProps } from './useTab';
-import type { MediaItem } from '../types';
+import type { MediaItem, YtType } from '../types';
 
 // Used until the live list loads (or if it can't): YouTube's long-standing category ids.
 const FALLBACK_CATEGORIES = [
@@ -15,7 +15,8 @@ const FALLBACK_CATEGORIES = [
 
 export function YoutubeForm(props: TabProps) {
   const { token, accounts, shared } = props;
-  const { field } = useTab('youtube', props);
+  const { field, setType, type } = useTab('youtube', props);
+  const isShort = type === 'short';
   const title = field<string>('title');
   const description = field<string>('description');
   const tags = field<string[]>('tags');
@@ -36,15 +37,21 @@ export function YoutubeForm(props: TabProps) {
     return () => { cancelled = true; };
   }, [token, accountId]);
 
-  const video = mediaForType('youtube', 'video', media.value || [])[0];
+  const video = mediaForType('youtube', type, media.value || [])[0];
   const tagCost = youtubeTagCost(tags.value || []);
 
   return (
     <div className="pf-form">
-      <Field label="Video file" {...media.sync}>
-        <MediaPicker token={token} value={media.value || []} onChange={media.set} accept="video/*" single label="Add the video" />
+      <Field label="Post type" tip="Choose this first: Shorts and full videos have different rules.">
+        <Segmented<YtType> label="YouTube post type" value={type as YtType} onChange={setType} options={POST_TYPES.youtube.map((t) => ({ value: t.id as YtType, label: t.label, hint: t.hint }))} />
       </Field>
-      {isShortsCandidate(video) && <p className="pf-note ok">This video is vertical and {Math.round(video?.duration ?? 0)} seconds long, so YouTube will treat it as a Short. Adding #Shorts to the title or description is optional.</p>}
+
+      <Field label={isShort ? 'Short video (vertical, up to 3 min)' : 'Video file'} {...media.sync}>
+        <MediaPicker token={token} value={media.value || []} onChange={media.set} accept="video/*" single label={isShort ? 'Add the Short' : 'Add the video'} />
+      </Field>
+      {isShort
+        ? <p className="pf-note">YouTube makes a video a Short when it is vertical (or square) and 3 minutes or less. #Shorts is added to the title for you if it is missing.</p>
+        : isShortsCandidate(video) && <p className="pf-note">This video is vertical and {Math.round(video?.duration ?? 0)} seconds long, so YouTube will show it as a Short. Switch the post type to Short if that is what you want.</p>}
 
       <TextField label="Title" value={title.value || ''} onChange={title.set} limit={LIMITS.ytTitle} {...title.sync} tip="Up to 100 characters. No < or >." />
       <TextField label="Description" multiline rows={8} value={description.value || ''} onChange={description.set} limit={LIMITS.ytDescription} {...description.sync}
@@ -52,9 +59,11 @@ export function YoutubeForm(props: TabProps) {
       <Field label="Tags" count={tagCost} limit={LIMITS.ytTags} {...tags.sync} tip="Help search find typos and spelling variants. YouTube counts all tags together toward 500 characters.">
         <ChipsInput value={tags.value || []} onChange={tags.set} placeholder="tag, then Enter" />
       </Field>
-      <Field label="Custom thumbnail" {...thumbnail.sync} tip="JPG or PNG, under 2 MB, 1280×720 recommended. Your channel must be verified to use custom thumbnails.">
-        <SingleMedia token={token} value={thumbnail.value} onChange={thumbnail.set} label="Upload a thumbnail" />
-      </Field>
+      {!isShort && (
+        <Field label="Custom thumbnail" {...thumbnail.sync} tip="JPG or PNG, under 2 MB, 1280×720 recommended. Your channel must be verified to use custom thumbnails.">
+          <SingleMedia token={token} value={thumbnail.value} onChange={thumbnail.set} label="Upload a thumbnail" />
+        </Field>
+      )}
 
       {lookupError && <p className="pf-hint">{lookupError}</p>}
       <div className="pf-grid2">

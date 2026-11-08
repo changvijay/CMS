@@ -1,7 +1,7 @@
 import { IG_LIMITS, IG_TYPES } from './publishers/instagram.js';
 import { FB_LIMITS, FB_NATIVE_SCHEDULE, FB_TYPES } from './publishers/facebook.js';
 import { LI_LIMITS, LI_TYPES, POLL_DURATIONS, VISIBILITY } from './publishers/linkedin.js';
-import { YT_LIMITS, YT_PRIVACY, tagCost } from './publishers/youtube.js';
+import { YT_LIMITS, YT_PRIVACY, YT_TYPES, tagCost } from './publishers/youtube.js';
 
 /**
  * Server-side checks for each target before anything is sent. The wizard runs the same checks in the browser;
@@ -96,6 +96,7 @@ export function validateLinkedIn(postType, f) {
 }
 
 export function validateYoutube(postType, f) {
+  if (!YT_TYPES.includes(postType)) return [`YouTube: unknown post type "${postType}".`];
   const errors = [];
   const media = list(f.media);
   if (media.length !== 1 || !isVideo(media[0])) errors.push('YouTube: upload one video file.');
@@ -107,6 +108,11 @@ export function validateYoutube(postType, f) {
   if (tagCost(list(f.tags)) > YT_LIMITS.tagsTotal) errors.push(`YouTube: tags are over ${YT_LIMITS.tagsTotal} characters in total.`);
   if (f.privacy && !YT_PRIVACY.includes(f.privacy)) errors.push('YouTube: privacy must be public, unlisted or private.');
   if (f.made_for_kids === undefined || f.made_for_kids === null) errors.push('YouTube: say whether the video is made for kids (required by law).');
+  if (postType === 'short' && media[0]) {
+    const { width, height, duration } = media[0];
+    if (duration != null && Number(duration) > YT_LIMITS.shortSeconds) errors.push('YouTube: a Short must be 3 minutes or less.');
+    if (width && height && Number(width) > Number(height)) errors.push('YouTube: a Short must be vertical or square.');
+  }
   mediaUrls(errors, media, 'YouTube');
   return errors;
 }
