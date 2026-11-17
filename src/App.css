@@ -48,17 +48,11 @@
   margin-bottom: 24px;
 }
 
-.brand-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  background: var(--accent-gradient);
-  border-radius: 12px;
-  color: white;
-  margin-bottom: 12px;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+.brand-logo-full {
+  display: block;
+  width: 200px;
+  height: auto;
+  margin: 0 auto 12px;
 }
 
 .login-header h1 {

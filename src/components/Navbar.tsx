@@ -90,7 +90,6 @@ function UserMenu({ user, onLogout }: NavbarProps) {
 
 export const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
   const location = useLocation();
-  const isYouTube = location.pathname.startsWith('/youtube');
   const [openedOnPath, setOpenedOnPath] = useState<string | null>(null);
   const menuOpen = openedOnPath === location.pathname;
   const setMenuOpen = (value: boolean) => setOpenedOnPath(value ? location.pathname : null);
@@ -98,10 +97,8 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
   return (
     <header className="navbar">
       <Link to="/overview" className="nav-brand" aria-label="CMS Analytics Studio, home">
-        <span className={`brand-icon-wrapper ${isYouTube ? 'youtube-brand-icon' : ''}`}>
-          {isYouTube ? <IconYouTubePlay /> : <IconSparkles />}
-        </span>
-        <span className="brand-title">CMS Analytics Studio</span>
+        <img className="brand-logo" src="/brand/logo-mark.png" alt="" width="83" height="32" />
+        <span className="brand-title">Analytics Studio</span>
       </Link>
 
       <button
@@ -155,14 +152,6 @@ function IconSend() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M22 2 11 13" />
       <path d="M22 2 15 22l-4-9-9-4z" />
-    </svg>
-  );
-}
-
-function IconSparkles() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3v3m0 12v3M3 12h3m12 0h3m-3.5-6.5l-2 2m-7 7l-2 2m0-11l2 2m7 7l2 2" />
     </svg>
   );
 }

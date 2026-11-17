@@ -1,0 +1,113 @@
+/* ── Pixel, the site mascot (ported from the CMS landing page) ─────────────
+   src/privacy/mascot.ts moves it and sets data-mood; faces are pure CSS. */
+.mascot { --px-ink: #0a0a0a; --px-accent: #4f46e5; --px-ease: cubic-bezier(0.22, 1, 0.36, 1); --s: 1;
+  position: fixed; z-index: 45; width: 64px;
+  right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transition: opacity 300ms var(--px-ease); }
+@media (min-width: 1024px) { .mascot { width: 96px; right: 24px; bottom: 24px; } }
+.mascot[hidden] { display: none; }
+.mascot-fig { position: relative; transform-origin: 50% 100%; will-change: transform; }
+.mascot-btn { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 16px; -webkit-tap-highlight-color: transparent; }
+.mascot-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.mascot-bubble { position: absolute; right: 0; bottom: calc(100% + 8px); width: min(240px, calc(100vw - 32px)); padding: 12px 16px;
+  border-radius: 16px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  box-shadow: 0 1px 2px rgba(10, 10, 10, .04), 0 12px 32px rgba(10, 10, 10, .12);
+  transform-origin: 100% 100%; opacity: 0; transform: translateY(8px); pointer-events: none;
+  transition: opacity 300ms var(--px-ease), transform 500ms var(--px-ease); }
+.mascot.talking .mascot-bubble { opacity: 1; transform: none; pointer-events: auto; }
+.mascot-cta { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; color: var(--accent); }
+.mascot-cta[hidden] { display: none; }
+
+.pixel { display: block; width: 100%; height: auto; overflow: visible; animation: pixel-pop 700ms var(--px-ease) 1.2s both; }
+.pixel-bob { animation: pixel-bob 3.2s var(--px-ease) infinite alternate; }
+.pixel-head, .pixel-ear { transform-box: view-box; }
+.pixel-head { transform-origin: 60px 60px; }
+.pixel-ear-l { transform-origin: 32px 36px; }
+.pixel-ear-r { transform-origin: 88px 36px; }
+.pixel-ear path { fill: var(--px-accent); stroke: var(--px-ink); stroke-width: 3; stroke-linejoin: round; }
+.pixel-stalk { stroke: var(--px-ink); stroke-width: 3; stroke-linecap: round; }
+.pixel-bulb { fill: #a5b4fc; stroke: var(--px-ink); stroke-width: 2.5; transition: fill 300ms var(--px-ease); }
+.pixel-skull { fill: #ffffff; stroke: var(--px-ink); stroke-width: 3; }
+.pixel-screen { fill: #181818; }
+.e-open rect, .e-wow circle:not(.ring), .e-star polygon, .m-open, .m-o { fill: #c7d2fe; }
+.e-happy path, .e-closed path, .e-dizzy path, .m-smile, .m-flat, .m-wavy, .e-wow .ring { fill: none; stroke: #c7d2fe; stroke-width: 3; stroke-linecap: round; }
+.e-wow .ring { stroke-width: 2.5; }
+.e-heart path { fill: #f472b6; }
+.blush ellipse { fill: #f472b6; opacity: .6; }
+.zzz text, .qmark text { fill: var(--ink); font-family: var(--f-sans), system-ui, sans-serif; font-weight: 600; font-size: 13px; }
+.e-open rect { transform-box: fill-box; transform-origin: center; transition: transform 120ms var(--px-ease); }
+.mascot.blink .e-open rect { transform: scaleY(.15); }
+
+/* Faces: each mood shows its own eyes, mouth and extras */
+.pixel .v { opacity: 0; transition: opacity 200ms var(--px-ease); }
+.mascot[data-mood="happy"] :is(.e-open, .m-smile),
+.mascot[data-mood="playful"] :is(.e-open, .m-open),
+.mascot[data-mood="dizzy"] :is(.e-dizzy, .m-wavy),
+.mascot[data-mood="clicked"] :is(.e-happy, .m-open),
+.mascot[data-mood="shy"] :is(.e-open, .m-wavy, .blush),
+.mascot[data-mood="excited"] :is(.e-star, .m-open),
+.mascot:is([data-mood="surprised"], [data-mood="wow"]) :is(.e-wow, .m-o),
+.mascot[data-mood="sleepy"] :is(.e-closed, .m-flat, .zzz),
+.mascot[data-mood="love"] :is(.e-heart, .m-smile, .blush),
+.mascot[data-mood="thinking"] :is(.e-open, .m-flat, .qmark) { opacity: 1; }
+.mascot[data-mood="excited"] .pixel-bulb { fill: #facc15; animation: pixel-bulb 500ms steps(2) infinite; }
+.mascot[data-mood="love"] .pixel-bulb { fill: #f472b6; }
+.mascot[data-mood="thinking"] .pixel-bulb { fill: #fbbf24; }
+.mascot[data-mood="sleepy"] .pixel-bulb { fill: #525252; }
+.mascot[data-mood="clicked"] .pixel-bob { animation: pixel-bounce 600ms var(--px-ease); }
+.mascot[data-mood="sleepy"] .zzz text { animation: pixel-z 2.4s var(--px-ease) infinite; }
+.mascot[data-mood="sleepy"] .zzz text + text { animation-delay: 1.2s; }
+
+/* Follow mode: Pixel trails the mouse 10px away. Clicks always pass through it. */
+.mascot.is-following { left: 0; top: 0; right: auto; bottom: auto; width: 64px; pointer-events: none; will-change: transform; }
+/* Roaming mode (touch screens): Pixel zigzags across the screen while you scroll. Tappable. */
+.mascot.is-roaming { left: 0; top: 0; right: auto; bottom: auto; width: 56px; will-change: transform; }
+.mascot.bubble-left .mascot-bubble { right: auto; left: 0; transform-origin: 0 100%; }
+.mascot.bubble-below .mascot-bubble { bottom: auto; top: calc(100% + 8px); transform-origin: 100% 0; }
+.mascot.bubble-left.bubble-below .mascot-bubble { transform-origin: 0 0; }
+.pixel-act { transform-box: view-box; transform-origin: 60px 60px; }
+.mascot.act-jump .pixel-act { animation: pixel-jump 700ms var(--px-ease); }
+.mascot.act-spin .pixel-act { animation: pixel-spin 800ms var(--px-ease); }
+@keyframes pixel-jump { 0% { transform: none; } 15% { transform: translateY(2px) scale(1.06, .92); } 45% { transform: translateY(-16px) scale(.96, 1.05); } 75% { transform: translateY(1px) scale(1.04, .95); } 100% { transform: none; } }
+@keyframes pixel-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes pixel-pop { from { opacity: 0; transform: scale(.3) translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes pixel-bob { from { transform: translateY(0); } to { transform: translateY(-3px); } }
+@keyframes pixel-bounce { 0% { transform: translateY(0); } 35% { transform: translateY(-10px); } 70% { transform: translateY(2px); } 100% { transform: translateY(0); } }
+@keyframes pixel-bulb { to { opacity: .35; } }
+@keyframes pixel-z { 0% { opacity: 0; transform: translate(0, 4px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(6px, -10px); } }
+@media (prefers-reduced-motion: reduce) {
+  .pixel, .pixel-bob, .mascot .pixel-bulb, .mascot .zzz text, .mascot[data-mood="clicked"] .pixel-bob { animation: none !important; }
+  .mascot-bubble { transition: opacity 300ms var(--px-ease); transform: none; }
+}
+
+/* Article body (/articles/<slug>): readable defaults for admin-pasted HTML, in both themes. */
+.article-body { font-size: 17px; line-height: 1.8; color: var(--ink-2); overflow-wrap: anywhere; }
+.article-body > * + * { margin-top: 1.1em; }
+.article-body h2, .article-body h3, .article-body h4 { color: var(--ink); font-family: var(--f-display), sans-serif; letter-spacing: -0.02em; line-height: 1.25; margin-top: 1.8em; }
+.article-body h2 { font-size: 1.55em; }
+.article-body h3 { font-size: 1.25em; }
+.article-body h4 { font-size: 1.08em; }
+.article-body a { color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.article-body strong, .article-body b { color: var(--ink); }
+.article-body ul, .article-body ol { padding-left: 1.4em; }
+.article-body ul { list-style: disc; }
+.article-body ol { list-style: decimal; }
+.article-body li + li { margin-top: 0.35em; }
+.article-body blockquote { border-left: 3px solid var(--accent); padding: 0.2em 0 0.2em 1em; color: var(--ink); font-style: italic; }
+.article-body img, .article-body iframe { max-width: 100%; height: auto; border-radius: 14px; }
+.article-body iframe { aspect-ratio: 16 / 9; width: 100%; }
+.article-body figure figcaption { font-size: 13px; color: var(--ink-3); margin-top: 0.5em; text-align: center; }
+.article-body hr { border: 0; border-top: 1px solid var(--line); margin: 2em 0; }
+.article-body code { font-family: var(--f-mono), monospace; font-size: 0.9em; background: var(--surface-2); padding: 0.1em 0.35em; border-radius: 6px; }
+.article-body pre { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 1em; overflow-x: auto; font-size: 14px; line-height: 1.6; }
+.article-body pre code { background: none; padding: 0; }
+.article-body table { display: block; width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 15px; }
+.article-body th, .article-body td { border: 1px solid var(--line); padding: 0.5em 0.75em; text-align: left; }
+.article-body th { background: var(--surface-2); color: var(--ink); font-weight: 600; }
+
+/* Learning lessons (/learning/<slug>): small additions on top of .article-body. */
+.article-body .tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+.article-body .tbl table { display: table; min-width: 460px; font-size: 14.5px; }
+.article-body .tbl th, .article-body .tbl td { border: 0; border-bottom: 1px solid var(--line); padding: 0.65em 0.9em; vertical-align: top; }
+.article-body .tbl tr:last-child td { border-bottom: 0; }
+.article-body .formula { font-family: var(--f-mono), monospace; font-size: 0.9em; color: var(--ink); background: var(--surface-2); border: 1px dashed var(--line); border-radius: 12px; padding: 0.8em 1em; }

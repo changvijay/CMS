@@ -21,19 +21,10 @@
   flex-shrink: 0;
 }
 
-.brand-icon-wrapper {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  background: var(--accent-gradient);
-}
-
-.brand-icon-wrapper.youtube-brand-icon {
-  background: #d92d20;
+.brand-logo {
+  height: 32px;
+  width: auto;
+  display: block;
 }
 
 .brand-title {

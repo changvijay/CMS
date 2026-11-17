@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
   return {
   plugins: [
     react(),
-    // Dev only: serve the landing page at / and the manual at /manual/, as Express does in production.
+    // Dev only: serve the landing page at /, the manual at /manual/ and the privacy policy at /privacy/, as Express does in production.
     {
       name: 'static-page-folders',
       configureServer(server) {
@@ -26,17 +26,21 @@ export default defineConfig(({ mode }) => {
           if (root) req.url = `/welcome/index.html${root[1] ?? ''}`
           const m = req.url?.match(/^\/manual\/?(\?.*)?$/)
           if (m) req.url = `/manual/index.html${m[1] ?? ''}`
+          const pv = req.url?.match(/^\/privacy\/?(\?.*)?$/)
+          if (pv) req.url = `/privacy/index.html${pv[1] ?? ''}`
           next()
         })
       },
     },
   ],
-  // Two pages: the React app, and the landing page (built to dist/welcome/, served at /).
+  // Three pages: the React app, the landing page (built to dist/welcome/, served at /) and the
+  // privacy policy (built to dist/privacy/, served at /privacy/).
   build: {
     rollupOptions: {
       input: {
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
         welcome: fileURLToPath(new URL('./welcome/index.html', import.meta.url)),
+        privacy: fileURLToPath(new URL('./privacy/index.html', import.meta.url)),
       },
     },
   },

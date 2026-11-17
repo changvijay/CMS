@@ -47,11 +47,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       <div className={`login-card${mode === 'waitlist' ? ' is-waitlist' : ''}`}>
         {/* Header Branding */}
         <div className="login-header">
-          <div className="brand-badge">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-          </div>
+          <img className="brand-logo-full" src="/brand/logo.png" alt="CMS, Chang Content Management System" width="200" height="152" />
           <h1>{mode === 'signin' ? 'Welcome Back' : 'Join the waiting list'}</h1>
           <p>{mode === 'signin'
             ? 'Sign in to manage your connected Instagram accounts'
