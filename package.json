@@ -17,9 +17,11 @@
   },
   "dependencies": {
     "@google-cloud/storage": "^7.22.0",
+    "@phosphor-icons/react": "^2.1.7",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
+    "exceljs": "^4.4.0",
     "express": "^4.21.2",
     "gsap": "^3.15.1",
     "jsonwebtoken": "^9.0.2",

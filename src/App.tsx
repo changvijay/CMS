@@ -11,6 +11,7 @@ const Profile = lazy(() => import('./components/Profile'));
 const Automation = lazy(() => import('./components/Automation'));
 const PublishWizard = lazy(() => import('./components/publish/PublishWizard'));
 const FacebookPage = lazy(() => import('./components/workspace/FacebookPage'));
+const ScriptsPage = lazy(() => import('./components/scripts/ScriptsPage'));
 import { getCurrentUser, type User } from './services/api';
 import { clearLiveCache } from './components/workspace/useLive';
 import './App.css';
@@ -141,6 +142,14 @@ function MainApp() {
           element={
             <Suspense fallback={<PageSkeleton />}>
               <FacebookPage token={token} />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/scripts/:tab?/:id?"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <ScriptsPage token={token} user={user} />
             </Suspense>
           }
         />

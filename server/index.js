@@ -13,6 +13,7 @@ import { createInsightsRouter } from './routes/insights.js';
 import { createDeepRouter } from './routes/deep.js';
 import { createWebhooksRouter } from './routes/webhooks.js';
 import { createAutomationRouter } from './routes/automation.js';
+import { createScriptsRouter } from './routes/scripts.js';
 import { createFacebookRouter } from './routes/facebook.js';
 import { createFacebookInsightsRouter } from './routes/facebookInsights.js';
 import { createGoogleRouter } from './routes/google.js';
@@ -67,7 +68,8 @@ app.use(cors(allowedOrigins.length ? { origin: allowedOrigins } : undefined));
 // Cloud Run (and most hosts) terminate TLS in front of us; trust the forwarded protocol/host.
 app.set('trust proxy', true);
 // Keep the raw body: Instagram's webhook signature is computed over the exact bytes it sent.
-app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } }));
+// 1 MB: long scripts in Tamil/Hindi are ~3 bytes per character.
+app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 // The landing page lives at the site root; the old /welcome/ address forwards there.
 app.get('/', (req, res, next) => {
   res.setHeader('Cache-Control', 'no-cache');
@@ -862,6 +864,7 @@ app.use('/api', createInsightsRouter(authenticateToken));
 app.use('/api', createDeepRouter(authenticateToken));
 app.use('/api', createWebhooksRouter());
 app.use('/api', createAutomationRouter(authenticateToken));
+app.use('/api', createScriptsRouter(authenticateToken));
 app.use('/api', createFacebookRouter(authenticateToken, JWT_SECRET));
 app.use('/api', createFacebookInsightsRouter(authenticateToken));
 app.use('/api', createGoogleRouter(authenticateToken, JWT_SECRET));

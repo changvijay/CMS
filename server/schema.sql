@@ -404,3 +404,122 @@ CREATE TABLE IF NOT EXISTS waitlist (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ---------------------------------------------------------------------------
+-- Scripts workspace (ported from the ScriptVault app): scripts, categories,
+-- goals, to-dos, and the AI assistant (per-user provider keys, niches, daily idea).
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS script_categories (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(60) NOT NULL,
+    color VARCHAR(7) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_script_categories_name ON script_categories(user_id, lower(name));
+
+CREATE TABLE IF NOT EXISTS script_goals (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(200) NOT NULL,
+    target_value INT NOT NULL DEFAULT 10 CHECK (target_value >= 1),
+    current_progress INT NOT NULL DEFAULT 0 CHECK (current_progress >= 0),
+    deadline DATE,
+    completed BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_script_goals_user ON script_goals(user_id);
+
+CREATE TABLE IF NOT EXISTS scripts (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(200) NOT NULL,
+    notes TEXT NOT NULL DEFAULT '',
+    reference TEXT NOT NULL DEFAULT '',
+    status VARCHAR(16) NOT NULL DEFAULT 'not_started' CHECK (status IN ('not_started', 'in_progress', 'completed')),
+    deadline DATE,
+    goal_id BIGINT REFERENCES script_goals(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    modified_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_scripts_user ON scripts(user_id, modified_at DESC);
+CREATE INDEX IF NOT EXISTS idx_scripts_deadline ON scripts(user_id, deadline);
+
+-- Folders group scripts by project (one level: a folder holds scripts, not other folders).
+CREATE TABLE IF NOT EXISTS script_folders (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(80) NOT NULL,
+    color VARCHAR(7) NOT NULL DEFAULT '#6366F1',
+    description TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_script_folders_name ON script_folders(user_id, lower(name));
+ALTER TABLE scripts ADD COLUMN IF NOT EXISTS folder_id BIGINT REFERENCES script_folders(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_scripts_folder ON scripts(user_id, folder_id);
+
+CREATE TABLE IF NOT EXISTS script_category_links (
+    script_id BIGINT NOT NULL REFERENCES scripts(id) ON DELETE CASCADE,
+    category_id BIGINT NOT NULL REFERENCES script_categories(id) ON DELETE CASCADE,
+    PRIMARY KEY (script_id, category_id)
+);
+CREATE INDEX IF NOT EXISTS idx_script_category_links_cat ON script_category_links(category_id);
+
+CREATE TABLE IF NOT EXISTS script_todos (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    text VARCHAR(500) NOT NULL,
+    completed BOOLEAN NOT NULL DEFAULT FALSE,
+    priority VARCHAR(6) NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high')),
+    due_date DATE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_script_todos_user ON script_todos(user_id);
+
+CREATE TABLE IF NOT EXISTS script_niches (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(120) NOT NULL,
+    language VARCHAR(40) NOT NULL DEFAULT 'English',
+    description TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_script_niches_user ON script_niches(user_id);
+
+-- Per-user Scripts settings: which AI providers are on and their model, the order of the AI buttons,
+-- saved custom prompts, the active niche, and whether the default categories were added once already.
+CREATE TABLE IF NOT EXISTS script_settings (
+    user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    categories_seeded BOOLEAN NOT NULL DEFAULT FALSE,
+    active_provider VARCHAR(20),
+    providers JSONB NOT NULL DEFAULT '{}',
+    action_prefs JSONB NOT NULL DEFAULT '{}',
+    active_niche_id BIGINT REFERENCES script_niches(id) ON DELETE SET NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- The user's own AI provider keys, AES-256-GCM encrypted (server/utils/secretBox.js). Never sent back to the browser.
+CREATE TABLE IF NOT EXISTS script_ai_keys (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(20) NOT NULL,
+    ciphertext TEXT NOT NULL,
+    iv TEXT NOT NULL,
+    tag TEXT NOT NULL,
+    last4 VARCHAR(4) NOT NULL DEFAULT '',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, provider)
+);
+
+CREATE TABLE IF NOT EXISTS script_daily_ideas (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    niche_id BIGINT NOT NULL REFERENCES script_niches(id) ON DELETE CASCADE,
+    idea_date DATE NOT NULL,
+    payload JSONB NOT NULL,
+    accepted_script_id BIGINT REFERENCES scripts(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, niche_id, idea_date)
+);

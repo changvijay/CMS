@@ -29,6 +29,27 @@ npm run dev              # Vite on :5173, API on :5001
 | `npm run lint` | ESLint |
 | `npm run webhook:simulate -- --account <igId> --type comment --text link` | Send a correctly signed fake Instagram webhook to your local server |
 
+## Scripts workspace (ScriptVault)
+
+The **Scripts** tab is the ScriptVault app inside CMS. It has:
+- **folders** (one level) to group scripts by project, for example one folder per movie. Folders sit in a row at the top of the library; scripts in no folder show right below in the normal Board/List views
+- a script library with search, status and category filters, and bulk delete
+- an editor
+- goals that count the scripts linked to them
+- to-dos
+- a dashboard with a week/month calendar
+- Excel import/export
+
+Everything is stored per user in Postgres (`script_*` tables in `server/schema.sql`). The API is in `server/routes/scripts.js`.
+
+**AI assistant:** each user adds their own Gemini, Claude, Groq or OpenRouter key in **Scripts → Settings → AI providers**.
+- A key is tested before it is saved, then stored encrypted with `SCRIPTS_SECRET_KEY` and never sent back to the browser.
+- AI calls go from the server, limited to 30 per user every 10 minutes.
+- Content niches set the audience and language, and drive the daily trend idea.
+- The prompts are in `server/services/scripts/aiPrompts.js`.
+
+There are no file attachments or voice notes, so nothing is stored in cloud storage.
+
 ## Instagram auto-replies ("comment or DM `link`, get the URL")
 
 Open **Auto-replies** from the profile menu. Rules (keywords, message, link) are managed there.

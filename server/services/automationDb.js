@@ -64,9 +64,9 @@ export function createAutomationDb(pool, { checkToken } = {}) {
     }) {
       await pool.query(
         `UPDATE automation_events
-            SET status=$2, skip_reason=$3, error_code=$4, error_message=$5, message_id=$6, message_text=$7, note=$8,
+            SET status=$2::varchar, skip_reason=$3, error_code=$4, error_message=$5, message_id=$6, message_text=$7, note=$8,
                 keyword_matched=COALESCE($9, keyword_matched), public_reply_text=$10, retry_at=$11, comment_id=COALESCE($12, comment_id),
-                attempts = attempts + CASE WHEN $2 = 'queued' OR status = 'queued' THEN 1 ELSE 0 END
+                attempts = attempts + CASE WHEN $2::varchar = 'queued' OR status = 'queued' THEN 1 ELSE 0 END
           WHERE id=$1`,
         [id, status, skipReason, errorCode, errorMessage, messageId, messageText, note, keywordMatched, publicReplyText, retryAt, commentId]
       );

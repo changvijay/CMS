@@ -792,7 +792,7 @@ export interface RuleTestResult {
   public_reply?: string | null;
 }
 
-async function sendJson<T>(token: string, method: string, path: string, body?: unknown): Promise<T> {
+export async function sendJson<T>(token: string, method: string, path: string, body?: unknown): Promise<T> {
   const response = await fetch(`${API_BASE}/${path}`, {
     method,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
