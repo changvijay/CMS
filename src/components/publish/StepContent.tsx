@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { lazy, Suspense, useId, useState } from 'react';
 import { ChipsInput, Field, Issues, MediaPicker, PlaceSearch, SingleMedia, TextField } from './fields';
 import { InstagramForm } from './forms/InstagramForm';
 import { FacebookForm } from './forms/FacebookForm';
@@ -10,13 +10,18 @@ import { PLATFORM_LABEL } from './platforms';
 import { emptyDraft } from './mapping';
 import { timezoneName } from './helpers';
 import { validateDraft, validateSchedule } from './validate';
-import type { Platform, PlatformDraft, PublishAccount, SharedFields } from './types';
+import type { MediaItem, Platform, PlatformDraft, PublishAccount, SharedFields } from './types';
+
+// Loaded only when someone checks a video, so the wizard stays light.
+const PreUploadPanel = lazy(() => import('../videoAi/PreUploadPanel').then((m) => ({ default: m.PreUploadPanel })));
 import type { TabProps } from './forms/useTab';
 
 const FORMS: Record<Platform, (p: TabProps) => React.JSX.Element> = { instagram: InstagramForm, facebook: FacebookForm, linkedin: LinkedInForm, youtube: YoutubeForm };
 
-function SharedSection({ token, shared, onChange }: { token: string; shared: SharedFields; onChange: (patch: Partial<SharedFields>) => void }) {
+function SharedSection({ token, shared, platforms, onChange }: { token: string; shared: SharedFields; platforms: Platform[]; onChange: (patch: Partial<SharedFields>) => void }) {
   const ids = { hashtags: useId(), keywords: useId(), location: useId(), schedule: useId() };
+  const [checking, setChecking] = useState<MediaItem | null>(null);
+  const caption = [shared.description, shared.hashtags.map((h) => `#${h.replace(/^#/, '')}`).join(' ')].filter(Boolean).join('\n\n');
   return (
     <section className="viz-panel pf-shared">
       <div className="viz-panel-head">
@@ -39,7 +44,7 @@ function SharedSection({ token, shared, onChange }: { token: string; shared: Sha
         </Field>
       </div>
       <Field label="Media" tip="Photos, videos or a PDF. Each platform uses the files its post type takes. Drag to reorder with the arrows.">
-        <MediaPicker token={token} value={shared.media} onChange={(media) => onChange({ media })} />
+        <MediaPicker token={token} value={shared.media} onChange={(media) => onChange({ media })} onAnalyze={setChecking} />
       </Field>
       <div className="pf-grid2">
         <Field label="Thumbnail / cover" tip="Reel cover, Facebook/LinkedIn video thumbnail, YouTube custom thumbnail.">
@@ -56,6 +61,15 @@ function SharedSection({ token, shared, onChange }: { token: string; shared: Sha
           <small>{timezoneName()}</small>
         </div>
       </Field>
+      {checking && (
+        <Suspense fallback={null}>
+          <PreUploadPanel
+            token={token}
+            source={{ src: checking.previewUrl ?? checking.url ?? '', name: checking.name, title: shared.title, caption, platforms }}
+            onClose={() => setChecking(null)}
+          />
+        </Suspense>
+      )}
     </section>
   );
 }
@@ -81,7 +95,7 @@ export function StepContent({ token, platforms, shared, drafts, accounts, active
 
   return (
     <div>
-      <SharedSection token={token} shared={shared} onChange={onShared} />
+      <SharedSection token={token} shared={shared} platforms={platforms} onChange={onShared} />
 
       <div className="pf-tabs" role="tablist" aria-label="Platforms">
         {platforms.map((p) => {

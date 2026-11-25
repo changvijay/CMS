@@ -292,7 +292,8 @@ function List({ token, q, category = '', folder, categories, folders, onStatus, 
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [moving, setMoving] = useState(false);
-  const state = useLive(() => listScripts(token, { q, status, category, folder, page, pageSize: LIST_PAGE }), `${KEY}items:${folder}:${q}:${status}:${category}:${page}`);
+  // "Open" (no status picked) leaves completed scripts out; the Completed chip shows them.
+  const state = useLive(() => listScripts(token, { q, status: status || 'open', category, folder, page, pageSize: LIST_PAGE }), `${KEY}items:${folder}:${q}:${status || 'open'}:${category}:${page}`);
 
   const toggle = (id: string) => setSelected((s) => {
     const n = new Set(s);
@@ -335,14 +336,14 @@ function List({ token, q, category = '', folder, categories, folders, onStatus, 
         {(['', ...STATUSES] as const).map((s) => (
           <button key={s || 'all'} type="button" className={`sv-chip ${status === s ? 'active' : ''}`} aria-pressed={status === s}
             onClick={() => { setStatus(s); setPage(1); setSelected(new Set()); }}>
-            {s && <StatusDot status={s} />}{s ? STATUS_LABEL[s] : 'All'}
+            {s && <StatusDot status={s} />}{s ? STATUS_LABEL[s] : 'Open'}
           </button>
         ))}
         {showFolder && data && <span className="caption-4 sv-soft sv-push">{data.total} result{data.total === 1 ? '' : 's'} across all folders</span>}
       </div>
       {!data ? (state.error ? <div className="sv-banner error">{state.error}</div> : <SkeletonRows rows={5} tall />) : data.scripts.length === 0 ? (
-        <EmptyState icon={<NotePencil size={28} weight="duotone" />} title={filtered ? 'No scripts match' : currentFolder ? 'This folder is empty' : 'No scripts outside folders'}
-          body={filtered ? 'Try another search or filter.' : currentFolder ? 'Write the first script for this project.' : 'Write a script here, or open a folder above.'}>
+        <EmptyState icon={<NotePencil size={28} weight="duotone" />} title={filtered ? 'No scripts match' : currentFolder ? 'No open scripts in this folder' : 'No open scripts outside folders'}
+          body={filtered ? 'Try another search or filter.' : `Finished scripts are under Completed. ${currentFolder ? 'Write the next script for this project.' : 'Write a script here, or open a folder above.'}`}>
           {!filtered && <Link className="sv-btn sv-btn-primary" to={newHref}><Plus size={16} weight="bold" aria-hidden="true" /> New script</Link>}
         </EmptyState>
       ) : (

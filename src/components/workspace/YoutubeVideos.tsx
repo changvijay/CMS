@@ -1,4 +1,6 @@
 import { Fragment, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { reportPath } from '../../services/videoAiApi';
 import { fetchYoutubeRetention, fetchYoutubeVideos, type RetentionPoint, type YoutubeVideoAnalytics } from '../../services/api';
 import { RetentionChart } from '../charts/RetentionChart';
 import { formatCompact, formatPercent, formatSeconds } from '../charts/viz';
@@ -98,6 +100,7 @@ export function YoutubeVideos({ token, accountId, since, until }: { token: strin
                       {open === v.video && (
                         <tr className="detail-row">
                           <td colSpan={COLUMNS.length + 4}>
+                            <p><Link className="content-link content-ai" to={reportPath('youtube', accountId, v.video)}>✦ AI analysis of this video →</Link></p>
                             <h4>Audience retention</h4>
                             <Retention token={token} accountId={accountId} videoId={v.video} />
                             <CommentInsights platform="youtube" token={token} accountId={accountId} id={v.video} />

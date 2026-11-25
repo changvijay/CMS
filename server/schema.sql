@@ -523,3 +523,41 @@ CREATE TABLE IF NOT EXISTS script_daily_ideas (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, niche_id, idea_date)
 );
+
+-- Long-lived sign-in sessions: one row per signed-in device, kept until logout.
+-- Only SHA-256 hashes of refresh tokens are stored. The previous hash stays valid for a short
+-- grace window so two requests refreshing at the same moment don't sign the device out.
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    prev_token_hash CHAR(64),
+    rotated_at TIMESTAMPTZ,
+    device VARCHAR(200),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_used_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    revoked_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_prev_hash ON user_sessions (prev_token_hash);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions (user_id);
+
+-- AI video reports: one row per analysis (a published video's Update, or a video checked before upload).
+-- Viewing a report reads the latest row; only Update / Analyze calls the AI. The video itself is never stored.
+CREATE TABLE IF NOT EXISTS video_ai_reports (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind VARCHAR(12) NOT NULL CHECK (kind IN ('published', 'preupload')),
+    platform VARCHAR(20),
+    account_id BIGINT,
+    media_id VARCHAR(100),
+    title TEXT,
+    thumbnail_url TEXT,
+    provider VARCHAR(20) NOT NULL,
+    model VARCHAR(80) NOT NULL,
+    score SMALLINT,
+    report JSONB NOT NULL,
+    metrics_used JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_video_ai_reports_media ON video_ai_reports (user_id, platform, media_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_video_ai_reports_recent ON video_ai_reports (user_id, created_at DESC);

@@ -60,6 +60,12 @@ describe('scripts routes', () => {
     expect(db.queries[1].sql).toContain('ORDER BY s.deadline ASC NULLS LAST, s.modified_at DESC');
   });
 
+  it('leaves completed scripts out of the open list', async () => {
+    const res = await call('GET', '/scripts/items?status=open');
+    expect(res.status).toBe(200);
+    expect(db.queries[0].sql).toContain("s.status <> 'completed'");
+  });
+
   it('rejects a script without a title', async () => {
     const res = await call('POST', '/scripts/items', { title: '' });
     expect(res.status).toBe(400);

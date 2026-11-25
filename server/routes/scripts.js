@@ -1,16 +1,16 @@
 import express from 'express';
 import { pool, isDbReady } from '../db.js';
 import { istDateString, addDays } from '../utils/dates.js';
-import { createRateLimiter } from '../utils/rateLimit.js';
 import { open, resolveKey, seal } from '../utils/secretBox.js';
 import {
   CATEGORY_COLORS, DEFAULT_CATEGORIES, FOLDER_FIELDS, GOAL_FIELDS, NICHE_FIELDS, SCRIPT_FIELDS, SCRIPT_STATUSES, TODO_FIELDS,
   mergeFields, normaliseDate, validateCategory, validateFolder, validateGoal, validateNiche, validateScript, validateTodo,
 } from '../services/scripts/validation.js';
 import { applyGoalChanges, goalLinkChanges } from '../services/scripts/goalProgress.js';
-import { PROVIDER_KEYS, PROVIDER_META, createProviders, isKnownModel, isProviderKey } from '../services/scripts/aiProviders.js';
+import { PROVIDER_META, isKnownModel, isProviderKey } from '../services/scripts/aiProviders.js';
+import { createAiClient } from '../services/scripts/aiClient.js';
 import {
-  ACTION_META, DEFAULT_ACTION_ORDER, DEFAULT_NICHES, actionSystemPrompt, customSystemPrompt, dailyIdeaPrompt, dailyIdeaUserMessage,
+  DEFAULT_ACTION_ORDER, DEFAULT_NICHES, actionSystemPrompt, customSystemPrompt, dailyIdeaPrompt, dailyIdeaUserMessage,
   ideaToNotes, isAction, parseDailyIdea,
 } from '../services/scripts/aiPrompts.js';
 import { buildExport, buildTemplate, parseImport } from '../services/scripts/excel.js';
@@ -37,10 +37,10 @@ const asId = (v) => (/^\d{1,18}$/.test(String(v ?? '')) ? String(v) : null);
 /** The browser's own "today", so overdue matches what the user sees; IST when it is missing. */
 const todayFrom = (req) => normaliseDate(req.query?.today ?? req.body?.today) || istDateString();
 
-export function createScriptsRouter(authenticateToken, { env = process.env, fetchImpl = globalThis.fetch } = {}) {
+export function createScriptsRouter(authenticateToken, { env = process.env, fetchImpl = globalThis.fetch, aiLimiter } = {}) {
   const router = express.Router();
-  const providers = createProviders(fetchImpl);
-  const aiLimiter = createRateLimiter({ limit: 30, windowMs: 10 * 60 * 1000 });
+  const ai = createAiClient({ env, fetchImpl, ...(aiLimiter ? { limiter: aiLimiter } : {}) });
+  const { providers, loadSettings, loadKeys, listNiches, aiState, generate, activeNicheOf, aiAllowed } = ai;
 
   router.use('/scripts', authenticateToken, (req, res, next) => (isDbReady() ? next() : res.status(503).json({ error: 'Database is not connected.' })));
 
@@ -67,18 +67,8 @@ export function createScriptsRouter(authenticateToken, { env = process.env, fetc
     }
   };
 
-  const aiAllowed = (req, res) => {
-    const { allowed, retryAfterSeconds } = aiLimiter.hit(String(req.user.userId));
-    if (allowed) return true;
-    res.set('Retry-After', String(retryAfterSeconds)).status(429).json({ error: `Too many AI requests. Try again in ${Math.ceil(retryAfterSeconds / 60)} min.` });
-    return false;
-  };
 
   // ---------------------------------------------------------------- settings row
-  const loadSettings = async (db, userId) => {
-    const { rows } = await db.query('SELECT * FROM script_settings WHERE user_id = $1', [userId]);
-    return rows[0] ?? { user_id: userId, categories_seeded: false, active_provider: null, providers: {}, action_prefs: {}, active_niche_id: null };
-  };
   const ensureSettingsRow = (db, userId) => db.query('INSERT INTO script_settings (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING', [userId]);
 
   // ---------------------------------------------------------------- scripts
@@ -142,6 +132,9 @@ export function createScriptsRouter(authenticateToken, { env = process.env, fetc
       if (SCRIPT_STATUSES.includes(status)) {
         params.push(status);
         where.push(`s.status = $${params.length}`);
+      } else if (status === 'open') {
+        // Everything still to do: the list view's default, so finished scripts don't crowd it.
+        where.push(`s.status <> 'completed'`);
       }
       const category = asId(req.query.category);
       if (category) {
@@ -571,7 +564,11 @@ export function createScriptsRouter(authenticateToken, { env = process.env, fetc
              (SELECT COUNT(*)::int FROM script_todos WHERE user_id = $1 AND completed) AS todos_done,
              (SELECT COUNT(*)::int FROM script_todos WHERE user_id = $1 AND NOT completed AND due_date < $2) AS todos_overdue,
              (SELECT COUNT(*)::int FROM script_todos WHERE user_id = $1 AND NOT completed AND priority = 'high') AS todos_high,
-             (SELECT COUNT(*)::int FROM script_niches WHERE user_id = $1) AS niches_total`,
+             (SELECT COUNT(*)::int FROM script_niches WHERE user_id = $1) AS niches_total,
+             (SELECT COUNT(*)::int FROM scripts WHERE user_id = $1 AND status = 'not_started') AS scripts_not_started,
+             (SELECT COUNT(*)::int FROM script_folders WHERE user_id = $1) AS folders_total,
+             (SELECT COUNT(*)::int FROM script_goals WHERE user_id = $1) AS goals_total,
+             (SELECT COUNT(*)::int FROM script_goals WHERE user_id = $1 AND completed) AS goals_done`,
           [userId, today, weekEnd]),
         pool.query(`${GOAL_SELECT} WHERE user_id = $1 AND NOT completed ORDER BY created_at DESC LIMIT 3`, [userId]),
         pool.query(`${SCRIPT_SELECT} WHERE s.user_id = $1 AND s.status <> 'completed' AND s.deadline >= $2 AND s.deadline <= $3 GROUP BY s.id ORDER BY s.deadline, s.id LIMIT 3`, [userId, today, weekEnd]),
@@ -599,41 +596,6 @@ export function createScriptsRouter(authenticateToken, { env = process.env, fetc
   });
 
   // ---------------------------------------------------------------- AI settings & keys
-  const loadKeys = async (userId) => {
-    const { rows } = await pool.query('SELECT provider, ciphertext, iv, tag, last4 FROM script_ai_keys WHERE user_id = $1', [userId]);
-    return Object.fromEntries(rows.map((r) => [r.provider, r]));
-  };
-
-  /** What the browser sees: never the key itself. */
-  const describeAi = (settings, keys, niches) => {
-    const providersOut = Object.fromEntries(PROVIDER_KEYS.map((k) => {
-      const p = settings.providers?.[k] ?? {};
-      return [k, { enabled: Boolean(p.enabled) && Boolean(keys[k]), model: isKnownModel(k, p.model) ? p.model : PROVIDER_META[k].defaultModel, configured: Boolean(keys[k]), last4: keys[k]?.last4 ?? '' }];
-    }));
-    const ready = PROVIDER_KEYS.filter((k) => providersOut[k].enabled);
-    const active = ready.includes(settings.active_provider) ? settings.active_provider : ready[0] ?? null;
-    const prefs = settings.action_prefs ?? {};
-    const activeNiche = niches.find((n) => String(n.id) === String(settings.active_niche_id)) ?? niches[0] ?? null;
-    return {
-      providers: providersOut,
-      active_provider: active,
-      ready_providers: ready,
-      action_prefs: {
-        order: Array.isArray(prefs.order) ? prefs.order : DEFAULT_ACTION_ORDER,
-        hidden: Array.isArray(prefs.hidden) ? prefs.hidden : [],
-        custom_prompts: Array.isArray(prefs.custom_prompts) ? prefs.custom_prompts : [],
-      },
-      active_niche_id: activeNiche ? String(activeNiche.id) : null,
-      catalog: { providers: PROVIDER_META, actions: ACTION_META, default_order: DEFAULT_ACTION_ORDER },
-    };
-  };
-
-  const listNiches = async (userId) => (await pool.query(`${NICHE_SELECT} WHERE user_id = $1 ORDER BY id`, [userId])).rows;
-
-  const aiState = async (userId) => {
-    const [settings, keys, niches] = await Promise.all([loadSettings(pool, userId), loadKeys(userId), listNiches(userId)]);
-    return { settings, keys, niches, view: describeAi(settings, keys, niches) };
-  };
 
   router.get('/scripts/ai/settings', async (req, res) => {
     try {
@@ -772,25 +734,6 @@ export function createScriptsRouter(authenticateToken, { env = process.env, fetc
     }
   });
 
-  /** Picks the provider (the requested one, else the active one), decrypts its key and runs the prompt. */
-  const generate = async (userId, requested, system, content) => {
-    const { keys, view } = await aiState(userId);
-    const provider = requested && view.ready_providers.includes(requested) ? requested : view.active_provider;
-    if (!provider) throw Object.assign(new Error('Set up an AI provider first (Scripts → Settings → AI providers).'), { status: 409 });
-    const apiKey = open(keys[provider], resolveKey(env));
-    const model = view.providers[provider].model;
-    try {
-      const text = await providers[provider].generate(apiKey, model, system, content);
-      return { text, provider, model };
-    } catch (err) {
-      throw Object.assign(new Error(err?.message ?? 'The AI provider failed.'), { status: 502, expose: true });
-    }
-  };
-
-  const activeNicheOf = async (userId) => {
-    const { niches, view } = await aiState(userId);
-    return niches.find((n) => String(n.id) === view.active_niche_id) ?? null;
-  };
 
   router.post('/scripts/ai/run', async (req, res) => {
     try {

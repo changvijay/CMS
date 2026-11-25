@@ -11,6 +11,7 @@ import { downloadCsv, toCsv } from '../utils/csv';
 import '../assets/css/workspace.css';
 import { DashboardSkeleton } from './Skeleton';
 import { SyncReport } from './workspace/SyncReport';
+import { ScriptsInsights } from './ScriptsInsights';
 
 const RANGES = [7, 14, 30];
 const PLATFORM_COLOR = { instagram: 'var(--series-1)', youtube: 'var(--series-2)', linkedin: 'var(--series-3)', facebook: 'var(--series-4)' } as const;
@@ -24,6 +25,7 @@ const KPI = [
 
 export default function Overview({ token }: { token: string }) {
   const [days, setDays] = useState(30);
+  const [rankBy, setRankBy] = useState<'engagement' | 'views'>('engagement');
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -214,32 +216,57 @@ export default function Overview({ token }: { token: string }) {
               </p>
             </section>
 
-            {data.leaderboard.length > 0 && (
-              <section className="viz-panel">
-                <h3>Best content by engagement rate</h3>
-                <p className="ws-sub">Likes + comments + saves + shares as a share of views, for items with at least 100 views.</p>
-                <ol className="media-rank">
-                  {data.leaderboard.map((m) => (
-                    <li key={`${m.platform}-${m.media_id}`}>
-                      {m.thumbnail_url ? <img src={m.thumbnail_url} alt="" loading="lazy" /> : <div className="media-thumb-empty" />}
-                      <div className="media-rank-body">
-                        <a href={m.permalink ?? undefined} target="_blank" rel="noreferrer">{(m.title || 'Untitled').slice(0, 90)}</a>
-                        <span className="media-rank-meta">
-                          <span className="platform-chip" style={{ borderColor: PLATFORM_COLOR[m.platform] }}>{PLATFORM_NAME[m.platform]}</span>
-                          {' '}{m.media_type}
-                        </span>
-                      </div>
-                      <dl className="media-rank-stats">
-                        <div><dt>Engagement</dt><dd>{m.engagement_rate}%</dd></div>
-                        <div><dt>Views</dt><dd>{formatCompact(m.views ?? m.reach)}</dd></div>
-                      </dl>
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            )}
+            {(data.leaderboard.length > 0 || (data.top_by_views?.length ?? 0) > 0) && (() => {
+              const items = rankBy === 'views' ? data.top_by_views ?? [] : data.leaderboard;
+              return (
+                <section className="viz-panel">
+                  <div className="viz-panel-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                    <div>
+                      <h3>{rankBy === 'views' ? 'Most viewed content' : 'Best content by engagement rate'}</h3>
+                      <p className="ws-sub">
+                        {rankBy === 'views'
+                          ? `Posts published in the last ${days} days, ranked by views.`
+                          : `Posts published in the last ${days} days. Likes + comments + saves + shares as a share of views, for items with at least 100 views.`}
+                      </p>
+                    </div>
+                    <div className="seg" role="group" aria-label="Rank content by">
+                      <button className={rankBy === 'engagement' ? 'active' : ''} aria-pressed={rankBy === 'engagement'} onClick={() => setRankBy('engagement')}>Engagement</button>
+                      <button className={rankBy === 'views' ? 'active' : ''} aria-pressed={rankBy === 'views'} onClick={() => setRankBy('views')}>Views</button>
+                    </div>
+                  </div>
+                  {items.length === 0 ? (
+                    <p className="trends-empty-inline">
+                      {rankBy === 'views' ? 'No posts with views in this period.' : 'No post in this period has reached 100 views yet.'}
+                    </p>
+                  ) : (
+                    <ol className="media-rank">
+                      {items.map((m) => (
+                        <li key={`${m.platform}-${m.media_id}`}>
+                          {m.thumbnail_url ? <img src={m.thumbnail_url} alt="" loading="lazy" /> : <div className="media-thumb-empty" />}
+                          <div className="media-rank-body">
+                            <a href={m.permalink ?? undefined} target="_blank" rel="noreferrer">{(m.title || 'Untitled').slice(0, 90)}</a>
+                            <span className="media-rank-meta">
+                              <span className="platform-chip" style={{ borderColor: PLATFORM_COLOR[m.platform] }}>{PLATFORM_NAME[m.platform]}</span>
+                              {' '}{m.media_type}
+                              {m.published_at ? ` · ${formatShortDate(m.published_at.slice(0, 10))}` : ''}
+                            </span>
+                          </div>
+                          <dl className="media-rank-stats">
+                            <div><dt>Views</dt><dd>{formatCompact(m.views ?? m.reach)}</dd></div>
+                            <div><dt>Likes</dt><dd>{m.likes == null ? '–' : formatCompact(m.likes)}</dd></div>
+                            <div><dt>Comments</dt><dd>{m.comments == null ? '–' : formatCompact(m.comments)}</dd></div>
+                            <div><dt>Engagement</dt><dd>{m.engagement_rate == null ? '–' : `${m.engagement_rate}%`}</dd></div>
+                          </dl>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </section>
+              );
+            })()}
           </>
         )}
+        <ScriptsInsights token={token} />
       </main>
     </div>
   );

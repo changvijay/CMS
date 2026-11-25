@@ -153,12 +153,16 @@ export function createInsightsRouter(authenticateToken) {
       const [currentSets, previousSets, media, fbCurrent, fbPrevious] = await Promise.all([
         Promise.all(platforms.map((p) => loadDaily(p, accountsByPlatform[p], since, until, { live }))),
         Promise.all(platforms.map((p) => loadPrevious(p, accountsByPlatform[p], prevSince, prevUntil))),
+        // Only content published in the chosen period, so the list changes with the range instead of
+        // showing the same all-time winner forever.
         pool.query(
           `SELECT DISTINCT ON (platform, account_id, media_id) ${MEDIA_LEADERBOARD_COLUMNS}
              FROM media_snapshots
-            WHERE (platform = 'instagram' AND account_id = ANY($1)) OR (platform = 'youtube' AND account_id = ANY($2))
-               OR (platform = 'linkedin' AND account_id = ANY($3))
-            ORDER BY platform, account_id, media_id, captured_on DESC`, [igIds, ytIds, liIds]),
+            WHERE ((platform = 'instagram' AND account_id = ANY($1)) OR (platform = 'youtube' AND account_id = ANY($2))
+               OR (platform = 'linkedin' AND account_id = ANY($3)) OR (platform = 'facebook' AND account_id = ANY($4)))
+              AND published_at >= $5::date AND published_at < ($6::date + 1)
+            ORDER BY platform, account_id, media_id, captured_on DESC`,
+          [igIds, ytIds, liIds, fbPages.map((p) => Number(p.id)), since, until]),
         loadFacebookPagesDaily(fbPages, since, until, fbErrors, live),
         loadFacebookPagesDaily(fbPages, prevSince, prevUntil, null, false, true),
       ]);
@@ -197,16 +201,25 @@ export function createInsightsRouter(authenticateToken) {
       }
       const daily = [...byDate.values()].sort((a, b) => (a.date < b.date ? -1 : 1));
 
-      const leaderboard = media.rows
-        .map((m) => ({ ...m, engagement_rate: engagementRate(m) }))
-        .filter((m) => m.engagement_rate !== null && Number(m.views ?? m.reach ?? 0) >= 100)
-        .sort((a, b) => b.engagement_rate - a.engagement_rate)
+      const asItem = (m) => ({
+        platform: m.platform, media_id: m.media_id, title: m.title, media_type: m.media_type, permalink: m.permalink,
+        thumbnail_url: m.thumbnail_url, published_at: m.published_at,
+        views: m.views === null ? null : Number(m.views), reach: m.reach === null ? null : Number(m.reach),
+        likes: m.likes === null ? null : Number(m.likes), comments: m.comments === null ? null : Number(m.comments),
+        engagement_rate: m.engagement_rate,
+      });
+      const ranked = media.rows.map((m) => ({ ...m, engagement_rate: engagementRate(m) }));
+      const audienceOf = (m) => Number(m.views ?? m.reach ?? 0);
+      const leaderboard = ranked
+        .filter((m) => m.engagement_rate !== null && audienceOf(m) >= 100)
+        .sort((a, b) => b.engagement_rate - a.engagement_rate || audienceOf(b) - audienceOf(a))
         .slice(0, 10)
-        .map((m) => ({
-          platform: m.platform, media_id: m.media_id, title: m.title, media_type: m.media_type, permalink: m.permalink,
-          thumbnail_url: m.thumbnail_url, published_at: m.published_at, views: m.views === null ? null : Number(m.views),
-          reach: m.reach === null ? null : Number(m.reach), engagement_rate: m.engagement_rate,
-        }));
+        .map(asItem);
+      const top_by_views = ranked
+        .filter((m) => audienceOf(m) > 0)
+        .sort((a, b) => audienceOf(b) - audienceOf(a))
+        .slice(0, 10)
+        .map(asItem);
 
       const insights = [];
       const viewsDelta = computeDeltas(combined, combinedPrev).views;
@@ -246,6 +259,7 @@ export function createInsightsRouter(authenticateToken) {
         daily,
         account_cards: buildAccountCards({ ...accountsByPlatform, facebook: fbPages }, current, previousRows),
         leaderboard,
+        top_by_views,
         insights,
       });
     } catch (error) {

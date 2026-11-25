@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { reportPath } from '../../services/videoAiApi';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { FacebookAudience, FacebookDaily, FacebookMetric, FacebookPageProfile, FacebookPost, FacebookReel } from '../../services/api';
 import { KpiCard } from '../charts/KpiCard';
@@ -195,7 +197,7 @@ const avg = (list: (number | null)[]) => {
   return xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null;
 };
 
-export function FbContentTab({ posts, withInsights }: { posts: FacebookPost[]; withInsights: boolean }) {
+export function FbContentTab({ posts, withInsights, accountId }: { posts: FacebookPost[]; withInsights: boolean; accountId?: string }) {
   const [sort, setSort] = useState<SortKey>('views');
   const sorted = useMemo(() => [...posts].sort((a, b) => {
     if (sort === 'created_time') return a.created_time < b.created_time ? 1 : -1;
@@ -239,7 +241,7 @@ export function FbContentTab({ posts, withInsights }: { posts: FacebookPost[]; w
         <div className="viz-table-wrap">
           <table className="viz-table">
             <thead>
-              <tr><th>Post</th><th>Type</th><th>Published</th><th>Views</th><th>Reach</th><th>Reactions</th><th>Comments</th><th>Shares</th><th>Clicks</th><th>Eng. rate</th></tr>
+              <tr><th>Post</th><th>Type</th><th>Published</th><th>Views</th><th>Reach</th><th>Reactions</th><th>Comments</th><th>Shares</th><th>Clicks</th><th>Eng. rate</th>{accountId && <th><span className="sr-only">AI</span></th>}</tr>
             </thead>
             <tbody>
               {sorted.map((p) => (
@@ -257,6 +259,7 @@ export function FbContentTab({ posts, withInsights }: { posts: FacebookPost[]; w
                   <td>{p.shares.toLocaleString()}</td>
                   <td>{p.clicks.toLocaleString()}</td>
                   <td>{formatPercent(p.engagement_rate)}</td>
+                  {accountId && <td><Link className="content-link content-ai" to={reportPath('facebook', accountId, p.id)} aria-label="AI analysis of this post">✦ AI</Link></td>}
                 </tr>
               ))}
             </tbody>
@@ -296,7 +299,7 @@ export function FbContentTab({ posts, withInsights }: { posts: FacebookPost[]; w
 // Video & Reels
 // ---------------------------------------------------------------------------
 
-export function FbVideoTab({ data, reels, reelsError }: { data: FacebookDaily; reels: FacebookReel[] | null; reelsError: string | null }) {
+export function FbVideoTab({ data, reels, reelsError, accountId }: { data: FacebookDaily; reels: FacebookReel[] | null; reelsError: string | null; accountId?: string }) {
   const views = total(data, 'video_views');
   const avgWatch = views > 0 ? (total(data, 'watch_minutes') * 60) / views : null;
   const videoKeys: FacebookMetric[] = ['video_views', 'watch_minutes', 'video_complete_30s', 'video_repeat_views'];
@@ -331,7 +334,7 @@ export function FbVideoTab({ data, reels, reelsError }: { data: FacebookDaily; r
                 <div className="viz-table-wrap">
                   <table className="viz-table">
                     <thead>
-                      <tr><th>Reel</th><th>Published</th><th>Length</th><th>Plays</th><th>Replays</th><th>Avg watch</th><th>% watched</th><th>Minutes watched</th><th>Followers gained</th><th>Reactions</th><th>Comments</th><th>Shares</th></tr>
+                      <tr><th>Reel</th><th>Published</th><th>Length</th><th>Plays</th><th>Replays</th><th>Avg watch</th><th>% watched</th><th>Minutes watched</th><th>Followers gained</th><th>Reactions</th><th>Comments</th><th>Shares</th>{accountId && <th><span className="sr-only">AI</span></th>}</tr>
                     </thead>
                     <tbody>
                       {[...reels].sort((a, b) => (b.plays ?? 0) - (a.plays ?? 0)).map((r) => (
@@ -351,6 +354,7 @@ export function FbVideoTab({ data, reels, reelsError }: { data: FacebookDaily; r
                           <td>{r.reactions.toLocaleString()}</td>
                           <td>{r.comments.toLocaleString()}</td>
                           <td>{r.shares.toLocaleString()}</td>
+                          {accountId && <td><Link className="content-link content-ai" to={reportPath('facebook', accountId, r.id)} aria-label="AI analysis of this reel">✦ AI</Link></td>}
                         </tr>
                       ))}
                     </tbody>

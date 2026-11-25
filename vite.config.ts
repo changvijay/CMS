@@ -42,6 +42,15 @@ export default defineConfig(({ mode }) => {
         welcome: fileURLToPath(new URL('./welcome/index.html', import.meta.url)),
         privacy: fileURLToPath(new URL('./privacy/index.html', import.meta.url)),
       },
+      output: {
+        // The chart library changes far less often than app code: it gets its own long-cached file,
+        // downloaded once (and only by pages that draw charts) instead of being repeated per page.
+        codeSplitting: {
+          groups: [
+            { name: 'charts', includeDependenciesRecursively: false, test: /node_modules[\\/](recharts|d3-[^\\/]+|victory-vendor|internmap|decimal\.js-light|es-toolkit|@reduxjs|redux|immer|reselect|react-redux|eventemitter3|use-sync-external-store)[\\/]/ },
+          ],
+        },
+      },
     },
   },
   // Agent worktrees under .claude/ hold copies of the repo; their tests are not this checkout's.

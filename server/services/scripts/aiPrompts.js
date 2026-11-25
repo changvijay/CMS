@@ -213,3 +213,111 @@ export function ideaToNotes(idea, date) {
   const retention = idea.retention_strategy ? `\n\n**Retention:** ${idea.retention_strategy}` : '';
   return `# ${idea.title}\n\n**Niche:** ${idea.niche}\n**Language:** ${idea.language || 'English'}\n**Generated:** ${date}\n\n## Content Outline & Trend Analysis\n${idea.description}${hook}${retention}${captions}`;
 }
+
+// ---------------------------------------------------------------- video analysis
+
+const REPORT_SHAPE = `{
+  "score": 0-100 integer (overall performance),
+  "verdict": "one sentence summary",
+  "highlights": ["short key facts, each tied to a number given"],
+  "worked": ["what worked well and why"],
+  "didnt_work": ["what did not work and why"],
+  "engagement": { "summary": "audience engagement analysis", "rate_note": "how the engagement rate compares" },
+  "hook": { "score": 0-100 integer, "notes": "hook effectiveness: first 3-5 seconds" },
+  "retention": { "available": true|false, "summary": "watch-time / retention analysis, or why it can't be judged" },
+  "reasons_underperformed": ["possible reasons, framed as likely, not certain"],
+  "comparison": { "summary": "how it compares with the creator's previous videos", "vs_median": ["metric: this vs median"] },
+  "next_video": ["specific recommendations for the next video"],
+  "action_steps": { "views": ["..."], "reach": ["..."], "engagement": ["..."], "growth": ["..."] },
+  "corrections": [
+    {
+      "area": "hook | opening | caption | title | thumbnail | pacing | storytelling | cta | audio | visuals | length | hashtags | posting",
+      "wrong": "exactly what is wrong, quoting the real line, caption or moment when you have it",
+      "why": "why it hurts performance, tied to a number when one is given",
+      "fix": "how to correct it, in one or two steps",
+      "example": "a ready-to-use sample: the rewritten hook line / caption / title / CTA, or the re-cut opening described shot by shot"
+    }
+  ]
+}`;
+
+const PREUPLOAD_EXTRA = `,
+  "first_seconds": { "hook": "...", "opening": "what happens in the first 3-5 seconds", "pacing": "...", "captions": "on-screen text / captions", "storytelling": "...", "quality": "visual / audio quality" }`;
+
+const REPORT_RULES = `
+RULES (follow every one):
+- Use ONLY the numbers in the data. Never invent, estimate or round up a metric. If a number is missing, say "not available" and do not judge that part.
+- Never promise views, reach or going viral. Talk about likelihood and what to change.
+- Be specific and practical: name the exact moment, line, number or habit to change. No generic advice like "post consistently" unless the data shows why.
+- Keep each list to at most 5 short items.
+- CORRECTIONS ARE REQUIRED: for every item in "didnt_work" (and anything else that is wrong), add a "corrections" entry that says what is wrong, why, how to fix it, and a concrete sample in "example" the creator can copy (e.g. the rewritten first line they should say, a new caption, a new title, a better CTA, or the new opening shot by shot). Write the example in the creator's language and niche style.
+- If the score is below 60, give at least 3 corrections, starting with the one that would help most. If the score is 60 or more, still correct anything weak (at least 1).
+- Never give a correction without an example. "Make the hook stronger" alone is not allowed; write the stronger hook.
+- Return ONLY valid, parsable JSON in exactly this shape. No markdown, no code fences, no text before or after.`;
+
+/** System prompt for a report on a video that is already published, from its real platform numbers. */
+export function publishedReportPrompt(niche) {
+  return `You are a senior short-form and YouTube performance analyst. You explain to a creator why one of their published videos performed the way it did, using the analytics their platform returned and how it compares with their own previous videos.
+The score reflects how this video performed for THIS creator (vs their median), not vs the whole platform: 50 = typical for them, above 70 = clearly better than usual, below 30 = clearly worse.
+${REPORT_RULES}
+${REPORT_SHAPE}
+${nicheContext(niche)}`;
+}
+
+/** System prompt for checking a video before it is posted, from frames (and the video itself when the model can watch it). */
+export function preUploadPrompt(niche, { watchesVideo }) {
+  return `You are a senior short-form video editor and growth analyst. A creator is about to post a video and wants to know, before uploading, how likely it is to perform well and what to fix.
+You are given ${watchesVideo ? 'the video itself plus' : ''} still frames taken from it (each labelled with its second; the first 5 seconds are sampled densely), its length and size, the caption/title they plan to use, the platforms, and (when available) the creator's typical numbers.
+Judge the hook, the opening 3-5 seconds, content quality, storytelling, pacing, captions/on-screen text and engagement potential.${watchesVideo ? ' You can hear the audio: judge the voice, delivery and music too.' : ' You cannot hear audio: say so where it matters and judge only what is visible.'}
+The score is the likelihood of performing well for this creator (50 = typical). "retention" and "comparison" are predictions here: say so.
+${REPORT_RULES}
+${REPORT_SHAPE.replace(/\n}$/, `${PREUPLOAD_EXTRA}\n}`)}
+${nicheContext(niche)}`;
+}
+
+const list = (v, n = 5, len = 400) => (Array.isArray(v) ? v.map((x) => clip(typeof x === 'string' ? x : JSON.stringify(x), len)).filter(Boolean).slice(0, n) : []);
+const score = (v) => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : null;
+};
+
+/** Reads the model's report. Never throws: an answer that isn't JSON becomes a report holding just that text. */
+export function parseVideoReport(raw) {
+  const text = String(raw ?? '');
+  let p;
+  try {
+    const match = text.replace(/```json/gi, '').replace(/```/g, '').match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('No JSON found');
+    p = JSON.parse(match[0]);
+  } catch {
+    return { score: null, verdict: clip(text, 4000) || 'The AI did not return a report. Try again.', parsed: false };
+  }
+  const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+  const steps = obj(p.action_steps);
+  const fs = obj(p.first_seconds);
+  const report = {
+    parsed: true,
+    score: score(p.score),
+    verdict: clip(p.verdict, 400),
+    highlights: list(p.highlights),
+    worked: list(p.worked),
+    didnt_work: list(p.didnt_work),
+    engagement: { summary: clip(obj(p.engagement).summary, 1200), rate_note: clip(obj(p.engagement).rate_note, 400) },
+    hook: { score: score(obj(p.hook).score), notes: clip(obj(p.hook).notes, 1200) },
+    retention: { available: Boolean(obj(p.retention).available), summary: clip(obj(p.retention).summary, 1200) },
+    reasons_underperformed: list(p.reasons_underperformed),
+    comparison: { summary: clip(obj(p.comparison).summary, 1200), vs_median: list(obj(p.comparison).vs_median, 8, 200) },
+    next_video: list(p.next_video),
+    corrections: (Array.isArray(p.corrections) ? p.corrections : []).filter((c) => c && typeof c === 'object').slice(0, 8).map((c) => ({
+      area: clip(c.area, 40).toLowerCase(),
+      wrong: clip(c.wrong, 600),
+      why: clip(c.why, 600),
+      fix: clip(c.fix, 800),
+      example: clip(c.example, 1500),
+    })).filter((c) => c.wrong || c.fix || c.example),
+    action_steps: { views: list(steps.views), reach: list(steps.reach), engagement: list(steps.engagement), growth: list(steps.growth) },
+  };
+  if (Object.keys(fs).length) {
+    report.first_seconds = Object.fromEntries(['hook', 'opening', 'pacing', 'captions', 'storytelling', 'quality'].map((k) => [k, clip(fs[k], 800)]));
+  }
+  return report;
+}

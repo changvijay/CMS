@@ -4,7 +4,7 @@ import { errorMessage } from '../utils/errors';
 import { Waitlist } from './Waitlist';
 
 interface LoginProps {
-  onLoginSuccess: (token: string, user: User) => void;
+  onLoginSuccess: (token: string, user: User, refreshToken?: string) => void;
 }
 
 type Mode = 'signin' | 'waitlist';
@@ -34,7 +34,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
     try {
       const data = await loginUser(username, password);
-      onLoginSuccess(data.token, data.user);
+      onLoginSuccess(data.token, data.user, data.refreshToken);
     } catch (err) {
       setError(errorMessage(err, 'An unexpected error occurred during login.'));
     } finally {

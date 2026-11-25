@@ -3,12 +3,15 @@ import { CheckSquare, GearSix, House, NotePencil, Plus, Target } from '@phosphor
 import type { User } from '../../services/api';
 import '../../assets/css/workspace.css';
 import './scripts.css';
-import Dashboard from './Dashboard';
-import ScriptLibrary from './ScriptLibrary';
-import ScriptEditor from './ScriptEditor';
-import Todos from './Todos';
-import Goals from './Goals';
-import ScriptsSettings from './ScriptsSettings';
+import { lazy, Suspense } from 'react';
+import { PageSkeleton } from '../Skeleton';
+// Each view is its own chunk, downloaded the first time it is opened.
+const Dashboard = lazy(() => import('./Dashboard'));
+const ScriptLibrary = lazy(() => import('./ScriptLibrary'));
+const ScriptEditor = lazy(() => import('./ScriptEditor'));
+const Todos = lazy(() => import('./Todos'));
+const Goals = lazy(() => import('./Goals'));
+const ScriptsSettings = lazy(() => import('./ScriptsSettings'));
 import { FeedbackHost } from './shared';
 
 const TABS = [
@@ -53,11 +56,13 @@ export default function ScriptsPage({ token, user }: { token: string; user: User
           </header>
         )}
         <div className="sv-view" key={editing ? `edit-${id}` : tab}>
-          {tab === 'dashboard' && <Dashboard token={token} user={user} />}
-          {tab === 'library' && (id ? <ScriptEditor key={id} token={token} id={id} /> : <ScriptLibrary token={token} />)}
-          {tab === 'todos' && <Todos token={token} />}
-          {tab === 'goals' && <Goals token={token} />}
-          {tab === 'settings' && <ScriptsSettings token={token} />}
+          <Suspense fallback={<PageSkeleton label="Loading…" />}>
+            {tab === 'dashboard' && <Dashboard token={token} user={user} />}
+            {tab === 'library' && (id ? <ScriptEditor key={id} token={token} id={id} /> : <ScriptLibrary token={token} />)}
+            {tab === 'todos' && <Todos token={token} />}
+            {tab === 'goals' && <Goals token={token} />}
+            {tab === 'settings' && <ScriptsSettings token={token} />}
+          </Suspense>
         </div>
       </main>
       <FeedbackHost />

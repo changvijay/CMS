@@ -1,4 +1,5 @@
 import { sendJson } from './api';
+import { apiFetch } from './client';
 
 /** Client for the Scripts workspace (server/routes/scripts.js). */
 
@@ -87,6 +88,8 @@ export interface Dashboard {
   counts: {
     scripts_total: number; scripts_done: number; scripts_in_progress: number; scripts_overdue: number; scripts_due_week: number;
     todos_total: number; todos_done: number; todos_overdue: number; todos_high: number; niches_total: number;
+    /** Added later: missing until the server is updated. */
+    scripts_not_started?: number; folders_total?: number; goals_total?: number; goals_done?: number;
   };
   goals: ScriptGoal[];
   due_this_week: Script[];
@@ -245,7 +248,7 @@ export const acceptDailyIdea = (token: string, id: string) => sendJson<{ script_
 
 // Excel
 async function download(token: string, path: string, fallbackName: string) {
-  const res = await fetch(`/api/${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await apiFetch(`/api/${path}`, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(`Error ${res.status}: ${data.error || 'Download failed'}`);
@@ -271,7 +274,7 @@ export async function importScripts(token: string, file: File, commit: boolean, 
   const params = new URLSearchParams();
   if (commit) params.set('commit', '1');
   if (folderId) params.set('folder', folderId);
-  const res = await fetch(`/api/scripts/import${params.size ? `?${params}` : ''}`, {
+  const res = await apiFetch(`/api/scripts/import${params.size ? `?${params}` : ''}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/octet-stream' },
     body: file,

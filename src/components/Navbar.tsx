@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
+import { prefetchPage } from '../pageLoaders';
 import type { User } from '../services/api';
 import './Navbar.css';
 
@@ -78,9 +79,10 @@ function UserMenu({ user, onLogout }: NavbarProps) {
             <span>{user.email_address}</span>
           </div>
         </div>
-        <Link role="menuitem" to="/profile"><IconUser /> My profile</Link>
-        <Link role="menuitem" to="/accounts"><IconLink /> Connected accounts</Link>
-        <Link role="menuitem" to="/automation"><IconChat /> Auto-replies</Link>
+        <Link role="menuitem" to="/profile" onMouseEnter={() => prefetchPage('/profile')}><IconUser /> My profile</Link>
+        <Link role="menuitem" to="/accounts" onMouseEnter={() => prefetchPage('/accounts')}><IconLink /> Connected accounts</Link>
+        <Link role="menuitem" to="/automation" onMouseEnter={() => prefetchPage('/automation')}><IconChat /> Auto-replies</Link>
+        <Link role="menuitem" to="/analysis" onMouseEnter={() => prefetchPage('/analysis')}><IconSpark /> Video AI reports</Link>
         <div className="user-menu-sep" role="separator" />
         <button role="menuitem" className="user-menu-logout" onClick={onLogout}><IconLogOut /> Log out</button>
       </div>
@@ -115,30 +117,30 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
       <div className={`nav-collapsible ${menuOpen ? 'open' : ''}`}>
         <nav className="central-nav" aria-label="Main">
           <div className="platform-nav-tabs">
-            <NavLink to="/overview" className={({ isActive }) => `platform-tab ${isActive ? 'active' : ''}`}>
+            <NavLink to="/overview" onMouseEnter={() => prefetchPage('/overview')} onFocus={() => prefetchPage('/overview')} className={({ isActive }) => `platform-tab ${isActive ? 'active' : ''}`}>
               <span>Overview</span>
             </NavLink>
-            <NavLink to="/instagram" className={({ isActive }) => `platform-tab ${isActive ? 'active' : ''}`}>
+            <NavLink to="/instagram" onMouseEnter={() => prefetchPage('/instagram')} onFocus={() => prefetchPage('/instagram')} className={({ isActive }) => `platform-tab ${isActive ? 'active' : ''}`}>
               <IconInstagram />
               <span>Instagram</span>
             </NavLink>
-            <NavLink to="/facebook" className={({ isActive }) => `platform-tab ${isActive ? 'active facebook-active' : ''}`}>
+            <NavLink to="/facebook" onMouseEnter={() => prefetchPage('/facebook')} onFocus={() => prefetchPage('/facebook')} className={({ isActive }) => `platform-tab ${isActive ? 'active facebook-active' : ''}`}>
               <IconFacebook />
               <span>Facebook</span>
             </NavLink>
-            <NavLink to="/youtube" className={({ isActive }) => `platform-tab ${isActive ? 'active youtube-active' : ''}`}>
+            <NavLink to="/youtube" onMouseEnter={() => prefetchPage('/youtube')} onFocus={() => prefetchPage('/youtube')} className={({ isActive }) => `platform-tab ${isActive ? 'active youtube-active' : ''}`}>
               <IconYouTubePlay />
               <span>YouTube</span>
             </NavLink>
-            <NavLink to="/linkedin" className={({ isActive }) => `platform-tab ${isActive ? 'active linkedin-active' : ''}`}>
+            <NavLink to="/linkedin" onMouseEnter={() => prefetchPage('/linkedin')} onFocus={() => prefetchPage('/linkedin')} className={({ isActive }) => `platform-tab ${isActive ? 'active linkedin-active' : ''}`}>
               <IconLinkedIn />
               <span>LinkedIn</span>
             </NavLink>
-            <NavLink to="/publish" className={({ isActive }) => `platform-tab ${isActive ? 'active' : ''}`}>
+            <NavLink to="/publish" onMouseEnter={() => prefetchPage('/publish')} onFocus={() => prefetchPage('/publish')} className={({ isActive }) => `platform-tab ${isActive ? 'active' : ''}`}>
               <IconSend />
               <span>Social Post</span>
             </NavLink>
-            <NavLink to="/scripts" className={({ isActive }) => `platform-tab ${isActive ? 'active' : ''}`}>
+            <NavLink to="/scripts" onMouseEnter={() => prefetchPage('/scripts')} onFocus={() => prefetchPage('/scripts')} className={({ isActive }) => `platform-tab ${isActive ? 'active' : ''}`}>
               <IconScript />
               <span>Scripts</span>
             </NavLink>
@@ -150,6 +152,14 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
     </header>
   );
 };
+
+function IconSpark() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" />
+    </svg>
+  );
+}
 
 function IconScript() {
   return (

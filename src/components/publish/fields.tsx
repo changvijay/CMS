@@ -190,8 +190,10 @@ export function MediaThumb({ item, className = '' }: { item: MediaItem; classNam
  * Drop zone + list. Files upload right away (with progress); the list can be reordered, which sets the
  * carousel order. `single` replaces the current file instead of adding.
  */
-export function MediaPicker({ token, value, onChange, accept = 'image/*,video/*,application/pdf', single, disabled, label = 'Add photos, videos or a PDF' }: {
+export function MediaPicker({ token, value, onChange, accept = 'image/*,video/*,application/pdf', single, disabled, label = 'Add photos, videos or a PDF', onAnalyze }: {
   token: string; value: MediaItem[]; onChange: (items: MediaItem[]) => void; accept?: string; single?: boolean; disabled?: boolean; label?: string;
+  /** Shown on each video: check it with AI before posting. */
+  onAnalyze?: (item: MediaItem) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const latest = useRef(value);
@@ -247,6 +249,9 @@ export function MediaPicker({ token, value, onChange, accept = 'image/*,video/*,
                 {m.status === 'error' && <small className="pf-error">{m.error}</small>}
               </div>
               <div className="pf-media-actions">
+                {onAnalyze && m.kind === 'video' && m.status !== 'error' && (m.previewUrl || m.url) && (
+                  <button type="button" className="va-analyze-btn" onClick={() => onAnalyze(m)}>✦ Analyze with AI</button>
+                )}
                 {!single && i > 0 && <button type="button" aria-label="Move earlier" onClick={() => move(i, -1)}>↑</button>}
                 {!single && i < value.length - 1 && <button type="button" aria-label="Move later" onClick={() => move(i, 1)}>↓</button>}
                 <button type="button" aria-label={`Remove ${m.name}`} onClick={() => onChange(value.filter((x) => x.id !== m.id))}>×</button>

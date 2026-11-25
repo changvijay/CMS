@@ -1,5 +1,6 @@
 import type { Platform as PublishPlatform, PublishAccount, WizardState } from '../components/publish/types';
 import { oauthLog } from './oauthDebug';
+import { apiFetch } from './client';
 
 export interface User {
   id: string | number;
@@ -36,8 +37,8 @@ export interface YoutubeAccount {
 
 const API_BASE = '/api';
 
-export async function loginUser(username: string, password: string): Promise<{ token: string; user: User }> {
-  const response = await fetch(`${API_BASE}/auth/login`, {
+export async function loginUser(username: string, password: string): Promise<{ token: string; refreshToken?: string; user: User }> {
+  const response = await apiFetch(`${API_BASE}/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -75,7 +76,7 @@ export class WaitlistError extends Error {
 }
 
 export async function joinWaitlist(signup: WaitlistSignup): Promise<{ updated: boolean }> {
-  const response = await fetch(`${API_BASE}/waitlist`, {
+  const response = await apiFetch(`${API_BASE}/waitlist`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(signup),
@@ -86,7 +87,7 @@ export async function joinWaitlist(signup: WaitlistSignup): Promise<{ updated: b
 }
 
 export async function getCurrentUser(token: string): Promise<User> {
-  const response = await fetch(`${API_BASE}/auth/me`, {
+  const response = await apiFetch(`${API_BASE}/auth/me`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -102,7 +103,7 @@ export async function getCurrentUser(token: string): Promise<User> {
 }
 
 export async function getInstagramAccounts(token: string): Promise<InstagramAccount[]> {
-  const response = await fetch(`${API_BASE}/instagram-accounts`, {
+  const response = await apiFetch(`${API_BASE}/instagram-accounts`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -123,7 +124,7 @@ export async function getInstagramAccounts(token: string): Promise<InstagramAcco
 // ============================================================================
 
 export async function getYoutubeAccounts(token: string, tableName = 'Youtube_accounts'): Promise<YoutubeAccount[]> {
-  const response = await fetch(`${API_BASE}/youtube-accounts?tableName=${tableName}`, {
+  const response = await apiFetch(`${API_BASE}/youtube-accounts?tableName=${tableName}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -228,7 +229,7 @@ export async function fetchHistory(
   if (opts.since) params.append('since', opts.since);
   if (opts.until) params.append('until', opts.until);
   if (opts.live) params.append('live', '1');
-  const response = await fetch(`${API_BASE}/history/${platform}?${params.toString()}`, {
+  const response = await apiFetch(`${API_BASE}/history/${platform}?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   const data = await response.json();
@@ -243,7 +244,7 @@ export async function fetchStoredMedia(
 ): Promise<StoredMedia[]> {
   const params = new URLSearchParams();
   if (accountId) params.append('accountId', String(accountId));
-  const response = await fetch(`${API_BASE}/history/${platform}/media?${params.toString()}`, {
+  const response = await apiFetch(`${API_BASE}/history/${platform}/media?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   const data = await response.json();
@@ -253,7 +254,7 @@ export async function fetchStoredMedia(
 
 /** Runs a sync. Returns per-account results AND errors; only throws when the server gives no per-account detail. */
 export async function syncNow(token: string, platform?: OverviewPlatform, accountId?: string | number): Promise<SyncResult> {
-  const response = await fetch(`${API_BASE}/sync`, {
+  const response = await apiFetch(`${API_BASE}/sync`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ platform, accountId }),
@@ -284,7 +285,7 @@ export interface NewYoutubeAccount {
 const ACCOUNT_PATH: Record<ManualPlatform, string> = { instagram: 'instagram-accounts', youtube: 'youtube-accounts' };
 
 async function accountRequest(token: string, method: string, path: string, body?: unknown): Promise<void> {
-  const response = await fetch(`${API_BASE}/${path}`, {
+  const response = await apiFetch(`${API_BASE}/${path}`, {
     method,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: body ? JSON.stringify(body) : undefined,
@@ -332,7 +333,7 @@ export interface LinkedInAccount {
 }
 
 async function linkedinJson<T>(token: string, path: string): Promise<T> {
-  const response = await fetch(`${API_BASE}/${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  const response = await apiFetch(`${API_BASE}/${path}`, { headers: { Authorization: `Bearer ${token}` } });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
   return data as T;
@@ -519,6 +520,22 @@ export interface AccountCard {
   series: number[];
 }
 
+export interface OverviewMediaItem {
+  platform: OverviewPlatform;
+  media_id: string;
+  title: string | null;
+  media_type: string | null;
+  permalink: string | null;
+  thumbnail_url: string | null;
+  published_at: string | null;
+  views: number | null;
+  reach: number | null;
+  likes?: number | null;
+  comments?: number | null;
+  /** Null for items with no views yet (only possible in top_by_views). */
+  engagement_rate: number | null;
+}
+
 export interface OverviewResponse {
   source?: DataSource;
   /** Accounts whose live numbers could not be fetched; the rest of the page still shows. */
@@ -530,23 +547,15 @@ export interface OverviewResponse {
   deltas: Record<OverviewPlatform | 'combined', Record<string, MetricDelta>>;
   daily: ({ date: string } & Record<`${OverviewPlatform}_views`, number>)[];
   account_cards: AccountCard[];
-  leaderboard: {
-    platform: Platform;
-    media_id: string;
-    title: string | null;
-    media_type: string | null;
-    permalink: string | null;
-    thumbnail_url: string | null;
-    published_at: string | null;
-    views: number | null;
-    reach: number | null;
-    engagement_rate: number;
-  }[];
+  /** Top content published in the range, by engagement rate (items with at least 100 views). */
+  leaderboard: OverviewMediaItem[];
+  /** Top content published in the range, by views. Missing on servers older than this field. */
+  top_by_views?: OverviewMediaItem[];
   insights: string[];
 }
 
 async function getJsonOrThrow<T>(token: string, path: string, label: string): Promise<T> {
-  const response = await fetch(`${API_BASE}/${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  const response = await apiFetch(`${API_BASE}/${path}`, { headers: { Authorization: `Bearer ${token}` } });
   const data = await response.json();
   if (!response.ok) {
     const d = data.error_details as ApiErrorDetails | undefined;
@@ -793,7 +802,7 @@ export interface RuleTestResult {
 }
 
 export async function sendJson<T>(token: string, method: string, path: string, body?: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE}/${path}`, {
+  const response = await apiFetch(`${API_BASE}/${path}`, {
     method,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -910,7 +919,7 @@ export function fetchLinkedInVisitors(token: string, accountId: string) {
 // ---------------------------------------------------------------------------
 
 async function publishJson<T>(token: string, method: string, path: string, body?: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE}/${path}`, {
+  const response = await apiFetch(`${API_BASE}/${path}`, {
     method,
     headers: { Authorization: `Bearer ${token}`, ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -1023,7 +1032,7 @@ export function lastFlowId(platform: string): string | undefined {
 
 /** Adds a browser-side step to the server log. Never throws: logging must not break the Connect button. */
 export function sendOAuthStep(token: string, platform: 'instagram' | 'facebook', step: string, details: unknown, flowId?: string) {
-  fetch(`${API_BASE}/oauth-log`, {
+  apiFetch(`${API_BASE}/oauth-log`, {
     method: 'POST',
     keepalive: true, // the page is about to leave for Meta
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

@@ -4,16 +4,20 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Login } from './components/Login';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
-const PlatformPage = lazy(() => import('./components/workspace/PlatformPage'));
-const Overview = lazy(() => import('./components/Overview'));
-const Accounts = lazy(() => import('./components/Accounts'));
-const Profile = lazy(() => import('./components/Profile'));
-const Automation = lazy(() => import('./components/Automation'));
-const PublishWizard = lazy(() => import('./components/publish/PublishWizard'));
-const FacebookPage = lazy(() => import('./components/workspace/FacebookPage'));
-const ScriptsPage = lazy(() => import('./components/scripts/ScriptsPage'));
+import { pageLoaders } from './pageLoaders';
+const PlatformPage = lazy(pageLoaders.platform);
+const Overview = lazy(pageLoaders.overview);
+const Accounts = lazy(pageLoaders.accounts);
+const Profile = lazy(pageLoaders.profile);
+const Automation = lazy(pageLoaders.automation);
+const PublishWizard = lazy(pageLoaders.publish);
+const FacebookPage = lazy(pageLoaders.facebook);
+const ScriptsPage = lazy(pageLoaders.scripts);
+const VideoAiHome = lazy(pageLoaders.videoAi);
+const AnalysisPage = lazy(pageLoaders.videoAiReport);
 import { getCurrentUser, type User } from './services/api';
-import { clearLiveCache } from './components/workspace/useLive';
+import { clearLiveCache, hydrateLiveCache } from './components/workspace/useLive';
+import { clearSession, getAccessToken, logoutSession, onTokenChange, saveSession } from './services/client';
 import './App.css';
 import { PageSkeleton } from './components/Skeleton';
 
@@ -23,26 +27,84 @@ function TrendsRedirect() {
   return <Navigate to={platform === 'youtube' || platform === 'linkedin' ? `/${platform}` : '/instagram'} replace />;
 }
 
+const USER_KEY = 'cms_user';
+
+function readCachedUser(): User | null {
+  try {
+    return JSON.parse(localStorage.getItem(USER_KEY) || 'null');
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedUser(user: User | null) {
+  try {
+    if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+    else localStorage.removeItem(USER_KEY);
+  } catch {
+    /* storage blocked */
+  }
+}
+
 function MainApp() {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('cms_token'));
+  const [token, setToken] = useState<string | null>(() => getAccessToken());
   const [user, setUser] = useState<User | null>(null);
   const [loadingSession, setLoadingSession] = useState<boolean>(true);
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Follow token changes made by silent refreshes (and by other tabs), and sign out when the session ends.
+  useEffect(() => {
+    const stopLocal = onTokenChange((next) => {
+      setToken(next);
+      if (!next) {
+        writeCachedUser(null);
+        clearLiveCache();
+        setUser(null);
+      }
+    });
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'cms_token') {
+        setToken(e.newValue);
+        if (!e.newValue) {
+          clearLiveCache();
+          setUser(null);
+        }
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      stopLocal();
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
+
+  // Runs once on load: the session is checked a single time, later token swaps don't re-run it.
   useEffect(() => {
     async function verifySession() {
-      if (!token) {
+      const stored = getAccessToken();
+      if (!stored) {
         setLoadingSession(false);
         return;
       }
 
       try {
-        const currentUser = await getCurrentUser(token);
+        // getCurrentUser refreshes an expired access token by itself (apiFetch).
+        const currentUser = await getCurrentUser(stored);
+        await hydrateLiveCache(currentUser.id);
+        writeCachedUser(currentUser);
         setUser(currentUser);
       } catch (err) {
+        // apiFetch already tried a refresh. A token still being here means the server couldn't be reached
+        // (offline, deploy in progress): stay signed in with the last known profile instead of logging out.
+        const cachedUser = getAccessToken() ? readCachedUser() : null;
+        if (cachedUser) {
+          await hydrateLiveCache(cachedUser.id);
+          setUser(cachedUser);
+          return;
+        }
         console.warn('Session verification failed, logging out:', err);
-        localStorage.removeItem('cms_token');
+        clearSession();
         clearLiveCache();
         setToken(null);
         setUser(null);
@@ -52,18 +114,21 @@ function MainApp() {
     }
 
     verifySession();
-  }, [token]);
+  }, []);
 
-  const handleLoginSuccess = (newToken: string, loggedInUser: User) => {
+  const handleLoginSuccess = (newToken: string, loggedInUser: User, refreshToken?: string) => {
     clearLiveCache();
-    localStorage.setItem('cms_token', newToken);
+    saveSession(newToken, refreshToken ?? null);
+    void hydrateLiveCache(loggedInUser.id);
+    writeCachedUser(loggedInUser);
     setToken(newToken);
     setUser(loggedInUser);
     navigate('/overview');
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('cms_token');
+    void logoutSession();
+    writeCachedUser(null);
     clearLiveCache();
     setToken(null);
     setUser(null);
@@ -150,6 +215,22 @@ function MainApp() {
           element={
             <Suspense fallback={<PageSkeleton />}>
               <ScriptsPage token={token} user={user} />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/analysis"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <VideoAiHome token={token} />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/analysis/:platform/:accountId/:mediaId"
+          element={
+            <Suspense fallback={<PageSkeleton />}>
+              <AnalysisPage token={token} />
             </Suspense>
           }
         />

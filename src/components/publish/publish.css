@@ -129,6 +129,9 @@ textarea.pf-input { resize: vertical; min-height: 80px; line-height: 1.45; }
 .pf-progress span { display: block; height: 100%; background: var(--accent); transition: width .2s; }
 .pf-media-actions { display: flex; gap: 4px; }
 .pf-media-actions button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--pf-border); background: #fff; cursor: pointer; font-size: 0.95rem; }
+.pf-media-actions { flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+.pf-media-actions button.va-analyze-btn { width: auto; height: 30px; padding: 0 10px; border-color: #c7d2fe; background: #eef2ff; color: var(--accent-primary, #4f46e5); font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+.pf-media-actions button.va-analyze-btn:hover { background: #e0e7ff; }
 
 /* user tags */
 .pf-tagger { display: grid; gap: 8px; }

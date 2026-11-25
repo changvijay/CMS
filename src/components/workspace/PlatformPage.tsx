@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { Link, NavLink, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   fetchHistory,
@@ -16,12 +16,13 @@ import { timeAgo } from '../../utils/dates';
 import { ProfileHeader } from './ProfileHeader';
 import { RangePicker } from './RangePicker';
 import { presetRange, type RangeValue } from './range';
-import { OverviewTab } from './OverviewTab';
-import { ContentTab } from './ContentTab';
-import { AudienceTab } from './AudienceTab';
-import { DataTab } from './DataTab';
-import { ResearchTab } from './ResearchTab';
-import { StrategyTab } from './StrategyTab';
+// Each tab is its own chunk: only the open tab's code (and its charts) is downloaded.
+const OverviewTab = lazy(() => import('./OverviewTab').then((m) => ({ default: m.OverviewTab })));
+const ContentTab = lazy(() => import('./ContentTab').then((m) => ({ default: m.ContentTab })));
+const AudienceTab = lazy(() => import('./AudienceTab').then((m) => ({ default: m.AudienceTab })));
+const DataTab = lazy(() => import('./DataTab').then((m) => ({ default: m.DataTab })));
+const ResearchTab = lazy(() => import('./ResearchTab').then((m) => ({ default: m.ResearchTab })));
+const StrategyTab = lazy(() => import('./StrategyTab').then((m) => ({ default: m.StrategyTab })));
 import '../../assets/css/workspace.css';
 import { DashboardSkeleton } from '../Skeleton';
 import { SyncReport } from './SyncReport';
@@ -212,7 +213,7 @@ function Workspace({ token, platform, tab }: { token: string; platform: Platform
           ))}
         </nav>
 
-        <div className="ws-body">{body}</div>
+        <div className="ws-body"><Suspense fallback={<DashboardSkeleton />}>{body}</Suspense></div>
       </main>
     </div>
   );

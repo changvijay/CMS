@@ -14,6 +14,7 @@ import { createDeepRouter } from './routes/deep.js';
 import { createWebhooksRouter } from './routes/webhooks.js';
 import { createAutomationRouter } from './routes/automation.js';
 import { createScriptsRouter } from './routes/scripts.js';
+import { createVideoAiRouter, PREUPLOAD_PATH } from './routes/videoAi.js';
 import { createFacebookRouter } from './routes/facebook.js';
 import { createFacebookInsightsRouter } from './routes/facebookInsights.js';
 import { createGoogleRouter } from './routes/google.js';
@@ -27,6 +28,7 @@ import { checkToken as checkInstagramToken } from './services/instagramMessaging
 import { startSnapshotSchedule } from './jobs/snapshot.js';
 import { catchAsyncErrors, jsonErrorHandler } from './utils/asyncErrors.js';
 import { createRateLimiter } from './utils/rateLimit.js';
+import { ACCESS_TOKEN_TTL, createSession, rotateSession, revokeSession, pruneSessions } from './services/sessions.js';
 import swaggerJsdoc from 'swagger-jsdoc';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -69,7 +71,9 @@ app.use(cors(allowedOrigins.length ? { origin: allowedOrigins } : undefined));
 app.set('trust proxy', true);
 // Keep the raw body: Instagram's webhook signature is computed over the exact bytes it sent.
 // 1 MB: long scripts in Tamil/Hindi are ~3 bytes per character.
-app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
+const jsonBody = express.json({ limit: '1mb', verify: (req, _res, buf) => { req.rawBody = buf; } });
+// The pre-upload video check parses its own (larger) body; everything else is capped at 1 MB.
+app.use((req, res, next) => (req.path === PREUPLOAD_PATH ? next() : jsonBody(req, res, next)));
 // The landing page lives at the site root; the old /welcome/ address forwards there.
 app.get('/', (req, res, next) => {
   res.setHeader('Cache-Control', 'no-cache');
@@ -87,6 +91,15 @@ app.use(express.static(distPath, {
     else if (filePath.includes(`${path.sep}assets${path.sep}`)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
   },
 }));
+
+// API data is per user: browsers may keep it but must check back (ETag -> 304 when unchanged).
+app.use('/api', (req, res, next) => {
+  if (req.method === 'GET') {
+    res.setHeader('Cache-Control', 'private, no-cache');
+    res.setHeader('Vary', 'Authorization');
+  }
+  next();
+});
 
 // Initialize Database connection on boot
 initDb();
@@ -257,7 +270,8 @@ app.post('/api/auth/login', async (req, res) => {
       email: user.email_address,
     };
 
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '24h' });
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL });
+    const refreshToken = await createSession(user.id, req);
 
     const userProfile = {
       id: user.id,
@@ -271,6 +285,7 @@ app.post('/api/auth/login', async (req, res) => {
     return res.json({
       message: 'Login successful',
       token,
+      refreshToken,
       user: userProfile,
     });
   } catch (error) {
@@ -278,6 +293,47 @@ app.post('/api/auth/login', async (req, res) => {
     return res.status(500).json({ error: 'Server error during login authentication.' });
   }
 });
+
+// Swaps a refresh token for a new access token + refresh token. Keeps a device signed in until logout.
+const refreshByClient = createRateLimiter({ limit: 60, windowMs: 15 * 60 * 1000 });
+
+app.post('/api/auth/refresh', async (req, res) => {
+  try {
+    const limit = refreshByClient.hit(req.ip);
+    if (!limit.allowed) {
+      res.setHeader('Retry-After', String(limit.retryAfterSeconds));
+      return res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
+    }
+    const rotated = await rotateSession(req.body?.refreshToken);
+    if (!rotated) return res.status(401).json({ error: 'Session ended. Please sign in again.' });
+    const user = await findUserById(rotated.userId);
+    if (!user || user.is_active === false) {
+      await revokeSession(rotated.refreshToken);
+      return res.status(401).json({ error: 'Session ended. Please sign in again.' });
+    }
+    const token = jwt.sign(
+      { userId: user.id, username: user.username, email: user.email_address },
+      JWT_SECRET,
+      { expiresIn: ACCESS_TOKEN_TTL },
+    );
+    return res.json({ token, refreshToken: rotated.refreshToken });
+  } catch (error) {
+    console.error('Refresh error:', error);
+    return res.status(500).json({ error: 'Server error refreshing the session.' });
+  }
+});
+
+// Ends this device's session. Works without a valid access token so an expired device can still sign out.
+app.post('/api/auth/logout', async (req, res) => {
+  try {
+    await revokeSession(req.body?.refreshToken);
+  } catch (error) {
+    console.error('Logout error:', error.message);
+  }
+  return res.json({ ok: true });
+});
+
+setInterval(() => { pruneSessions().catch(() => {}); }, 24 * 60 * 60 * 1000).unref();
 
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
@@ -865,6 +921,7 @@ app.use('/api', createDeepRouter(authenticateToken));
 app.use('/api', createWebhooksRouter());
 app.use('/api', createAutomationRouter(authenticateToken));
 app.use('/api', createScriptsRouter(authenticateToken));
+app.use('/api', createVideoAiRouter(authenticateToken));
 app.use('/api', createFacebookRouter(authenticateToken, JWT_SECRET));
 app.use('/api', createFacebookInsightsRouter(authenticateToken));
 app.use('/api', createGoogleRouter(authenticateToken, JWT_SECRET));

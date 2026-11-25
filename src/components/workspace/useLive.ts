@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent, useState } from 'react';
 import { errorMessage } from '../../utils/errors';
+import * as persisted from '../../services/persistCache';
 
 export interface LiveState<T> {
   data: T | null;
@@ -15,10 +16,13 @@ export interface LiveOptions {
 /** For slow analytics calls that don't change minute to minute. */
 export const ANALYTICS_MAX_AGE = 2 * 60 * 1000;
 /** For numbers read from the database: they only change on a sync, which invalidates them explicitly. */
-export const STORED_MAX_AGE = 10 * 60 * 1000;
+export const STORED_MAX_AGE = 30 * 60 * 1000;
 
-const STALE_LIMIT = 15 * 60 * 1000; // older than this is not shown at all
-const MAX_ENTRIES = 200;
+/** Older than this is not shown at all. Anything younger is shown at once and refreshed quietly when past its maxAge. */
+const STALE_LIMIT = 7 * 24 * 60 * 60 * 1000;
+const MAX_ENTRIES = 500;
+/** Whose data is in the cache; results are saved to the device under this id. Null = keep in memory only. */
+let owner: string | null = null;
 const cache = new Map<string, { data: unknown; at: number }>();
 /** Requests still running, so two views asking for the same key share one call. */
 const inflight = new Map<string, Promise<unknown>>();
@@ -29,6 +33,32 @@ const listeners = new Set<(key: string) => void>();
 export function clearLiveCache() {
   cache.clear();
   inflight.clear();
+  owner = null;
+  void persisted.clearAll();
+}
+
+/**
+ * Loads the results saved on this device for `userId` into memory, so the first render shows them without a request.
+ * Call once the signed-in user is known; results are saved for that user from then on.
+ */
+export async function hydrateLiveCache(userId: string | number): Promise<void> {
+  const id = String(userId);
+  if (owner === id) return;
+  owner = id;
+  const entries = await persisted.readAll(id);
+  if (owner !== id) return; // signed out meanwhile
+  const now = Date.now();
+  const expired: string[] = [];
+  for (const e of entries) {
+    if (now - e.at >= STALE_LIMIT) expired.push(e.key);
+    else if (!cache.has(e.key)) cache.set(e.key, { data: e.data, at: e.at });
+  }
+  while (cache.size > MAX_ENTRIES) {
+    const oldest = cache.keys().next().value!;
+    cache.delete(oldest);
+    expired.push(oldest);
+  }
+  void persisted.deleteEntries(id, expired);
 }
 
 /**
@@ -37,7 +67,9 @@ export function clearLiveCache() {
  */
 export function invalidateLiveCache(...prefixes: string[]) {
   const matches = (key: string) => prefixes.some((p) => key.startsWith(p));
-  for (const key of [...cache.keys()]) if (matches(key)) cache.delete(key);
+  const dropped = [...cache.keys()].filter(matches);
+  for (const key of dropped) cache.delete(key);
+  if (owner) void persisted.deleteEntries(owner, dropped);
   for (const key of [...inflight.keys()]) if (matches(key)) inflight.delete(key);
   for (const notify of listeners) notify(prefixes.join('\u0000'));
 }
@@ -57,9 +89,15 @@ export async function loadShared<T>(key: string, load: () => Promise<T>): Promis
       const data = await load();
       // Only store it if nobody invalidated this key while it was loading.
       if (inflight.get(key) === promise) {
+        const at = Date.now();
         cache.delete(key); // re-insert so the oldest entries are the ones dropped
-        cache.set(key, { data, at: Date.now() });
-        if (cache.size > MAX_ENTRIES) cache.delete(cache.keys().next().value!);
+        cache.set(key, { data, at });
+        if (owner) void persisted.writeEntry(owner, key, data, at);
+        if (cache.size > MAX_ENTRIES) {
+          const oldest = cache.keys().next().value!;
+          cache.delete(oldest);
+          if (owner) void persisted.deleteEntries(owner, [oldest]);
+        }
       }
       return data;
     } finally {
@@ -80,7 +118,7 @@ export function storedDataKeys(platform?: string): string[] {
  * `key` is the identity of the request: put everything the request depends on into it.
  * Results from a superseded request are ignored.
  *
- * Results are cached in memory by `key` (stale-while-revalidate): coming back to a request already made shows its last result
+ * Results are cached in memory by `key`, and saved on the device for the signed-in user (stale-while-revalidate): coming back to a request already made shows its last result
  * at once and refreshes it quietly, so the spinner only appears the first time. If that refresh fails, the cached result stays.
  * `invalidateLiveCache(prefix)` drops matching results and makes mounted hooks load again.
  */

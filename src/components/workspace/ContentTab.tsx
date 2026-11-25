@@ -1,3 +1,4 @@
+import { reportPath } from '../../services/videoAiApi';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Platform, StoredMedia } from '../../services/api';
@@ -188,6 +189,9 @@ export function ContentTab({ platform, media, token, accountId, since, until }: 
                     {m.permalink && <a className="content-link" href={m.permalink} target="_blank" rel="noreferrer">Open on {platform === 'instagram' ? 'Instagram' : platform === 'linkedin' ? 'LinkedIn' : 'YouTube'} ↗</a>}
                     {platform === 'instagram' && m.media_type !== 'STORY' && /^\d+$/.test(m.media_id) && (
                       <Link className="content-link" to={`/automation?account=${accountId}&media=${m.media_id}`}>Set up auto-reply for this {m.media_type === 'REEL' ? 'reel' : 'post'} →</Link>
+                    )}
+                    {m.media_type !== 'STORY' && (
+                      <Link className="content-link content-ai" to={reportPath(platform, accountId, m.media_id)}>✦ AI analysis</Link>
                     )}
                     {m.media_type !== 'STORY' && (platform === 'youtube' || /^\d+$/.test(m.media_id)) && (
                       <CommentInsights platform={platform} token={token} accountId={accountId} id={m.media_id} />

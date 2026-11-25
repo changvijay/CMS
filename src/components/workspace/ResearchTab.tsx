@@ -1,3 +1,4 @@
+import { useInView } from '../../hooks/useInView';
 import { useMemo, useState, type FormEvent } from 'react';
 import {
   fetchBenchmark, fetchHashtag, fetchInstagramTags, fetchPublishingLimit, fetchYoutubePlaylists, fetchYoutubeRevenue,
@@ -14,8 +15,10 @@ import { cadence } from './strategy';
 // ---------------------------------------------------------------- Instagram
 
 function PublishingLimit({ token, accountId }: { token: string; accountId: string }) {
-  const state = useLive(() => fetchPublishingLimit(token, accountId), `limit:${accountId}`, true, { maxAge: ANALYTICS_MAX_AGE });
+  const [ref, inView] = useInView();
+  const state = useLive(() => fetchPublishingLimit(token, accountId), `limit:${accountId}`, inView, { maxAge: ANALYTICS_MAX_AGE });
   return (
+    <div ref={ref}>
     <Panel title="Publishing quota" sub="Instagram caps how many posts an account can publish through the API in 24 hours.">
       <LiveBlock state={state}>
         {(d) => (
@@ -27,6 +30,7 @@ function PublishingLimit({ token, accountId }: { token: string; accountId: strin
         )}
       </LiveBlock>
     </Panel>
+    </div>
   );
 }
 
@@ -151,8 +155,10 @@ function HashtagResearch({ token, accountId }: { token: string; accountId: strin
 }
 
 function TaggedPosts({ token, accountId }: { token: string; accountId: string }) {
-  const state = useLive(() => fetchInstagramTags(token, accountId), `tags:${accountId}`, true, { maxAge: ANALYTICS_MAX_AGE });
+  const [ref, inView] = useInView();
+  const state = useLive(() => fetchInstagramTags(token, accountId), `tags:${accountId}`, inView, { maxAge: ANALYTICS_MAX_AGE });
   return (
+    <div ref={ref}>
     <Panel title="Posts that tag you" sub="Content other people made about you. Great material for reposting and thanking creators.">
       <LiveBlock state={state}>
         {(rows) => rows.length === 0 ? <p className="trends-empty-inline">No tagged posts found.</p> : (
@@ -162,6 +168,7 @@ function TaggedPosts({ token, accountId }: { token: string; accountId: string })
         )}
       </LiveBlock>
     </Panel>
+    </div>
   );
 }
 

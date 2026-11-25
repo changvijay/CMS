@@ -37,4 +37,25 @@ describe('AI providers', () => {
     const empty = vi.fn(async () => ok({ choices: [] }));
     await expect(createProviders(empty).groq.generate('k', 'm', 's', 'u')).rejects.toThrow(/empty response/);
   });
+
+  it('sends frames and video in each provider\'s own shape', async () => {
+    const fetch = vi.fn(async (url) => ok(url.includes('anthropic') ? { content: [{ type: 'text', text: 'ok' }] } : url.includes('googleapis') ? { candidates: [{ content: { parts: [{ text: 'ok' }] } }] } : { choices: [{ message: { content: 'ok' } }] }));
+    const p = createProviders(fetch);
+    const content = { text: 'Analyse', images: [{ mime: 'image/jpeg', data: 'AAA' }], video: { mime: 'video/mp4', data: 'VVV' } };
+    await p.gemini.generate('k', 'gemini-2.5-flash', 'S', content, { maxTokens: 4096 });
+    await p.claude.generate('k', 'claude-haiku-5-5', 'S', content);
+    await p.openrouter.generate('k', 'openai/gpt-4o', 'S', content);
+    const [gem, claude, router] = fetch.mock.calls.map(([, init]) => JSON.parse(init.body));
+    expect(gem.contents[0].parts).toEqual([{ inline_data: { mime_type: 'video/mp4', data: 'VVV' } }, { inline_data: { mime_type: 'image/jpeg', data: 'AAA' } }, { text: 'Analyse' }]);
+    expect(gem.generationConfig.maxOutputTokens).toBe(4096);
+    expect(claude.messages[0].content).toEqual([{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: 'AAA' } }, { type: 'text', text: 'Analyse' }]);
+    expect(router.messages[1].content[1]).toEqual({ type: 'image_url', image_url: { url: 'data:image/jpeg;base64,AAA' } });
+  });
+
+  it('Groq refuses pictures with a 422 instead of calling the API', async () => {
+    const fetch = vi.fn();
+    await expect(createProviders(fetch).groq.generate('k', 'openai/gpt-oss-20b', 'S', { text: 'x', images: [{ mime: 'image/jpeg', data: 'A' }] }))
+      .rejects.toMatchObject({ status: 422 });
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });

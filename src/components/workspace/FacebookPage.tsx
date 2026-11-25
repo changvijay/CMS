@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   fetchFacebookAudience,
@@ -19,7 +19,12 @@ import { RangePicker } from './RangePicker';
 import { presetRange, type RangeValue } from './range';
 import { LiveBlock } from './ui';
 import { FB_METRICS } from './facebookMeta';
-import { FbAudienceTab, FbContentTab, FbOverviewTab, FbVideoTab } from './FacebookTabs';
+// The tabs (and their charts) load as a separate chunk, after the page frame is on screen.
+const tabs = () => import('./FacebookTabs');
+const FbAudienceTab = lazy(() => tabs().then((m) => ({ default: m.FbAudienceTab })));
+const FbContentTab = lazy(() => tabs().then((m) => ({ default: m.FbContentTab })));
+const FbOverviewTab = lazy(() => tabs().then((m) => ({ default: m.FbOverviewTab })));
+const FbVideoTab = lazy(() => tabs().then((m) => ({ default: m.FbVideoTab })));
 import '../../assets/css/workspace.css';
 import { DashboardSkeleton, PageSkeleton, SectionSkeleton } from '../Skeleton';
 
@@ -162,19 +167,21 @@ function Workspace({ token, tab }: { token: string; tab: TabKey }) {
       </nav>
 
       <div className="ws-body">
+        <Suspense fallback={<DashboardSkeleton />}>
         {tab === 'content' ? (
           <LiveBlock state={posts} skeleton={<div className="sk-card"><SectionSkeleton variant="table" rows={6} label="Loading posts…" /></div>}>
-            {(r) => (r.unavailable ? <p className="trends-empty-inline">{r.reason}</p> : <FbContentTab posts={r.posts} withInsights={r.insights !== false} />)}
+            {(r) => (r.unavailable ? <p className="trends-empty-inline">{r.reason}</p> : <FbContentTab posts={r.posts} withInsights={r.insights !== false} accountId={accountId} />)}
           </LiveBlock>
         ) : (
           <LiveBlock state={daily} skeleton={<DashboardSkeleton kpis={tab === 'audience' ? 4 : 5} />}>
             {(d) => {
-              if (tab === 'video') return <FbVideoTab data={d} reels={reels.data ? (reels.data.unavailable ? [] : reels.data.reels) : null} reelsError={reels.error ?? (reels.data?.unavailable ? reels.data.reason ?? 'Facebook didn’t return your reels.' : null)} />;
+              if (tab === 'video') return <FbVideoTab accountId={accountId} data={d} reels={reels.data ? (reels.data.unavailable ? [] : reels.data.reels) : null} reelsError={reels.error ?? (reels.data?.unavailable ? reels.data.reason ?? 'Facebook didn’t return your reels.' : null)} />;
               if (tab === 'audience') return <FbAudienceTab data={d} audience={audience.data ?? null} audienceError={audience.error} profile={p ?? null} />;
               return <FbOverviewTab data={d} profile={p ?? null} />;
             }}
           </LiveBlock>
         )}
+        </Suspense>
       </div>
     </Shell>
   );
